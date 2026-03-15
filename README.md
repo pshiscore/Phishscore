@@ -1,2 +1,0 @@
-# Phishscore
-Score phishing scam 
