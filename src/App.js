@@ -984,9 +984,9 @@ function TransparencyPage({ onClose, submissions }) {
             { label: "SCAM RATE", value: scamRate + "%", color: "#fb923c" },
             { label: "LIKELY SAFE", value: safe, color: "#34d399" },
           ].map(s => (
-            <div key={s.label} style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "14px 16px", borderTop: "2px solid " + s.color }}>
-              <div style={{ fontSize: 9, color: "#475569", letterSpacing: 2, fontFamily: "monospace", marginBottom: 6 }}>{s.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
+            <div key={s.label} style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "11px 13px", borderTop: "2px solid " + s.color }}>
+              <div style={{ fontSize: 8, color: "#475569", letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>{s.label}</div>
+              <div style={{ fontSize: 19, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -1081,7 +1081,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
           BREAKDOWN BY SCAM TYPE - <span style={{ color: "#64748b" }}>click to filter</span>
         </div>
         {hasMore && (
-          <span style={{ fontSize: 9, color: "#334155", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace" }}>
             {showAll ? `showing all ${catCounts.length}` : `showing top 3 of ${catCounts.length}`}
           </span>
         )}
@@ -1244,10 +1244,10 @@ export default function App() {
               { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 10, padding: "13px 15px", borderTop: `2px solid ${s.accent}` }}>
-                <div style={{ fontSize: 8, color: "#64748b", letterSpacing: 3, marginBottom: 6, fontFamily: "monospace" }}>{s.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
-                {s.sub && <div style={{ fontSize: 9, color: "#475569", marginTop: 2, fontFamily: "monospace" }}>{s.sub}</div>}
+              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 10, padding: "10px 12px", borderTop: `2px solid ${s.accent}` }}>
+                <div style={{ fontSize: 7, color: "#64748b", letterSpacing: 3, marginBottom: 5, fontFamily: "monospace" }}>{s.label}</div>
+                <div style={{ fontSize: 19, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
+                {s.sub && <div style={{ fontSize: 8, color: "#475569", marginTop: 2, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
             ))}
           </div>
@@ -1268,7 +1268,7 @@ export default function App() {
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#64748b", fontFamily: "monospace" }}>
                 COMMUNITY SUBMISSIONS
                 {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
-                <span style={{ color: "#334155", marginLeft: 8, fontSize: 9 }}>
+                <span style={{ color: "#94a3b8", marginLeft: 8, fontSize: 9 }}>
                   {showMoreFeed ? `showing all ${allFiltered.length}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${allFiltered.length}`}
                 </span>
               </div>
