@@ -1290,7 +1290,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-            </div>
 
             {dbLoading ? (
               <div style={{ textAlign: "center", padding: "48px 0", color: "#334155", fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
