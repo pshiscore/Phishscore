@@ -814,55 +814,55 @@ function FAQPage({ onClose }) {
   const faqs = [
     {
       q: "What is PhishScore.ai?",
-      a: "PhishScore.ai is a free community-powered scam detection tool. Paste or screenshot any suspicious message - email, text, social media DM, or letter - and our AI instantly scores the likelihood it is a scam from 0 to 100, explains why, and tells you what to do."
+      a: "PhishScore.ai is a free community-powered scam detection tool. Paste or screenshot any suspicious message - email, text, social media DM, or letter - and our AI instantly scores the likelihood it is a scam from 0 to 100, explains why, and tells you exactly what to do next."
     },
     {
       q: "What types of scams can I submit?",
-      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, and political campaign scams (fake fundraising, candidate impersonation, polling fraud). Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically."
+      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses, contest mills), delivery scams (fake USPS/FedEx/UPS texts), retail scams (fake Amazon or eBay alerts), phone carrier scams (fake rewards or billing texts), traffic and toll violations, social media phishing (Instagram, Facebook, TikTok), banking and crypto fraud, IRS and government impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, and political campaign fraud (fake fundraising, candidate impersonation, polling scams). Not sure what type? Select Unknown / AI Detect and the AI will automatically classify it."
     },
     {
-      q: "What happens when I select Other / Not Sure?",
-      a: "Selecting Other / Not Sure tells the AI to determine the category itself. After analyzing the message, if the AI is 70% or more confident, it automatically assigns the most likely category such as Retail, Delivery, or Publishing. The submission appears in the dashboard under that detected category with a small AUTO label. If the AI is not confident enough, the submission stays listed under Other. Additionally, even if you select a specific category, if the AI is 85% or more confident the content actually belongs to a different category, it will automatically reclassify it and show a RECLASSIFIED label so you always know when this happens."
+      q: "What is Unknown / AI Detect?",
+      a: "Unknown / AI Detect tells the AI to determine the category itself. If the AI is 70% or more confident after analyzing your message, it automatically assigns the most likely category such as Retail, Delivery, or Publishing, and your submission appears in the dashboard with an AUTO label. If not confident enough, it stays listed as Unknown. Additionally, even if you select a specific category, if the AI is 85% or more confident the content belongs to a different category, it will automatically reclassify it and show a RECLASSIFIED label so you always know when a correction was made."
     },
     {
       q: "What is the difference between Public, Private, and Anonymous?",
-      a: "Private is the default and recommended setting - your score and category appear in the community feed but message content and sender are never shown publicly. Public submissions share full details to help the community and are best when your message contains no personal info. Anonymous submissions store nothing after analysis - only score and category briefly appear in the feed."
+      a: "Private is the default and recommended setting - your score and category appear in the community feed but your message content and sender are never shown publicly. Public submissions share full details to help warn the community and work best when your message contains no personal information. Anonymous submissions store nothing after analysis - only the score and category briefly appear in the feed and nothing is retained."
     },
     {
       q: "How do I submit for the best results?",
-      a: "The more information you include, the better the score. Include the full message text, the sender email or phone number, and the subject line if it is an email. For texts, include the full phone number. For emails, including the email headers (see below) gives the most accurate analysis."
+      a: "The more context you include the better the score. Always include the full message text, the sender email address or phone number, and the subject line if it is an email. For texts include the full phone number with country code. For emails, pasting the email headers along with the message body gives the deepest and most accurate analysis."
     },
     {
       q: "What are email headers and how do I find them?",
-      a: "Email headers are hidden technical data that show the true origin of an email, even if the sender name looks legitimate. In Gmail: open the email, click the three dots menu, click Show original. In Apple Mail: open the email, go to View menu, then Message, then All Headers. In Outlook: open the email, click File, then Properties. Copy all of that text and paste it into PhishScore along with the message body for the most accurate analysis."
+      a: "Email headers are hidden technical data that reveal the true origin of an email even when the sender name looks legitimate. In Gmail: open the email, click the three dots menu, select Show original, copy all. In Apple Mail: open the email, go to View, then Message, then All Headers, copy all. In Outlook: open the email, click File, then Properties, copy the Internet headers box. In Yahoo Mail: open the email, click the three dots menu, select View raw message, copy all. Paste everything into PhishScore along with the message body for the most accurate analysis."
     },
     {
       q: "Why should I include the sender address?",
-      a: "Scammers often disguise their real email address. The display name might say Apple Support but the actual address is random-letters@suspicious-domain.net. Including the full sender address helps our AI spot spoofed domains, lookalike addresses, and known scam infrastructure. It also helps the community by showing where scams are originating from geographically."
+      a: "Scammers often disguise their real address behind a convincing display name. The name might say Apple Support but the actual address is something like random-letters@suspicious-domain.net. Including the full sender address helps our AI identify spoofed domains, lookalike addresses, and known scam infrastructure. It also helps the community by showing where scams are actually originating from."
     },
     {
       q: "Can I upload a screenshot instead of typing?",
-      a: "Yes. Use the Upload Screenshot option in the submission flow. Our AI will read all visible text in the image including sender information, logos, links, and message content. This is especially useful for text message scams that are easier to screenshot than type out."
+      a: "Yes. Use the Upload Screenshot option in the submission flow. Our AI reads all visible text in the image including sender information, logos, URLs, and message content. This is especially useful for text message scams that are easier to screenshot than type out."
     },
     {
-      q: "Is my data safe?",
-      a: "Public and Private submissions store the message content and source in our database to power the community dashboard. Anonymous submissions store nothing after analysis. We never sell data or share it with third parties. If you accidentally submitted something with personal information, use the Private or Anonymous options in future, or contact us at contact@phishscore.ai to request removal."
+      q: "What external databases does PhishScore check?",
+      a: "When your submission contains URLs, PhishScore automatically checks them against three independent threat intelligence databases in addition to AI analysis. Google Safe Browsing is maintained by Google and protects billions of Chrome users - it checks URLs against known phishing, malware, and social engineering sites in real time. Cloudflare Radar draws on intelligence from Cloudflare's global network which processes a large portion of internet traffic, catching threats based on actual live traffic patterns. URLhaus is run by abuse.ch, a non-profit Swiss security research organization, and tracks active malware distribution URLs and botnet infrastructure. When any of these databases flags a URL in your submission, the score is automatically adjusted and the flagging source is shown in your result."
     },
     {
       q: "What does the score mean?",
-      a: "The score is the AI's estimated probability that the message is a scam, from 0 to 100. A score of 75 or above is flagged as SCAM. Between 45 and 74 is SUSPICIOUS and worth treating with caution. Below 45 is LIKELY SAFE, though no automated tool is perfect and you should always trust your instincts."
+      a: "The score is the AI's estimated probability that the message is a scam, from 0 to 100. A score of 75 or above is flagged as SCAM. Between 45 and 74 is SUSPICIOUS and worth treating with caution. Below 45 is LIKELY SAFE. No automated tool is perfect and you should always trust your own judgment, especially for financial or personal decisions."
     },
     {
-      q: "What external databases does PhishScore use?",
-      a: "PhishScore checks submitted URLs against three independent threat intelligence databases in addition to AI analysis. Google Safe Browsing is maintained by Google and protects billions of Chrome users - it checks URLs against known phishing, malware, and social engineering sites in real time. Cloudflare Radar uses intelligence from Cloudflare's global network which processes a significant portion of internet traffic, catching threats based on actual traffic patterns not just reported URLs. URLhaus is operated by abuse.ch, a non-profit Swiss security research organization, and tracks active malware distribution URLs and botnet command servers. When any of these databases flag a URL in your submission, the score is automatically adjusted and the source is shown in your result so you know exactly where the intelligence came from."
+      q: "Is my data safe?",
+      a: "Public and Private submissions store the message content and source in our database to power the community dashboard. Anonymous submissions store nothing after analysis is complete. We never sell data or share it with third parties. PII such as email addresses, phone numbers, and names is partially masked before display. If you need a submission removed contact us at contact@phishscore.ai."
     },
     {
-      q: "Why does the community feed only show a limited number of submissions?",
-      a: "The default dashboard view shows the 15 most recent community submissions to keep the feed fast and focused. When you filter by a specific category such as Publishing or Retail, the feed shows the top 10 most recent submissions in that category. This keeps load times fast as the database grows and ensures you are always seeing the most relevant and recent intelligence."
+      q: "Why does the community feed show a limited number of submissions?",
+      a: "The dashboard defaults to showing the most recent submissions to keep the feed fast and focused. You can expand the feed using the Show More button to see additional reports. Filtering by category shows the most recent submissions in that category. This keeps load times fast as the database grows."
     },
     {
       q: "Can I report a scam that already happened to me?",
-      a: "Yes. Submit the original message even if you already fell for it. Your submission helps others recognize the same scam and may help identify patterns. For financial fraud, also report to the FTC at reportfraud.ftc.gov, the FBI at ic3.gov, and your bank immediately."
+      a: "Yes. Submit the original message even if you already fell for it. Your submission helps others recognize the same scam and contributes to community intelligence. For financial fraud also report to the FTC at reportfraud.ftc.gov."
     },
   ];
 
