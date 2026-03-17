@@ -1340,8 +1340,9 @@ export default function App() {
                 {showMoreFeed ? "SHOW LESS" : `+ SHOW ${allFiltered.length - FEED_DEFAULT} MORE SUBMISSIONS`}
               </button>
             )}
+</main>
           </div>
-        </main>
+        </div>
 
         {/* FOOTER */}
         <footer style={{ borderTop: "1px solid #1a1d2e", padding: "28px", marginTop: 20 }}>
