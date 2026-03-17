@@ -1072,8 +1072,8 @@ function TransparencyPage({ onClose, submissions }) {
 
 function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? catCounts : catCounts.slice(0, 5);
-  const hasMore = catCounts.length > 5;
+  const visible = showAll ? catCounts : catCounts.slice(0, 3);
+  const hasMore = catCounts.length > 3;
   return (
     <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24, marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -1082,7 +1082,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
         </div>
         {hasMore && (
           <span style={{ fontSize: 9, color: "#334155", fontFamily: "monospace" }}>
-            {showAll ? `showing all ${catCounts.length}` : `showing top 5 of ${catCounts.length}`}
+            {showAll ? `showing all ${catCounts.length}` : `showing top 3 of ${catCounts.length}`}
           </span>
         )}
       </div>
@@ -1112,7 +1112,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
           color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
-          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 5} MORE CATEGORIES`}
+          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 3} MORE CATEGORIES`}
         </button>
       )}
     </div>
@@ -1188,7 +1188,7 @@ export default function App() {
     .filter(s => filterStatus === "all" || (filterStatus === "scam" && s.score >= 75) || (filterStatus === "suspicious" && s.score >= 45 && s.score < 75) || (filterStatus === "safe" && s.score < 45))
     .filter(s => filterVis === "all" || (s.visibility || "public") === filterVis)
     .sort((a, b) => sortBy === "recent" ? new Date(b.created_at) - new Date(a.created_at) : b.score - a.score);
-  const FEED_DEFAULT = 5;
+  const FEED_DEFAULT = 3;
   const filtered = showMoreFeed ? allFiltered : allFiltered.slice(0, FEED_DEFAULT);
 
   const statusColors = { all: "#5b6cf8", scam: "#f43f5e", suspicious: "#fb923c", safe: "#34d399" };
@@ -1237,17 +1237,17 @@ export default function App() {
 
         <main style={{ padding: "28px", maxWidth: 1300, margin: "0 auto" }}>
           {/* STATS */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))", gap: 10, marginBottom: 20 }}>
             {[
               { label: "TOTAL REPORTS", value: total, accent: "#5b6cf8" },
               { label: "CONFIRMED SCAMS", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
               { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
-                <div style={{ fontSize: 9, color: "#64748b", letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
-                <div style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
-                {s.sub && <div style={{ fontSize: 10, color: "#475569", marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
+              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 10, padding: "13px 15px", borderTop: `2px solid ${s.accent}` }}>
+                <div style={{ fontSize: 8, color: "#64748b", letterSpacing: 3, marginBottom: 6, fontFamily: "monospace" }}>{s.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
+                {s.sub && <div style={{ fontSize: 9, color: "#475569", marginTop: 2, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
             ))}
           </div>
