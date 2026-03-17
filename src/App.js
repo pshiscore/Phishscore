@@ -18,10 +18,10 @@ const db = {
       });
       const data = await res.json();
       if (!Array.isArray(data)) return null;
-      const words = preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+      const words = preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
       for (const sub of data) {
         if (!sub.preview) continue;
-        const subWords = sub.preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+        const subWords = sub.preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
         const matches = words.filter(w => subWords.includes(w)).length;
         const similarity = words.length > 0 ? matches / words.length : 0;
         if (similarity > 0.5) return sub;
@@ -687,11 +687,19 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
                 <div style={{ fontSize: 10, letterSpacing: 3, color: "#334155", fontFamily: "monospace" }}>ANALYSIS</div>
-                {result.safeBrowsingFlagged && (
-                  <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", background: "#f43f5e12", border: "1px solid #f43f5e35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>GOOGLE SAFE BROWSING: FLAGGED</span>
-                )}
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {result.safeBrowsingFlagged && (
+                    <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", background: "#f43f5e12", border: "1px solid #f43f5e35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>GOOGLE SAFE BROWSING: FLAGGED</span>
+                  )}
+                  {result.radarFlagged && (
+                    <span style={{ fontSize: 9, color: "#fb923c", fontFamily: "monospace", background: "#fb923c12", border: "1px solid #fb923c35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>CLOUDFLARE RADAR: FLAGGED</span>
+                  )}
+                  {result.urlhausFlagged && (
+                    <span style={{ fontSize: 9, color: "#f97316", fontFamily: "monospace", background: "#f9731612", border: "1px solid #f9731635", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>URLHAUS: FLAGGED</span>
+                  )}
+                </div>
               </div>
               <p style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
             </div>
@@ -1289,7 +1297,6 @@ export default function App() {
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
-            </div>
             </div>
 
             {dbLoading ? (
