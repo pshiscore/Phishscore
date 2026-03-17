@@ -1341,7 +1341,6 @@ export default function App() {
               </button>
             )}
           </div>
-          </div>
         </main>
 
         {/* FOOTER */}
