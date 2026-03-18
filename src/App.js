@@ -5,7 +5,7 @@ const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 const db = {
   async getSubmissions() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=100`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=20`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     });
     return res.json();
@@ -13,15 +13,15 @@ const db = {
   async checkDuplicate(preview) {
     // Get recent submissions and check for similarity client-side
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=50`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=20`, {
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
       });
       const data = await res.json();
       if (!Array.isArray(data)) return null;
-      const words = preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+      const words = preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
       for (const sub of data) {
         if (!sub.preview) continue;
-        const subWords = sub.preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+        const subWords = sub.preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
         const matches = words.filter(w => subWords.includes(w)).length;
         const similarity = words.length > 0 ? matches / words.length : 0;
         if (similarity > 0.5) return sub;
@@ -122,20 +122,13 @@ const timeAgo = (ts) => {
 
 // Privacy masking helpers
 function maskPhone(phone) {
-  // Strip everything except digits and leading +
   const cleaned = phone.trim();
   const digits = cleaned.replace(/\D/g, "");
   if (digits.length < 4) return cleaned;
-  // Keep everything except last 4 digits, replace those with ****
-  const prefix = cleaned.slice(0, cleaned.length - 4).replace(/\d(?=.*\d{2})/g, (d, i) => d); // keep prefix as-is
-  // Simpler: just replace last 4 characters that are digits
   let result = cleaned;
   let replaced = 0;
   for (let i = result.length - 1; i >= 0 && replaced < 4; i--) {
-    if (/\d/.test(result[i])) {
-      result = result.slice(0, i) + "*" + result.slice(i + 1);
-      replaced++;
-    }
+    if (/\d/.test(result[i])) { result = result.slice(0, i) + "*" + result.slice(i + 1); replaced++; }
   }
   return result;
 }
