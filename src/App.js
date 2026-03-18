@@ -302,12 +302,12 @@ function VisibilityBadge({ visibility }) {
   );
 }
 
-function ScoreRing({ score, size = 64 }) {
+function ScoreRing({ score, size = 64, trackColor = "#1a1d2e" }) {
   const color = getScoreColor(score);
   const r = size * 0.37, circ = 2 * Math.PI * r, dash = (score / 100) * circ;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1a1d2e" strokeWidth={size * 0.1} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={size * 0.1} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={size * 0.1}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -1070,18 +1070,18 @@ function TransparencyPage({ onClose, submissions }) {
   );
 }
 
-function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
+function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, theme, T }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? catCounts : catCounts.slice(0, 5);
   const hasMore = catCounts.length > 5;
   return (
-    <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24, marginBottom: 22 }}>
+    <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-        <div style={{ fontSize: 10, letterSpacing: 3, color: "#64748b", fontFamily: "monospace" }}>
-          BREAKDOWN BY SCAM TYPE - <span style={{ color: "#64748b" }}>click to filter</span>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
+          BREAKDOWN BY SCAM TYPE - <span style={{ color: T.text3 }}>click to filter</span>
         </div>
         {hasMore && (
-          <span style={{ fontSize: 9, color: "#334155", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace" }}>
             {showAll ? `showing all ${catCounts.length}` : `showing top 5 of ${catCounts.length}`}
           </span>
         )}
@@ -1090,26 +1090,26 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
         {visible.map(cat => {
           const active = filterCat === cat.id;
           return (
-            <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)} style={{ background: active ? `${cat.color}14` : "#0d0f1a", border: `1.5px solid ${active ? cat.color : "#1a1d2e"}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+            <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)} style={{ background: active ? `${cat.color}14` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={14} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace" }}>{cat.label}</span>
+                  <CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : T.text3} size={14} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : T.text3, fontFamily: "monospace" }}>{cat.label}</span>
                 </div>
                 <span style={{ fontSize: 15, fontWeight: 800, color: cat.color, fontFamily: "monospace" }}>{cat.count}</span>
               </div>
-              <div style={{ background: "#1a1d2e", borderRadius: 3, height: 4 }}>
+              <div style={{ background: T.ringTrack, borderRadius: 3, height: 4 }}>
                 <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${cat.color}, ${cat.color}66)`, width: `${(cat.count / maxCount) * 100}%`, transition: "width 0.8s ease" }} />
               </div>
-              <div style={{ fontSize: 10, color: "#475569", marginTop: 5, fontFamily: "monospace" }}>{cat.scamCount} scam{cat.scamCount !== 1 ? "s" : ""}</div>
+              <div style={{ fontSize: 10, color: T.text4, marginTop: 5, fontFamily: "monospace" }}>{cat.scamCount} scam{cat.scamCount !== 1 ? "s" : ""}</div>
             </button>
           );
         })}
       </div>
       {hasMore && (
         <button onClick={() => setShowAll(v => !v)} style={{
-          marginTop: 12, width: "100%", background: "none", border: "1px dashed #1a1d2e",
-          color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
+          marginTop: 12, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`,
+          color: T.text4, padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
           {showAll ? "SHOW LESS" : `+ ${catCounts.length - 5} MORE CATEGORIES`}
@@ -1131,6 +1131,49 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; } });
+  const toggleTheme = () => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); try { localStorage.setItem("phishscore_theme", next); } catch {} };
+  const T = theme === "light" ? {
+    pageBg: "#f8f6f2",
+    cardBg: "#ffffff",
+    cardBorder: "#e8e4de",
+    innerBg: "#f3f0eb",
+    innerBorder: "#e8e4de",
+    headerBg: "rgba(248,246,242,0.97)",
+    headerBorder: "#e8e4de",
+    text: "#111827",
+    text2: "#374151",
+    text3: "#6b7280",
+    text4: "#9ca3af",
+    ringTrack: "#e5e7eb",
+    feedDivider: "#f3f0eb",
+    tagBg: "#f3f0eb",
+    tagColor: "#6b7280",
+    inputBg: "#ffffff",
+    inputBorder: "#e8e4de",
+    scrollTrack: "#f0ede8",
+    scrollThumb: "#c8c4bc",
+  } : {
+    pageBg: "#060810",
+    cardBg: "#090b14",
+    cardBorder: "#1a1d2e",
+    innerBg: "#0d0f1a",
+    innerBorder: "#1a1d2e",
+    headerBg: "rgba(6,8,16,0.95)",
+    headerBorder: "#1a1d2e",
+    text: "#e2e8f0",
+    text2: "#94a3b8",
+    text3: "#64748b",
+    text4: "#475569",
+    ringTrack: "#1a1d2e",
+    feedDivider: "#0d0f1a",
+    tagBg: "#1a1d2e",
+    tagColor: "#475569",
+    inputBg: "#0d0f1a",
+    inputBorder: "#1a1d2e",
+    scrollTrack: "#060810",
+    scrollThumb: "#1a1d2e",
+  };
   const [barDismissed, setBarDismissed] = useState(() => {
     try { return localStorage.getItem("phishscore_bar_dismissed") === "1"; } catch { return false; }
   });
@@ -1183,24 +1226,26 @@ export default function App() {
     .filter(c => c.count > 0).sort((a, b) => b.count - a.count);
   const maxCount = Math.max(...catCounts.map(c => c.count), 1);
 
+  const FEED_CAP = 20;
+  const FEED_DEFAULT = 3;
   const allFiltered = submissions
     .filter(s => filterCat === "all" || s.category === filterCat)
     .filter(s => filterStatus === "all" || (filterStatus === "scam" && s.score >= 75) || (filterStatus === "suspicious" && s.score >= 45 && s.score < 75) || (filterStatus === "safe" && s.score < 45))
     .filter(s => filterVis === "all" || (s.visibility || "public") === filterVis)
-    .sort((a, b) => sortBy === "recent" ? new Date(b.created_at) - new Date(a.created_at) : b.score - a.score);
-  const FEED_DEFAULT = 5;
+    .sort((a, b) => sortBy === "recent" ? new Date(b.created_at) - new Date(a.created_at) : b.score - a.score)
+    .slice(0, FEED_CAP);
   const filtered = showMoreFeed ? allFiltered : allFiltered.slice(0, FEED_DEFAULT);
 
   const statusColors = { all: "#5b6cf8", scam: "#f43f5e", suspicious: "#fb923c", safe: "#34d399" };
   const handleFilterChange = (setter, val) => { setter(val); setShowMoreFeed(false); };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060810", color: "#e2e8f0", fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: T.pageBg, color: T.text, fontFamily: "Georgia, serif" }}>
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 50% at 5% 0%, #f43f5e08, transparent 55%), radial-gradient(ellipse 50% 40% at 95% 100%, #a78bfa07, transparent 55%)" }} />
       <div style={{ position: "relative" }}>
         {/* ANNOUNCEMENT BAR */}
         {!barDismissed && (
-          <div style={{ background: "linear-gradient(90deg, #1a0a1a, #0a0d1a, #1a0a1a)", borderBottom: "1px solid #f43f5e33", padding: "10px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ background: theme === "dark" ? "linear-gradient(90deg, #1a0a1a, #0a0d1a, #1a0a1a)" : "#fff5f5", borderBottom: "1px solid #f43f5e33", padding: "10px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", letterSpacing: 3, flexShrink: 0 }}>PHISHSCORE.AI</span>
               <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "Georgia, serif" }}>
@@ -1213,19 +1258,20 @@ export default function App() {
         )}
 
         {/* HEADER */}
-        <header style={{ borderBottom: "1px solid #1a1d2e", padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14, background: "rgba(6,8,16,0.95)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <header style={{ borderBottom: `1px solid ${T.headerBorder}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14, background: T.headerBg, backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 8px #f43f5e", animation: "blink 2s infinite" }} />
               <span style={{ fontSize: 9, color: "#f43f5e", letterSpacing: 4, fontFamily: "monospace" }}>LIVE INTELLIGENCE</span>
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1 }}>
-              <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#1a1d2e", fontSize: 13 }}>.ai</span>
+              <span style={{ color: T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.cardBorder, fontSize: 13 }}>.ai</span>
             </div>
-            <div style={{ fontSize: 9, color: "#334155", letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "1px solid #1a1d2e", color: "#475569", padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
+            <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
+            <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{theme === "dark" ? "LIGHT" : "DARK"}</button>
             <button onClick={() => setShowModal(true)}
               style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 26px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }}
               onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
@@ -1244,10 +1290,10 @@ export default function App() {
               { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
-                <div style={{ fontSize: 9, color: "#64748b", letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
+              <div key={s.label} style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
+                <div style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
-                {s.sub && <div style={{ fontSize: 10, color: "#475569", marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
+                {s.sub && <div style={{ fontSize: 10, color: T.text4, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
             ))}
           </div>
@@ -1259,33 +1305,35 @@ export default function App() {
               maxCount={maxCount}
               filterCat={filterCat}
               setFilterCat={setFilterCat}
+              theme={theme}
+              T={T}
             />
           )}
 
           {/* FEED */}
-          <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24 }}>
+          <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-              <div style={{ fontSize: 10, letterSpacing: 3, color: "#64748b", fontFamily: "monospace" }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
                 COMMUNITY SUBMISSIONS
                 {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
-                <span style={{ color: "#334155", marginLeft: 8, fontSize: 9 }}>
-                  {showMoreFeed ? `showing all ${allFiltered.length}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${allFiltered.length}`}
+                <span style={{ color: T.text4, marginLeft: 8, fontSize: 9 }}>
+                  {showMoreFeed ? `showing last ${Math.min(FEED_CAP, allFiltered.length)}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${Math.min(FEED_CAP, allFiltered.length)}`}
                 </span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 {["all", "scam", "suspicious", "safe"].map(s => (
-                  <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : "#1a1d2e"}`, color: filterStatus === s ? statusColors[s] : "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
+                  <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : T.cardBorder}`, color: filterStatus === s ? statusColors[s] : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
                 ))}
-                <div style={{ width: 1, height: 16, background: "#1a1d2e" }} />
+                <div style={{ width: 1, height: 16, background: T.cardBorder }} />
                 {["all", "public", "private", "anonymous"].map(v => {
                   const vOpt = VISIBILITY_OPTIONS.find(o => o.id === v);
                   const color = vOpt ? vOpt.color : "#5b6cf8";
                   return (
-                    <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : "#1a1d2e"}`, color: filterVis === v ? color : "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>
+                    <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : T.cardBorder}`, color: filterVis === v ? color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>
                   );
                 })}
-                <div style={{ width: 1, height: 16, background: "#1a1d2e" }} />
-                <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: "1px solid #1a1d2e", color: "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+                <div style={{ width: 1, height: 16, background: T.cardBorder }} />
+                <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
@@ -1293,10 +1341,10 @@ export default function App() {
             </div>
 
             {dbLoading ? (
-              <div style={{ textAlign: "center", padding: "48px 0", color: "#334155", fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
+              <div style={{ textAlign: "center", padding: "48px 0", color: T.text4, fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
             ) : filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <div style={{ color: "#334155", fontFamily: "monospace", fontSize: 12, marginBottom: 12 }}>No submissions yet - be the first!</div>
+                <div style={{ color: T.text4, fontFamily: "monospace", fontSize: 12, marginBottom: 12 }}>No submissions yet - be the first!</div>
                 <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>CHECK A MESSAGE</button>
               </div>
             ) : (
@@ -1306,23 +1354,23 @@ export default function App() {
                 const vis = s.visibility || "public";
                 const isHidden = vis === "private" || vis === "anonymous";
                 return (
-                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? "1px solid #0d0f1a" : "none", alignItems: "start" }}>
-                    <ScoreRing score={s.score} size={52} />
+                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start" }}>
+                    <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
                         <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CAT_ICON_SVG icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: "#1a1d2e", color: "#475569", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                         <VisibilityBadge visibility={vis} />
                         {s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
                         {s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
-                        <span style={{ fontSize: 9, color: "#1e2a3a", fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
+                        <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
                       </div>
                       {isHidden ? (
-                        <div style={{ fontSize: 12, color: "#334155", fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>
+                        <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>
                           {vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}
                         </div>
                       ) : (
-                        <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6 }}>{s.preview}</div>
+                        <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6 }}>{s.preview}</div>
                       )}
                       {!isHidden && s.source && <SourceBadge source={s.source} />}
                     </div>
@@ -1333,30 +1381,30 @@ export default function App() {
             )}
             {!dbLoading && allFiltered.length > FEED_DEFAULT && (
               <button onClick={() => setShowMoreFeed(v => !v)} style={{
-                marginTop: 16, width: "100%", background: "none", border: "1px dashed #1a1d2e",
-                color: "#475569", padding: "10px", borderRadius: 8, cursor: "pointer",
+                marginTop: 16, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`,
+                color: T.text4, padding: "10px", borderRadius: 8, cursor: "pointer",
                 fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
               }}>
-                {showMoreFeed ? "SHOW LESS" : `+ SHOW ${allFiltered.length - FEED_DEFAULT} MORE SUBMISSIONS`}
+                {showMoreFeed ? "SHOW LESS" : `+ SHOW ${Math.min(FEED_CAP, allFiltered.length) - FEED_DEFAULT} MORE SUBMISSIONS`}
               </button>
             )}
           </div>
         </main>
 
         {/* FOOTER */}
-        <footer style={{ borderTop: "1px solid #1a1d2e", padding: "28px", marginTop: 20 }}>
+        <footer style={{ borderTop: `1px solid ${T.cardBorder}`, padding: "28px", marginTop: 20, background: T.pageBg }}>
           <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
-                <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#334155" }}>.ai</span>
+                <span style={{ color: T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.text4 }}>.ai</span>
               </div>
-              <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", letterSpacing: 2 }}>PROTECTING COMMUNITIES FROM FRAUD</div>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>PROTECTING COMMUNITIES FROM FRAUD</div>
             </div>
             <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
-              <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
-              <a href="mailto:contact@phishscore.ai" style={{ color: "#475569", fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1 }}>contact@phishscore.ai</a>
-              <div style={{ fontSize: 10, color: "#1e2030", fontFamily: "monospace" }}>2026 PhishScore.ai</div>
+              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
+              <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
+              <a href="mailto:contact@phishscore.ai" style={{ color: T.text4, fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1 }}>contact@phishscore.ai</a>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>2026 PhishScore.ai</div>
             </div>
           </div>
         </footer>
@@ -1369,10 +1417,10 @@ export default function App() {
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
         * { box-sizing: border-box; }
-        body { margin: 0; }
+        body { margin: 0; background: ${T.pageBg}; }
         ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #060810; }
-        ::-webkit-scrollbar-thumb { background: #1a1d2e; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: ${T.scrollTrack}; }
+        ::-webkit-scrollbar-thumb { background: ${T.scrollThumb}; border-radius: 3px; }
         button { transition: all 0.15s; }
         a { transition: color 0.15s; }
         a:hover { color: #f43f5e !important; }
