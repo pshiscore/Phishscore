@@ -1,4 +1,4 @@
-modeule.exports = async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -57,55 +57,45 @@ modeule.exports = async function handler(req, res) {
         } catch (e) { console.error('GSB error:', e); }
       })(),
 
-      // Cloudflare Radar URL Scanner
+      // Cloudflare Radar - Intelligence endpoint (instant, no polling)
       (async () => {
         const cfKey = process.env.CLOUDFLARE_RADAR_KEY;
         if (!cfKey || uniqueUrls.length === 0) return;
         try {
-          for (const url of uniqueUrls.slice(0, 2)) {
+          for (const url of uniqueUrls.slice(0, 3)) {
             const r = await fetch(
-              'https://api.cloudflare.com/client/v4/radar/url_scanner/scans',
+              `https://api.cloudflare.com/client/v4/radar/url_scanner/url_categories?url=${encodeURIComponent(url)}`,
               {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${cfKey}`
-                },
-                body: JSON.stringify({ url, screenshotsResolutions: [], visibility: "Public" })
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${cfKey}` }
               }
             );
             const d = await r.json();
-            if (d.success && d.result) {
-              const uuid = d.result.uuid;
-              // Poll for result
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              const resultRes = await fetch(
-                `https://api.cloudflare.com/client/v4/radar/url_scanner/scans/${uuid}`,
-                { headers: { 'Authorization': `Bearer ${cfKey}` } }
-              );
-              const resultData = await resultRes.json();
-              const verdicts = resultData?.result?.scan?.verdicts;
-              if (verdicts && (verdicts.malicious === true || verdicts.phishing === true)) {
-                radarFlagged = true;
-                if (!flaggedSources.includes("Cloudflare Radar")) flaggedSources.push("Cloudflare Radar");
-              }
+            const risks = d?.result?.categories?.risks;
+            if (risks && risks.length > 0) {
+              radarFlagged = true;
+              if (!flaggedSources.includes("Cloudflare Radar")) flaggedSources.push("Cloudflare Radar");
             }
           }
         } catch (e) { console.error('Cloudflare Radar error:', e); }
       })(),
 
-      // URLhaus
+      // URLhaus - flag if listed regardless of current online status
       (async () => {
         if (uniqueUrls.length === 0) return;
         try {
           for (const url of uniqueUrls.slice(0, 3)) {
             const r = await fetch('https://urlhaus-api.abuse.ch/v1/url/', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'PhishScore/1.0'
+              },
               body: `url=${encodeURIComponent(url)}`
             });
             const d = await r.json();
-            if (d.query_status === "is_listed" && d.url_status === "online") {
+            console.log('URLhaus response for', url, ':', JSON.stringify(d));
+            if (d.query_status === "is_listed") {
               urlhausFlagged = true;
               if (!flaggedSources.includes("URLhaus")) flaggedSources.push("URLhaus");
             }
@@ -144,4 +134,4 @@ modeule.exports = async function handler(req, res) {
     console.error('Analysis error:', err);
     res.status(500).json({ error: 'Analysis failed' });
   }
-}
+};

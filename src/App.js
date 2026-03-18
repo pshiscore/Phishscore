@@ -13,15 +13,15 @@ const db = {
   async checkDuplicate(preview) {
     // Get recent submissions and check for similarity client-side
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=50`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=20`, {
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
       });
       const data = await res.json();
       if (!Array.isArray(data)) return null;
-      const words = preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+      const words = preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
       for (const sub of data) {
         if (!sub.preview) continue;
-        const subWords = sub.preview.toLowerCase().split(/s+/).filter(w => w.length > 5);
+        const subWords = sub.preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
         const matches = words.filter(w => subWords.includes(w)).length;
         const similarity = words.length > 0 ? matches / words.length : 0;
         if (similarity > 0.5) return sub;
@@ -53,6 +53,7 @@ const SCAM_CATEGORIES = [
   { id: "job", label: "Job & Employment", icon: "job", color: "#67e8f9", description: "Fake job offers, work from home, pyramid schemes" },
   { id: "tech", label: "Tech Support", icon: "tech", color: "#86efac", description: "Microsoft, Apple, virus alerts, fake support" },
   { id: "political", label: "Political Campaign", icon: "vote", color: "#f97316", description: "Fake fundraising, candidate impersonation, polling scams" },
+  { id: "travel", label: "Travel & Vacation", icon: "travel", color: "#06b6d4", description: "Timeshare pitches, vacation club scams, fake hotel deals, free vacation bait, rental fraud" },
   { id: "other", label: "Unknown / AI Detect", icon: "other", color: "#94a3b8", description: "Don't know the type? AI will automatically detect and classify your submission" },
 ];
 
@@ -71,6 +72,7 @@ const CAT_ICON_SVG = ({ icon, color, size = 22 }) => {
     job: "M20 6h-2.18c.07-.44.18-.88.18-1.35C18 2.99 16.01 1 13.65 1c-1.3 0-2.51.56-3.36 1.44L9 3.81l-1.29-1.37C6.86 1.56 5.65 1 4.35 1 1.99 1 0 2.99 0 5.35c0 .47.08.9.18 1.35H0v13c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z",
     tech: "M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6zm8 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z",
     vote: "M18 3H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H6V5h12v14zm-7-2l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z",
+    travel: "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z",
     other: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
   };
   const d = paths[icon] || paths.other;
@@ -122,20 +124,13 @@ const timeAgo = (ts) => {
 
 // Privacy masking helpers
 function maskPhone(phone) {
-  // Strip everything except digits and leading +
   const cleaned = phone.trim();
   const digits = cleaned.replace(/\D/g, "");
   if (digits.length < 4) return cleaned;
-  // Keep everything except last 4 digits, replace those with ****
-  const prefix = cleaned.slice(0, cleaned.length - 4).replace(/\d(?=.*\d{2})/g, (d, i) => d); // keep prefix as-is
-  // Simpler: just replace last 4 characters that are digits
   let result = cleaned;
   let replaced = 0;
   for (let i = result.length - 1; i >= 0 && replaced < 4; i--) {
-    if (/\d/.test(result[i])) {
-      result = result.slice(0, i) + "*" + result.slice(i + 1);
-      replaced++;
-    }
+    if (/\d/.test(result[i])) { result = result.slice(0, i) + "*" + result.slice(i + 1); replaced++; }
   }
   return result;
 }
@@ -487,10 +482,10 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
         const mimeType = image.split(";")[0].split(":")[1];
         messages = [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
+          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
         ]}];
       } else {
-        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
+        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
       }
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -818,7 +813,7 @@ function FAQPage({ onClose }) {
     },
     {
       q: "What types of scams can I submit?",
-      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, and political campaign scams (fake fundraising, candidate impersonation, polling fraud). Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically."
+      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, political campaign scams (fake fundraising, candidate impersonation, polling fraud), and travel and vacation scams (timeshare pitches, vacation club fraud, fake hotel deals, rental scams). Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically."
     },
     {
       q: "What happens when I select Other / Not Sure?",
@@ -1138,6 +1133,9 @@ export default function App() {
     setBarDismissed(true);
     try { localStorage.setItem("phishscore_bar_dismissed", "1"); } catch {}
   };
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; } });
+  const toggleTheme = () => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); try { localStorage.setItem("phishscore_theme", next); } catch {}; };
+  const T = theme === "light" ? { bg: "#f0ede8", bg2: "#ffffff", bg3: "#f8f6f2", border: "#e2ddd6", border2: "#d4cfc8", text: "#1a1a2e", text2: "#4a5568", text3: "#64748b", text4: "#94a3b8", cardBg: "#ffffff", headerBg: "rgba(248,246,242,0.97)" } : { bg: "#060810", bg2: "#090b14", bg3: "#0d0f1a", border: "#1a1d2e", border2: "#2a2d3e", text: "#e2e8f0", text2: "#94a3b8", text3: "#64748b", text4: "#475569", cardBg: "#090b14", headerBg: "rgba(6,8,16,0.95)" };
 
   useEffect(() => { loadSubmissions(); }, []);
 
@@ -1226,6 +1224,9 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "1px solid #1a1d2e", color: "#475569", padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
+            <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.border}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+              {theme === "dark" ? "LIGHT" : "DARK"}
+            </button>
             <button onClick={() => setShowModal(true)}
               style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 26px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }}
               onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
@@ -1289,7 +1290,6 @@ export default function App() {
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
-            </div>
             </div>
 
             {dbLoading ? (
