@@ -1210,6 +1210,9 @@ export default function App() {
       tags: result.tags || [],
       visibility: visibility || "public",
       classification_note: classificationNote || null,
+      gsb_flagged: result.safeBrowsingFlagged === true,
+      radar_flagged: result.radarFlagged === true,
+      urlhaus_flagged: result.urlhausFlagged === true,
     };
     try {
       const saved = await db.insertSubmission(newSub);
