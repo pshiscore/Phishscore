@@ -1,0 +1,380 @@
+import { useState, useRef } from "react";
+import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, getScoreColor, getStatusLabel, getCat } from "../constants";
+import { ScoreRing, CatIconSvg, VisibilityBadge, Tooltip, PhishScoreLogo } from "./Primitives";
+import db from "../db";
+
+function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
+  const [showAll, setShowAll] = useState(false);
+  const otherCat = SCAM_CATEGORIES.find(c => c.id === "other");
+  const restCats = SCAM_CATEGORIES.filter(c => c.id !== "other");
+  const sorted = [...restCats].sort((a, b) => (submissionCounts[b.id] || 0) - (submissionCounts[a.id] || 0));
+  const top5 = sorted.slice(0, 5), remaining = sorted.slice(5);
+  const visible = [otherCat, ...top5, ...(showAll ? remaining : [])];
+  return (
+    <div>
+      <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
+        Select the type that best matches - or pick <strong style={{ color: "#94a3b8" }}>Unknown / AI Detect</strong> and AI will automatically classify it.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
+        {visible.map(cat => {
+          const active = selected === cat.id;
+          return (
+            <button key={cat.id} onClick={() => onSelect(cat.id)} style={{ background: active ? `${cat.color}18` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "8px 8px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)" }}>
+              <div style={{ marginBottom: 6 }}><CatIconSvg icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={18} /></div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
+              {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: "#334155", fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
+            </button>
+          );
+        })}
+      </div>
+      {remaining.length > 0 && (
+        <button onClick={() => setShowAll(v => !v)} style={{ marginTop: 10, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`, color: T.text4, padding: "8px", borderRadius: 8, cursor: "pointer", fontFamily: "monospace", fontSize: 10, letterSpacing: 1 }}>
+          {showAll ? "SHOW LESS" : `+ ${remaining.length} MORE CATEGORIES`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function VisibilityPicker({ selected, onSelect }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", letterSpacing: 2, marginBottom: 10 }}>WHO CAN SEE THIS SUBMISSION?</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {VISIBILITY_OPTIONS.map(opt => {
+          const active = selected === opt.id;
+          return (
+            <Tooltip key={opt.id} text={opt.description}>
+              <button onClick={() => onSelect(opt.id)} style={{ background: active ? `${opt.color}18` : "#0d0f1a", border: `1.5px solid ${active ? opt.color : "#1a1d2e"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", minWidth: 90 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : "#334155", fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: active ? opt.color : "#64748b", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
+                <div style={{ fontSize: 10, color: active ? `${opt.color}cc` : "#334155", fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", marginTop: 8 }}>Hover or tap each option for details</div>
+    </div>
+  );
+}
+
+function ConfidenceMeter({ text, source, T = {} }) {
+  let score = 0, tips = [];
+  if (text.trim().length > 20) { score += 30; } else { tips.push("Add more message text"); }
+  if (text.trim().length > 150) score += 15;
+  if (source && source.trim().length > 3) { score += 25; } else { tips.push("Add sender address or phone number"); }
+  if (/@/.test(text + source) || (text + source).split("").filter(c => c >= "0" && c <= "9").length >= 7) score += 15;
+  if (/received:|message-id:|dkim-signature:|x-mailer:/i.test(text)) { score += 15; } else if (text.length > 100) tips.push("Paste email headers for deepest analysis");
+  score = Math.min(score, 100);
+  const barColor = score >= 80 ? "#34d399" : score >= 50 ? "#fb923c" : "#f43f5e";
+  const label = score >= 80 ? "Strong submission" : score >= 50 ? "Good submission" : "Basic submission";
+  return (
+    <div style={{ marginTop: 8, marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>SUBMISSION QUALITY</span>
+        <span style={{ fontSize: 10, color: barColor, fontFamily: "monospace", fontWeight: 700 }}>{score}% - {label}</span>
+      </div>
+      <div style={{ background: T.ringTrack, borderRadius: 4, height: 5, overflow: "hidden" }}>
+        <div style={{ height: "100%", borderRadius: 4, background: barColor, width: `${score}%`, transition: "width 0.4s ease", boxShadow: `0 0 6px ${barColor}88` }} />
+      </div>
+      {tips.length > 0 && (
+        <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {tips.map((t, i) => <span key={i} style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", background: T.innerBg, padding: "2px 8px", borderRadius: 10 }}>+ {t}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShareCard({ result, category, T = {} }) {
+  const [copied, setCopied] = useState(false);
+  const cat = getCat(category), sc = getScoreColor(result.score);
+  const shareText = `I just checked a suspicious message on PhishScore.ai\n\nScore: ${result.score}/100 - ${getStatusLabel(result.score)}\nCategory: ${cat.label}\nVerdict: ${result.verdict}\n\nTop red flags:\n${(result.redFlags || []).slice(0, 3).map(f => "- " + f).join("\n")}\n\nCheck suspicious messages yourself at phishscore.ai`;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareText).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); }).catch(() => {
+      const ta = document.createElement("textarea"); ta.value = shareText; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      setCopied(true); setTimeout(() => setCopied(false), 2500);
+    });
+  };
+  const twitterText = encodeURIComponent(`Scam alert! This message scored ${result.score}/100 on PhishScore.ai\n\n${result.verdict}\n\nCheck suspicious messages: phishscore.ai`);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 10, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 8 }}>SHARE THIS WARNING</div>
+      <div style={{ background: T.cardBg, border: `1px solid ${sc}30`, borderRadius: 12, padding: 16, marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", border: `3px solid ${sc}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: sc, fontFamily: "monospace" }}>{result.score}</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: sc, fontFamily: "monospace" }}>{getStatusLabel(result.score)}</div>
+            <div style={{ fontSize: 10, color: T.text3, fontFamily: "monospace" }}>{cat.label} - phishscore.ai</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.5, fontStyle: "italic" }}>"{result.verdict}"</div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={handleCopy} style={{ flex: 1, background: copied ? "#081410" : T.innerBg, border: `1px solid ${copied ? "#34d399" : "#2a2d3e"}`, color: copied ? "#34d399" : T.text3, padding: "9px 12px", borderRadius: 8, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.2s" }}>{copied ? "COPIED!" : "COPY TEXT"}</button>
+        <a href={`https://twitter.com/intent/tweet?text=${twitterText}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "#0a0f1a", border: "1px solid #1d9bf040", color: "#1d9bf0", padding: "9px 12px", borderRadius: 8, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>POST TO X</a>
+      </div>
+    </div>
+  );
+}
+
+function AccuracyFeedback({ compact = false, T = {} }) {
+  const [feedback, setFeedback] = useState(null);
+  if (feedback) return <span style={{ fontSize: 11, color: "#34d399", fontFamily: "monospace", padding: "10px 12px", background: "#081410", borderRadius: 10, display: "flex", alignItems: "center", flex: 1, minWidth: 120 }}>Thanks for the feedback!</span>;
+  if (compact) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 140, background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "8px 12px" }}>
+        <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", whiteSpace: "nowrap" }}>Accurate?</span>
+        <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>YES</button>
+        <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>NO</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+      <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Was this result accurate?</span>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>YES</button>
+        <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>NO</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main modal ─────────────────────────────────────────────────────────────────
+export default function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dark", T = {} }) {
+  const [step, setStep] = useState(1);
+  const [category, setCategory] = useState("other");
+  const [visibility, setVisibility] = useState("private");
+  const [text, setText] = useState("");
+  const [source, setSource] = useState("");
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [inputMode, setInputMode] = useState("text");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [duplicate, setDuplicate] = useState(null);
+  const fileRef = useRef();
+  const cat = getCat(category);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setImage(ev.target.result); setImagePreview(ev.target.result); };
+    reader.readAsDataURL(file);
+  };
+
+  const analyze = async () => {
+    if (inputMode === "text" && !text.trim()) return;
+    if (inputMode === "image" && !image) return;
+    if (inputMode === "text" && text.trim().length > 30) {
+      const dup = await db.checkDuplicate(text.slice(0, 130));
+      if (dup) setDuplicate(dup);
+    }
+    setLoading(true);
+    try {
+      let messages;
+      if (inputMode === "image" && image) {
+        const base64 = image.split(",")[1], mimeType = image.split(";")[0].split(":")[1];
+        messages = [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
+          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
+        ]}];
+      } else {
+        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
+      }
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }) });
+      const data = await res.json();
+      const raw = data.content?.map(c => c.text || "").join("") || "";
+      const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+      let finalCategory = category, classificationNote = null;
+      if (parsed.detectedCategory && parsed.detectedCategory !== category) {
+        if (category === "other") { finalCategory = parsed.detectedCategory; classificationNote = "auto"; }
+        else if (parsed.categoryReclassified === true) { finalCategory = parsed.detectedCategory; classificationNote = "reclassified"; }
+      }
+      parsed.finalCategory = finalCategory; parsed.classificationNote = classificationNote;
+      setResult(parsed);
+      let allSources = [];
+      if (source.trim()) allSources.push(source.trim());
+      if (Array.isArray(parsed.detectedSources)) { parsed.detectedSources.forEach(s => { if (s && s.trim() && !allSources.includes(s.trim())) allSources.push(s.trim()); }); }
+      else if (parsed.detectedSource?.trim()) allSources.push(parsed.detectedSource.trim());
+      const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
+      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote });
+      setStep(3);
+    } catch {
+      setResult({ score: 0, tags: ["Error"], verdict: "Analysis failed.", analysis: "Please try again.", redFlags: [], whatToDo: "Try submitting again." });
+      setStep(3);
+    }
+    setLoading(false);
+  };
+
+  const sc = result ? getScoreColor(result.score) : "#fff";
+  const canAnalyze = inputMode === "text" ? text.trim().length > 0 : image !== null;
+  const visOpt = VISIBILITY_OPTIONS.find(o => o.id === visibility);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-inner" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+
+        <div style={{ marginBottom: 24 }}>
+          {/* FIX: uses PhishScoreLogo so PHISH is visible in light mode */}
+          <div style={{ marginBottom: 8 }}><PhishScoreLogo T={T} size={20} dotSize={13} /></div>
+          {step < 3 && (
+            <div className="step-indicators" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              {["Choose Type", "Submit", "Your Score"].map((s, i) => (
+                <div key={s} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : T.innerBg, color: i + 1 <= step ? "#fff" : T.text4, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
+                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : T.text4, fontFamily: "monospace" }}>{s}</span>
+                  {i < 2 && <div style={{ width: 16, height: 1, background: T.innerBg }} />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {step === 1 && (
+          <>
+            <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 1 - WHAT TYPE OF SCAM?</div>
+            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.cardBorder}` }}>
+              <VisibilityPicker selected={visibility} onSelect={setVisibility} />
+            </div>
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => setStep(2)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>NEXT</button>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 2 - SUBMIT THE CONTENT</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: `${cat.color}12`, border: `1px solid ${cat.color}35`, borderRadius: 20 }}>
+                <span style={{ fontSize: 10, color: cat.color, fontFamily: "monospace", fontWeight: 700 }}>{cat.label}</span>
+                <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 10, fontFamily: "monospace" }}>change</button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: `${visOpt.color}12`, border: `1px solid ${visOpt.color}35`, borderRadius: 20 }}>
+                <span style={{ fontSize: 10, color: visOpt.color, fontFamily: "monospace", fontWeight: 700 }}>{visOpt.label.toUpperCase()}</span>
+                <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 10, fontFamily: "monospace" }}>change</button>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "text" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "text" ? "#f43f5e18" : T.innerBg, color: inputMode === "text" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
+              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "image" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "image" ? "#f43f5e18" : T.innerBg, color: inputMode === "image" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
+            </div>
+            {inputMode === "text" ? (
+              <>
+                <textarea value={text} onChange={e => { setText(e.target.value); if (!source.trim()) { const t = e.target.value, atIdx = t.indexOf("@"); if (atIdx > 0) { const start = t.slice(0, atIdx).replace(/.*\s/, ""), end = t.slice(atIdx + 1).replace(/\s.*/, ""); if (start && end && end.includes(".")) setSource(start + "@" + end.split(".").slice(0, 2).join(".")); } } }}
+                  placeholder="Paste the full suspicious message here. Include sender address, subject line, and all body text for best results."
+                  style={{ width: "100%", minHeight: 180, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
+                  onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
+                <ConfidenceMeter text={text} source={source} T={T} />
+              </>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                <input type="file" accept="image/*" ref={fileRef} onChange={handleImageUpload} style={{ display: "none" }} />
+                {!imagePreview ? (
+                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: T.inputBg, border: `2px dashed ${T.inputBorder}`, borderRadius: 10, color: T.text4, fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <div style={{ fontSize: 28 }}>[ IMG ]</div>
+                    <div>Tap to upload screenshot</div>
+                    <div style={{ fontSize: 10, color: T.text4 }}>JPG, PNG, or HEIC from your camera roll</div>
+                  </button>
+                ) : (
+                  <div style={{ position: "relative" }}>
+                    <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 280, objectFit: "contain", background: "#0d0f1a" }} />
+                    <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position: "absolute", top: 8, right: 8, background: "#f43f5e", border: "none", color: "#fff", width: 26, height: 26, borderRadius: "50%", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>x</button>
+                  </div>
+                )}
+              </div>
+            )}
+            {visibility !== "anonymous" && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
+                <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
+                  style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>Helps identify scam origins for the community</div>
+              </div>
+            )}
+            {visibility === "anonymous" && (
+              <div style={{ padding: "10px 14px", background: "#94a3b812", border: "1px solid #94a3b830", borderRadius: 8, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>Anonymous mode: no message content or source will be stored after analysis.</div>
+              </div>
+            )}
+            {duplicate && (
+              <div style={{ background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                <div style={{ fontSize: 10, color: "#fbbf24", fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SIMILAR SCAM ALREADY REPORTED</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", fontFamily: "Georgia, serif", lineHeight: 1.5, marginBottom: 6 }}>We have seen a similar message before. It scored <strong style={{ color: getScoreColor(duplicate.score) }}>{duplicate.score}/100</strong> ({getStatusLabel(duplicate.score)}) in the {getCat(duplicate.category).label} category.</div>
+                <button onClick={() => setDuplicate(null)} style={{ background: "none", border: "none", color: "#fbbf24", cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: 0 }}>Analyze anyway</button>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
+              <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
+              <button onClick={analyze} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
+                {loading ? "ANALYZING..." : "GET MY SCORE"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 3 && result && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20 }}>
+              <ScoreRing score={result.score} size={80} trackColor={T.ringTrack} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: sc, fontFamily: "monospace", letterSpacing: 1 }}>{getStatusLabel(result.score)}</div>
+                <div style={{ color: T.text2, fontSize: 14, marginTop: 5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{result.verdict}</div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {result.tags?.map(t => <span key={t} style={{ background: T.innerBg, color: T.text3, fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                  <VisibilityBadge visibility={visibility} />
+                  {result.classificationNote === "auto" && <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12" }}>AUTO-CLASSIFIED</span>}
+                  {result.classificationNote === "reclassified" && <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612" }}>RECLASSIFIED</span>}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, letterSpacing: 3, color: T.text4, fontFamily: "monospace" }}>ANALYSIS</div>
+                {result.safeBrowsingFlagged && <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", background: "#f43f5e12", border: "1px solid #f43f5e35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>GOOGLE SAFE BROWSING: FLAGGED</span>}
+              </div>
+              <p style={{ color: T.text2, fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
+            </div>
+            {result.redFlags?.length > 0 && (
+              <div style={{ background: "#160810", border: "1px solid #f43f5e25", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                <div style={{ fontSize: 10, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>RED FLAGS ({result.redFlags.length})</div>
+                {result.redFlags.map((f, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.redFlags.length - 1 ? 8 : 0 }}>
+                    <span style={{ color: "#f43f5e", flexShrink: 0 }}>!</span>
+                    <span style={{ color: "#fca5a5", fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ background: "#081410", border: "1px solid #34d39925", borderRadius: 10, padding: 16, marginBottom: result.score >= 75 ? 12 : 20 }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 8 }}>WHAT TO DO</div>
+              <p style={{ color: "#86efac", fontSize: 13, margin: 0, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>{result.whatToDo}</p>
+            </div>
+            {result.score >= 75 && (
+              <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", marginBottom: 20, textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#1a1400"} onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
+                <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
+              </a>
+            )}
+            <div>
+              <ShareCard result={result} category={result.finalCategory || category} T={T} />
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <AccuracyFeedback compact />
+                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={onClose} style={{ flex: 1, minWidth: 120, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
