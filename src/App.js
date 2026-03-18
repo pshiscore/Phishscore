@@ -342,6 +342,8 @@ function Tooltip({ text, children }) {
 
 const THEMES = {
   dark: {
+    pageBg: "#060810",
+    headerBg: "rgba(6,8,16,0.95)",
     cardBg: "#090b14",
     cardBorder: "1px solid #1a1d2e",
     innerBg: "#0d0f1a",
@@ -357,11 +359,13 @@ const THEMES = {
     ringTrack: "#1a1d2e",
   },
   light: {
+    pageBg: "#f1f5f9",
+    headerBg: "rgba(248,250,252,0.95)",
     cardBg: "#ffffff",
     cardBorder: "1px solid #e2e8f0",
     innerBg: "#f8fafc",
     innerBorder: "1px solid #cbd5e1",
-    inputBg: "#f8fafc",
+    inputBg: "#ffffff",
     inputBorder: "1.5px solid #cbd5e1",
     text: "#0f172a",
     text2: "#475569",
@@ -1104,18 +1108,18 @@ function TransparencyPage({ onClose, submissions, theme = "dark", T = {} }) {
   );
 }
 
-function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
+function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, T = {} }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? catCounts : catCounts.slice(0, 5);
   const hasMore = catCounts.length > 5;
   return (
-    <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24, marginBottom: 22 }}>
+    <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 16, padding: 24, marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-        <div style={{ fontSize: 10, letterSpacing: 3, color: "#64748b", fontFamily: "monospace" }}>
-          BREAKDOWN BY SCAM TYPE - <span style={{ color: "#64748b" }}>click to filter</span>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
+          BREAKDOWN BY SCAM TYPE - <span style={{ color: T.text3 }}>click to filter</span>
         </div>
         {hasMore && (
-          <span style={{ fontSize: 9, color: "#334155", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace" }}>
             {showAll ? `showing all ${catCounts.length}` : `showing top 5 of ${catCounts.length}`}
           </span>
         )}
@@ -1124,26 +1128,26 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
         {visible.map(cat => {
           const active = filterCat === cat.id;
           return (
-            <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)} style={{ background: active ? `${cat.color}14` : "#0d0f1a", border: `1.5px solid ${active ? cat.color : "#1a1d2e"}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+            <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)} style={{ background: active ? `${cat.color}14` : T.innerBg, border: active ? `1.5px solid ${cat.color}` : T.innerBorder, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={14} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace" }}>{cat.label}</span>
+                  <CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : T.text3} size={14} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : T.text3, fontFamily: "monospace" }}>{cat.label}</span>
                 </div>
                 <span style={{ fontSize: 15, fontWeight: 800, color: cat.color, fontFamily: "monospace" }}>{cat.count}</span>
               </div>
-              <div style={{ background: "#1a1d2e", borderRadius: 3, height: 4 }}>
+              <div style={{ background: T.ringTrack, borderRadius: 3, height: 4 }}>
                 <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${cat.color}, ${cat.color}66)`, width: `${(cat.count / maxCount) * 100}%`, transition: "width 0.8s ease" }} />
               </div>
-              <div style={{ fontSize: 10, color: "#475569", marginTop: 5, fontFamily: "monospace" }}>{cat.scamCount} scam{cat.scamCount !== 1 ? "s" : ""}</div>
+              <div style={{ fontSize: 10, color: T.text3, marginTop: 5, fontFamily: "monospace" }}>{cat.scamCount} scam{cat.scamCount !== 1 ? "s" : ""}</div>
             </button>
           );
         })}
       </div>
       {hasMore && (
         <button onClick={() => setShowAll(v => !v)} style={{
-          marginTop: 12, width: "100%", background: "none", border: "1px dashed #1a1d2e",
-          color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
+          marginTop: 12, width: "100%", background: "none", border: T.innerBorder,
+          color: T.text3, padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
           {showAll ? "SHOW LESS" : `+ ${catCounts.length - 5} MORE CATEGORIES`}
@@ -1165,8 +1169,15 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; }
+  });
   const T = THEMES[theme] || THEMES.dark;
+  const toggleTheme = () => setTheme(t => {
+    const next = t === "dark" ? "light" : "dark";
+    try { localStorage.setItem("phishscore_theme", next); } catch {}
+    return next;
+  });
   const [barDismissed, setBarDismissed] = useState(() => {
     try { return localStorage.getItem("phishscore_bar_dismissed") === "1"; } catch { return false; }
   });
@@ -1234,7 +1245,7 @@ export default function App() {
   const handleFilterChange = (setter, val) => { setter(val); setShowMoreFeed(false); };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060810", color: "#e2e8f0", fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: T.pageBg, color: T.text, fontFamily: "Georgia, serif" }}>
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 50% at 5% 0%, #f43f5e08, transparent 55%), radial-gradient(ellipse 50% 40% at 95% 100%, #a78bfa07, transparent 55%)" }} />
       <div style={{ position: "relative" }}>
         {/* ANNOUNCEMENT BAR */}
@@ -1252,19 +1263,22 @@ export default function App() {
         )}
 
         {/* HEADER */}
-        <header style={{ borderBottom: "1px solid #1a1d2e", padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14, background: "rgba(6,8,16,0.95)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <header style={{ borderBottom: T.cardBorder, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14, background: T.headerBg, backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 8px #f43f5e", animation: "blink 2s infinite" }} />
               <span style={{ fontSize: 9, color: "#f43f5e", letterSpacing: 4, fontFamily: "monospace" }}>LIVE INTELLIGENCE</span>
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1 }}>
-              <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#1a1d2e", fontSize: 13 }}>.ai</span>
+              <span style={{ color: T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.text4, fontSize: 13 }}>.ai</span>
             </div>
-            <div style={{ fontSize: 9, color: "#334155", letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
+            <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "1px solid #1a1d2e", color: "#475569", padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
+            <button onClick={toggleTheme} style={{ background: "none", border: T.cardBorder, color: T.text3, padding: "10px 14px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+              {theme === "dark" ? "☀ LIGHT" : "☾ DARK"}
+            </button>
+            <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: T.cardBorder, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
             <button onClick={() => setShowModal(true)}
               style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 26px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }}
               onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
@@ -1283,10 +1297,10 @@ export default function App() {
               { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
-                <div style={{ fontSize: 9, color: "#64748b", letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
+              <div key={s.label} style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
+                <div style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
-                {s.sub && <div style={{ fontSize: 10, color: "#475569", marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
+                {s.sub && <div style={{ fontSize: 10, color: T.text3, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
             ))}
           </div>
@@ -1298,40 +1312,41 @@ export default function App() {
               maxCount={maxCount}
               filterCat={filterCat}
               setFilterCat={setFilterCat}
+              T={T}
             />
           )}
 
           {/* FEED */}
-          <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24 }}>
+          <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 16, padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-              <div style={{ fontSize: 10, letterSpacing: 3, color: "#64748b", fontFamily: "monospace" }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
                 COMMUNITY SUBMISSIONS
                 {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
-                <span style={{ color: "#334155", marginLeft: 8, fontSize: 9 }}>
+                <span style={{ color: T.text4, marginLeft: 8, fontSize: 9 }}>
                   {showMoreFeed ? `showing all ${allFiltered.length}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${allFiltered.length}`}
                 </span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 {["all", "scam", "suspicious", "safe"].map(s => (
-                  <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : "#1a1d2e"}`, color: filterStatus === s ? statusColors[s] : "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
+                  <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : T.tagBg}`, color: filterStatus === s ? statusColors[s] : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
                 ))}
-                <div style={{ width: 1, height: 16, background: "#1a1d2e" }} />
+                <div style={{ width: 1, height: 16, background: T.ringTrack }} />
                 {["all", "public", "private", "anonymous"].map(v => {
                   const vOpt = VISIBILITY_OPTIONS.find(o => o.id === v);
                   const color = vOpt ? vOpt.color : "#5b6cf8";
                   return (
-                    <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : "#1a1d2e"}`, color: filterVis === v ? color : "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>
+                    <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : T.tagBg}`, color: filterVis === v ? color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>
                   );
                 })}
-                <div style={{ width: 1, height: 16, background: "#1a1d2e" }} />
-                <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: "1px solid #1a1d2e", color: "#334155", padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+                <div style={{ width: 1, height: 16, background: T.ringTrack }} />
+                <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: T.cardBorder, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
             </div>
 
             {dbLoading ? (
-              <div style={{ textAlign: "center", padding: "48px 0", color: "#334155", fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
+              <div style={{ textAlign: "center", padding: "48px 0", color: T.text4, fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
             ) : filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
                 <div style={{ color: "#334155", fontFamily: "monospace", fontSize: 12, marginBottom: 12 }}>No submissions yet - be the first!</div>
@@ -1382,7 +1397,7 @@ export default function App() {
         </main>
 
         {/* FOOTER */}
-        <footer style={{ borderTop: "1px solid #1a1d2e", padding: "28px", marginTop: 20 }}>
+        <footer style={{ borderTop: T.cardBorder, padding: "28px", marginTop: 20 }}>
           <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
