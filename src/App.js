@@ -1072,8 +1072,8 @@ function TransparencyPage({ onClose, submissions }) {
 
 function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, theme, T }) {
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? catCounts : catCounts.slice(0, 5);
-  const hasMore = catCounts.length > 5;
+  const visible = showAll ? catCounts : catCounts.slice(0, 3);
+  const hasMore = catCounts.length > 3;
   return (
     <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -1082,7 +1082,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, theme
         </div>
         {hasMore && (
           <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace" }}>
-            {showAll ? `showing all ${catCounts.length}` : `showing top 5 of ${catCounts.length}`}
+            {showAll ? `showing all ${catCounts.length}` : `showing top 3 of ${catCounts.length}`}
           </span>
         )}
       </div>
@@ -1112,7 +1112,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, theme
           color: T.text4, padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
-          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 5} MORE CATEGORIES`}
+          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 3} MORE CATEGORIES`}
         </button>
       )}
     </div>
@@ -1337,7 +1337,6 @@ export default function App() {
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
-            </div>
             </div>
 
             {dbLoading ? (
