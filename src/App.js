@@ -53,6 +53,7 @@ const SCAM_CATEGORIES = [
   { id: "job", label: "Job & Employment", icon: "job", color: "#67e8f9", description: "Fake job offers, work from home, pyramid schemes" },
   { id: "tech", label: "Tech Support", icon: "tech", color: "#86efac", description: "Microsoft, Apple, virus alerts, fake support" },
   { id: "political", label: "Political Campaign", icon: "vote", color: "#f97316", description: "Fake fundraising, candidate impersonation, polling scams" },
+  { id: "travel", label: "Travel & Vacation", icon: "travel", color: "#06b6d4", description: "Timeshare pitches, vacation club scams, fake hotel deals, free vacation bait, rental fraud" },
   { id: "other", label: "Unknown / AI Detect", icon: "other", color: "#94a3b8", description: "Don't know the type? AI will automatically detect and classify your submission" },
 ];
 
@@ -71,6 +72,7 @@ const CAT_ICON_SVG = ({ icon, color, size = 22 }) => {
     job: "M20 6h-2.18c.07-.44.18-.88.18-1.35C18 2.99 16.01 1 13.65 1c-1.3 0-2.51.56-3.36 1.44L9 3.81l-1.29-1.37C6.86 1.56 5.65 1 4.35 1 1.99 1 0 2.99 0 5.35c0 .47.08.9.18 1.35H0v13c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z",
     tech: "M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6zm8 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z",
     vote: "M18 3H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H6V5h12v14zm-7-2l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z",
+    travel: "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z",
     other: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
   };
   const d = paths[icon] || paths.other;
@@ -480,10 +482,10 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
         const mimeType = image.split(";")[0].split(":")[1];
         messages = [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
+          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
         ]}];
       } else {
-        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
+        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
       }
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -811,7 +813,7 @@ function FAQPage({ onClose }) {
     },
     {
       q: "What types of scams can I submit?",
-      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, and political campaign scams (fake fundraising, candidate impersonation, polling fraud). Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically."
+      a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, political campaign scams (fake fundraising, candidate impersonation, polling fraud), and travel and vacation scams (timeshare pitches, vacation club fraud, fake hotel deals, rental scams). Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically."
     },
     {
       q: "What happens when I select Other / Not Sure?",
@@ -1282,7 +1284,6 @@ export default function App() {
                   {sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}
                 </button>
               </div>
-            </div>
             </div>
 
             {dbLoading ? (
