@@ -342,6 +342,12 @@ function Tooltip({ text, children }) {
 
 function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
   const [showAll, setShowAll] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 480);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   // Build ordered list: Unknown/AI Detect first, then top 5 by submission count, then rest
   const otherCat = SCAM_CATEGORIES.find(c => c.id === "other");
@@ -356,7 +362,7 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
       <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
         Select the type that best matches - or pick <strong style={{ color: "#94a3b8" }}>Unknown / AI Detect</strong> and AI will automatically classify it.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
         {visible.map(cat => {
           const active = selected === cat.id;
           return (
@@ -450,6 +456,12 @@ function ConfidenceMeter({ text, source }) {
 
 function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
   const [step, setStep] = useState(1);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 480);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
   const [text, setText] = useState("");
@@ -540,7 +552,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: isMobile ? "100vh" : "92vh", overflowY: "auto", padding: isMobile ? 16 : 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#1a1d2e", border: "none", color: "#475569", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
         <div style={{ marginBottom: 24 }}>
@@ -1072,8 +1084,8 @@ function TransparencyPage({ onClose, submissions }) {
 
 function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? catCounts : catCounts.slice(0, 5);
-  const hasMore = catCounts.length > 5;
+  const visible = showAll ? catCounts : catCounts.slice(0, 3);
+  const hasMore = catCounts.length > 3;
   return (
     <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 16, padding: 24, marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -1082,7 +1094,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
         </div>
         {hasMore && (
           <span style={{ fontSize: 9, color: "#334155", fontFamily: "monospace" }}>
-            {showAll ? `showing all ${catCounts.length}` : `showing top 5 of ${catCounts.length}`}
+            {showAll ? `showing all ${catCounts.length}` : `showing top 3 of ${catCounts.length}`}
           </span>
         )}
       </div>
@@ -1112,7 +1124,7 @@ function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat }) {
           color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
-          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 5} MORE CATEGORIES`}
+          {showAll ? "SHOW LESS" : `+ ${catCounts.length - 3} MORE CATEGORIES`}
         </button>
       )}
     </div>
@@ -1131,6 +1143,7 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
+  const [isMobileFeed, setIsMobileFeed] = useState(window.innerWidth < 480);
   const [barDismissed, setBarDismissed] = useState(() => {
     try { return localStorage.getItem("phishscore_bar_dismissed") === "1"; } catch { return false; }
   });
@@ -1140,6 +1153,11 @@ export default function App() {
   };
 
   useEffect(() => { loadSubmissions(); }, []);
+  useEffect(() => {
+    const handler = () => setIsMobileFeed(window.innerWidth < 480);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   const loadSubmissions = async () => {
     setDbLoading(true);
@@ -1183,12 +1201,13 @@ export default function App() {
     .filter(c => c.count > 0).sort((a, b) => b.count - a.count);
   const maxCount = Math.max(...catCounts.map(c => c.count), 1);
 
-  const allFiltered = submissions
+  const recentSubmissions = submissions.slice(0, 20);
+  const allFiltered = recentSubmissions
     .filter(s => filterCat === "all" || s.category === filterCat)
     .filter(s => filterStatus === "all" || (filterStatus === "scam" && s.score >= 75) || (filterStatus === "suspicious" && s.score >= 45 && s.score < 75) || (filterStatus === "safe" && s.score < 45))
     .filter(s => filterVis === "all" || (s.visibility || "public") === filterVis)
     .sort((a, b) => sortBy === "recent" ? new Date(b.created_at) - new Date(a.created_at) : b.score - a.score);
-  const FEED_DEFAULT = 5;
+  const FEED_DEFAULT = 3;
   const filtered = showMoreFeed ? allFiltered : allFiltered.slice(0, FEED_DEFAULT);
 
   const statusColors = { all: "#5b6cf8", scam: "#f43f5e", suspicious: "#fb923c", safe: "#34d399" };
@@ -1306,12 +1325,12 @@ export default function App() {
                 const vis = s.visibility || "public";
                 const isHidden = vis === "private" || vis === "anonymous";
                 return (
-                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? "1px solid #0d0f1a" : "none", alignItems: "start" }}>
-                    <ScoreRing score={s.score} size={52} />
+                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: isMobileFeed ? "42px 1fr auto" : "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? "1px solid #0d0f1a" : "none", alignItems: "start" }}>
+                    <ScoreRing score={s.score} size={isMobileFeed ? 38 : 52} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CAT_ICON_SVG icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: "#1a1d2e", color: "#475569", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                        <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: isMobileFeed ? 8 : 9, padding: isMobileFeed ? "2px 6px" : "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CAT_ICON_SVG icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
+                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: "#1a1d2e", color: "#475569", fontSize: isMobileFeed ? 8 : 9, padding: isMobileFeed ? "2px 6px" : "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                         <VisibilityBadge visibility={vis} />
                         {s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
                         {s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
@@ -1326,7 +1345,7 @@ export default function App() {
                       )}
                       {!isHidden && s.source && <SourceBadge source={s.source} />}
                     </div>
-                    <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
+                    <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: isMobileFeed ? 8 : 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
                   </div>
                 );
               })
