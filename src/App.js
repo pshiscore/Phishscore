@@ -5,7 +5,7 @@ const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 const db = {
   async getSubmissions() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=20`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=100`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     });
     return res.json();
@@ -1133,6 +1133,9 @@ export default function App() {
     setBarDismissed(true);
     try { localStorage.setItem("phishscore_bar_dismissed", "1"); } catch {}
   };
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; } });
+  const toggleTheme = () => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); try { localStorage.setItem("phishscore_theme", next); } catch {}; };
+  const T = theme === "light" ? { bg: "#f0ede8", bg2: "#ffffff", bg3: "#f8f6f2", border: "#e2ddd6", border2: "#d4cfc8", text: "#1a1a2e", text2: "#4a5568", text3: "#64748b", text4: "#94a3b8", cardBg: "#ffffff", headerBg: "rgba(248,246,242,0.97)" } : { bg: "#060810", bg2: "#090b14", bg3: "#0d0f1a", border: "#1a1d2e", border2: "#2a2d3e", text: "#e2e8f0", text2: "#94a3b8", text3: "#64748b", text4: "#475569", cardBg: "#090b14", headerBg: "rgba(6,8,16,0.95)" };
 
   useEffect(() => { loadSubmissions(); }, []);
 
@@ -1221,6 +1224,9 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "1px solid #1a1d2e", color: "#475569", padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
+            <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.border}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+              {theme === "dark" ? "LIGHT" : "DARK"}
+            </button>
             <button onClick={() => setShowModal(true)}
               style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 26px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }}
               onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
