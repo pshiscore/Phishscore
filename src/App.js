@@ -1133,7 +1133,7 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
-  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; } });
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
   const toggleTheme = () => { const next = theme === "dark" ? "light" : "dark"; setTheme(next); try { localStorage.setItem("phishscore_theme", next); } catch {} };
   const T = theme === "light" ? {
     pageBg: "#f8f6f2",
