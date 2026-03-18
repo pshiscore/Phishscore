@@ -403,7 +403,7 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
               borderRadius: 10, padding: "11px 10px", cursor: "pointer", textAlign: "left",
               transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)"
             }}>
-              <div style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : T.text3} size={22} /></div>
+              <div className="cat-picker-icon" style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : T.text3} size={22} /></div>
               <div style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : T.text3, fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
               {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
             </button>
@@ -626,8 +626,8 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {}, T = {} }) {
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "text" ? "#f43f5e" : "#1a1d2e"}`, background: inputMode === "text" ? "#f43f5e18" : "#0d0f1a", color: inputMode === "text" ? "#f43f5e" : "#475569", fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
-              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "image" ? "#f43f5e" : "#1a1d2e"}`, background: inputMode === "image" ? "#f43f5e18" : "#0d0f1a", color: inputMode === "image" ? "#f43f5e" : "#475569", fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
+              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: inputMode === "text" ? "1.5px solid #f43f5e" : T.innerBorder, background: inputMode === "text" ? "#f43f5e18" : T.innerBg, color: inputMode === "text" ? "#f43f5e" : T.text2, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
+              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: inputMode === "image" ? "1.5px solid #f43f5e" : T.innerBorder, background: inputMode === "image" ? "#f43f5e18" : T.innerBg, color: inputMode === "image" ? "#f43f5e" : T.text2, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
             </div>
 
             {inputMode === "text" ? (
@@ -657,14 +657,14 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {}, T = {} }) {
               <div style={{ marginBottom: 12 }}>
                 <input type="file" accept="image/*" ref={fileRef} onChange={handleImageUpload} style={{ display: "none" }} />
                 {!imagePreview ? (
-                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: "#0d0f1a", border: "2px dashed #1a1d2e", borderRadius: 10, color: "#475569", fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: T.innerBg, border: `2px dashed ${T.innerBorder.split(" ")[2]}`, borderRadius: 10, color: T.text2, fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <div style={{ fontSize: 28 }}>[ IMG ]</div>
                     <div>Tap to upload screenshot</div>
-                    <div style={{ fontSize: 10, color: "#334155" }}>JPG, PNG, or HEIC from your camera roll</div>
+                    <div style={{ fontSize: 10, color: T.text3 }}>JPG, PNG, or HEIC from your camera roll</div>
                   </button>
                 ) : (
                   <div style={{ position: "relative" }}>
-                    <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 280, objectFit: "contain", background: "#0d0f1a" }} />
+                    <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 280, objectFit: "contain", background: T.innerBg }} />
                     <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position: "absolute", top: 8, right: 8, background: "#f43f5e", border: "none", color: "#fff", width: 26, height: 26, borderRadius: "50%", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>x</button>
                   </div>
                 )}
@@ -1170,7 +1170,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem("phishscore_theme") || "dark"; } catch { return "dark"; }
+    try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; }
   });
   const T = THEMES[theme] || THEMES.dark;
   const toggleTheme = () => setTheme(t => {
@@ -1364,7 +1364,7 @@ export default function App() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
                         <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CAT_ICON_SVG icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: "#1a1d2e", color: "#475569", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: "#1a1d2e", color: theme === "light" ? "#ffffff" : "#475569", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                         <VisibilityBadge visibility={vis} />
                         {s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
                         {s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
@@ -1423,6 +1423,7 @@ export default function App() {
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
         * { box-sizing: border-box; }
         body { margin: 0; }
+        @media (max-width: 480px) { .cat-picker-icon svg { width: 20px !important; height: 20px !important; } }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #060810; }
         ::-webkit-scrollbar-thumb { background: #1a1d2e; border-radius: 3px; }
