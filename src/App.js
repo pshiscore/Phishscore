@@ -358,18 +358,18 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
       <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
         Select the type that best matches - or pick <strong style={{ color: "#94a3b8" }}>Unknown / AI Detect</strong> and AI will automatically classify it.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
         {visible.map(cat => {
           const active = selected === cat.id;
           return (
             <button key={cat.id} onClick={() => onSelect(cat.id)} style={{
               background: active ? `${cat.color}18` : T.innerBg,
               border: `1.5px solid ${active ? cat.color : T.innerBorder}`,
-              borderRadius: 10, padding: "11px 10px", cursor: "pointer", textAlign: "left",
+              borderRadius: 10, padding: "8px 8px", cursor: "pointer", textAlign: "left",
               transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)"
             }}>
-              <div style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={22} /></div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
+              <div style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={18} /></div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
               {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: "#334155", fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
             </button>
           );
@@ -400,11 +400,11 @@ function VisibilityPicker({ selected, onSelect }) {
               <button onClick={() => onSelect(opt.id)} style={{
                 background: active ? `${opt.color}18` : "#0d0f1a",
                 border: `1.5px solid ${active ? opt.color : "#1a1d2e"}`,
-                borderRadius: 10, padding: "10px 16px", cursor: "pointer", textAlign: "left",
-                transition: "all 0.15s", minWidth: 120
+                borderRadius: 10, padding: "8px 12px", cursor: "pointer", textAlign: "left",
+                transition: "all 0.15s", minWidth: 90
               }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : "#334155", fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: active ? opt.color : "#64748b", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: active ? opt.color : "#64748b", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
                 <div style={{ fontSize: 10, color: active ? `${opt.color}cc` : "#334155", fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
               </button>
             </Tooltip>
@@ -542,7 +542,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dar
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+      <div className="modal-inner" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
         <div style={{ marginBottom: 24 }}>
@@ -550,7 +550,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dar
             <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#334155", fontSize: 13 }}>.ai</span>
           </div>
           {step < 3 && (
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="step-indicators" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               {["Choose Type", "Submit", "Your Score"].map((s, i) => (
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : T.innerBg, color: i + 1 <= step ? "#fff" : T.text4, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
@@ -726,12 +726,12 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dar
                 REPORT THIS SCAM TO THE FTC
               </a>
             )}
-            <div style={{ display: "flex", gap: 10 }}>
+            <div>
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
-              <AccuracyFeedback T={T} />
-              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, background: T.innerBg, border: "none", color: T.text3, padding: "12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
-                <button onClick={onClose} style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <AccuracyFeedback compact />
+                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={onClose} style={{ flex: 1, minWidth: 120, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>
           </div>
@@ -791,12 +791,17 @@ function ShareCard({ result, category, T = {} }) {
   );
 }
 
-function AccuracyFeedback({ T = {} }) {
+function AccuracyFeedback({ compact = false, T = {} }) {
   const [feedback, setFeedback] = useState(null);
   if (feedback) {
+    return <span style={{ fontSize: 11, color: "#34d399", fontFamily: "monospace", padding: "10px 12px", background: "#081410", borderRadius: 10, display: "flex", alignItems: "center", flex: 1, minWidth: 120 }}>Thanks for the feedback!</span>;
+  }
+  if (compact) {
     return (
-      <div style={{ padding: "10px 14px", background: "#081410", border: "1px solid #34d39925", borderRadius: 10, textAlign: "center" }}>
-        <span style={{ fontSize: 12, color: "#34d399", fontFamily: "monospace" }}>Thanks for the feedback! It helps us improve.</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 140, background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "8px 12px" }}>
+        <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", whiteSpace: "nowrap" }}>Accurate?</span>
+        <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>YES</button>
+        <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>NO</button>
       </div>
     );
   }
@@ -1425,6 +1430,10 @@ export default function App() {
         button { transition: all 0.15s; }
         a { transition: color 0.15s; }
         a:hover { color: #f43f5e !important; }
+        @media (max-width: 480px) {
+          .modal-inner { padding: 20px 16px !important; }
+          .modal-inner .step-indicators { gap: 4px !important; }
+        }
       `}</style>
     </div>
   );
