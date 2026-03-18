@@ -342,7 +342,7 @@ function Tooltip({ text, children }) {
   );
 }
 
-function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
+function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
   const [showAll, setShowAll] = useState(false);
 
   // Build ordered list: Unknown/AI Detect first, then top 5 by submission count, then rest
@@ -363,8 +363,8 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
           const active = selected === cat.id;
           return (
             <button key={cat.id} onClick={() => onSelect(cat.id)} style={{
-              background: active ? `${cat.color}18` : "#0d0f1a",
-              border: `1.5px solid ${active ? cat.color : "#1a1d2e"}`,
+              background: active ? `${cat.color}18` : T.innerBg,
+              border: `1.5px solid ${active ? cat.color : T.innerBorder}`,
               borderRadius: 10, padding: "11px 10px", cursor: "pointer", textAlign: "left",
               transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)"
             }}>
@@ -377,8 +377,8 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
       </div>
       {remaining.length > 0 && (
         <button onClick={() => setShowAll(v => !v)} style={{
-          marginTop: 10, width: "100%", background: "none", border: "1px dashed #1a1d2e",
-          color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
+          marginTop: 10, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`,
+          color: T.text4, padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
           {showAll ? "SHOW LESS" : `+ ${remaining.length} MORE CATEGORIES`}
@@ -416,7 +416,7 @@ function VisibilityPicker({ selected, onSelect }) {
   );
 }
 
-function ConfidenceMeter({ text, source }) {
+function ConfidenceMeter({ text, source, T = {} }) {
   let score = 0;
   let tips = [];
   if (text.trim().length > 20) { score += 30; } else { tips.push("Add more message text"); }
@@ -433,16 +433,16 @@ function ConfidenceMeter({ text, source }) {
   return (
     <div style={{ marginTop: 8, marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", letterSpacing: 1 }}>SUBMISSION QUALITY</span>
+        <span style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>SUBMISSION QUALITY</span>
         <span style={{ fontSize: 10, color: barColor, fontFamily: "monospace", fontWeight: 700 }}>{score}% - {label}</span>
       </div>
-      <div style={{ background: "#1a1d2e", borderRadius: 4, height: 5, overflow: "hidden" }}>
+      <div style={{ background: T.ringTrack, borderRadius: 4, height: 5, overflow: "hidden" }}>
         <div style={{ height: "100%", borderRadius: 4, background: barColor, width: `${score}%`, transition: "width 0.4s ease", boxShadow: `0 0 6px ${barColor}88` }} />
       </div>
       {tips.length > 0 && (
         <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
           {tips.map((t, i) => (
-            <span key={i} style={{ fontSize: 9, color: "#475569", fontFamily: "monospace", background: "#1a1d2e", padding: "2px 8px", borderRadius: 10 }}>+ {t}</span>
+            <span key={i} style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", background: T.innerBg, padding: "2px 8px", borderRadius: 10 }}>+ {t}</span>
           ))}
         </div>
       )}
@@ -450,7 +450,7 @@ function ConfidenceMeter({ text, source }) {
   );
 }
 
-function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
+function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dark", T = {} }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
@@ -542,8 +542,8 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#1a1d2e", border: "none", color: "#475569", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+      <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>
@@ -553,9 +553,9 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
             <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               {["Choose Type", "Submit", "Your Score"].map((s, i) => (
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : "#1a1d2e", color: i + 1 <= step ? "#fff" : "#475569", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
-                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : "#334155", fontFamily: "monospace" }}>{s}</span>
-                  {i < 2 && <div style={{ width: 16, height: 1, background: "#1a1d2e" }} />}
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : T.innerBg, color: i + 1 <= step ? "#fff" : T.text4, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
+                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : T.text4, fontFamily: "monospace" }}>{s}</span>
+                  {i < 2 && <div style={{ width: 16, height: 1, background: T.innerBg }} />}
                 </div>
               ))}
             </div>
@@ -565,8 +565,8 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
         {step === 1 && (
           <>
             <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 1 - WHAT TYPE OF SCAM?</div>
-            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} />
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #1a1d2e" }}>
+            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.cardBorder}` }}>
               <VisibilityPicker selected={visibility} onSelect={setVisibility} />
             </div>
             <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
@@ -590,8 +590,8 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "text" ? "#f43f5e" : "#1a1d2e"}`, background: inputMode === "text" ? "#f43f5e18" : "#0d0f1a", color: inputMode === "text" ? "#f43f5e" : "#475569", fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
-              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "image" ? "#f43f5e" : "#1a1d2e"}`, background: inputMode === "image" ? "#f43f5e18" : "#0d0f1a", color: inputMode === "image" ? "#f43f5e" : "#475569", fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
+              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "text" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "text" ? "#f43f5e18" : T.innerBg, color: inputMode === "text" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
+              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "image" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "image" ? "#f43f5e18" : T.innerBg, color: inputMode === "image" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
             </div>
 
             {inputMode === "text" ? (
@@ -612,19 +612,19 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
                   }
                 }}
                   placeholder="Paste the full suspicious message here. Include sender address, subject line, and all body text for best results."
-                  style={{ width: "100%", minHeight: 180, background: "#0d0f1a", border: "1.5px solid #1a1d2e", borderRadius: 10, color: "#e2e8f0", padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
+                  style={{ width: "100%", minHeight: 180, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"}
-                  onBlur={e => e.target.style.borderColor = "#1a1d2e"} />
-                <ConfidenceMeter text={text} source={source} />
+                  onBlur={e => e.target.style.borderColor = T.inputBorder} />
+                <ConfidenceMeter text={text} source={source} T={T} />
               </>
             ) : (
               <div style={{ marginBottom: 12 }}>
                 <input type="file" accept="image/*" ref={fileRef} onChange={handleImageUpload} style={{ display: "none" }} />
                 {!imagePreview ? (
-                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: "#0d0f1a", border: "2px dashed #1a1d2e", borderRadius: 10, color: "#475569", fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: T.inputBg, border: `2px dashed ${T.inputBorder}`, borderRadius: 10, color: T.text4, fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <div style={{ fontSize: 28 }}>[ IMG ]</div>
                     <div>Tap to upload screenshot</div>
-                    <div style={{ fontSize: 10, color: "#334155" }}>JPG, PNG, or HEIC from your camera roll</div>
+                    <div style={{ fontSize: 10, color: T.text4 }}>JPG, PNG, or HEIC from your camera roll</div>
                   </button>
                 ) : (
                   <div style={{ position: "relative" }}>
@@ -637,13 +637,13 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
 
             {visibility !== "anonymous" && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
                 <input value={source} onChange={e => setSource(e.target.value)}
                   placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
-                  style={{ width: "100%", background: "#0d0f1a", border: "1.5px solid #1a1d2e", borderRadius: 8, color: "#e2e8f0", padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"}
-                  onBlur={e => e.target.style.borderColor = "#1a1d2e"} />
-                <div style={{ fontSize: 10, color: "#1e2030", fontFamily: "monospace", marginTop: 4 }}>Helps identify scam origins for the community</div>
+                  onBlur={e => e.target.style.borderColor = T.inputBorder} />
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>Helps identify scam origins for the community</div>
               </div>
             )}
 
@@ -661,7 +661,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
               </div>
             )}
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
-              <button onClick={() => setStep(1)} style={{ background: "#1a1d2e", border: "none", color: "#64748b", padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
+              <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
               <button onClick={analyze} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
                 {loading ? "ANALYZING..." : "GET MY SCORE"}
               </button>
@@ -677,7 +677,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
                 <div style={{ fontSize: 26, fontWeight: 800, color: sc, fontFamily: "monospace", letterSpacing: 1 }}>{getStatusLabel(result.score)}</div>
                 <div style={{ color: "#cbd5e1", fontSize: 14, marginTop: 5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{result.verdict}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {result.tags?.map(t => <span key={t} style={{ background: "#1a1d2e", color: "#64748b", fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                  {result.tags?.map(t => <span key={t} style={{ background: T.innerBg, color: T.text3, fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                   <VisibilityBadge visibility={visibility} />
                   {result.classificationNote === "auto" && (
                     <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12" }}>AUTO-CLASSIFIED</span>
@@ -690,12 +690,12 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
             </div>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ fontSize: 10, letterSpacing: 3, color: "#334155", fontFamily: "monospace" }}>ANALYSIS</div>
+                <div style={{ fontSize: 10, letterSpacing: 3, color: T.text4, fontFamily: "monospace" }}>ANALYSIS</div>
                 {result.safeBrowsingFlagged && (
                   <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", background: "#f43f5e12", border: "1px solid #f43f5e35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>GOOGLE SAFE BROWSING: FLAGGED</span>
                 )}
               </div>
-              <p style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
+              <p style={{ color: T.text2, fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
             </div>
             {result.redFlags?.length > 0 && (
               <div style={{ background: "#160810", border: "1px solid #f43f5e25", borderRadius: 10, padding: 16, marginBottom: 16 }}>
@@ -727,10 +727,10 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
               </a>
             )}
             <div style={{ display: "flex", gap: 10 }}>
-              <ShareCard result={result} category={result.finalCategory || category} />
-              <AccuracyFeedback />
+              <ShareCard result={result} category={result.finalCategory || category} T={T} />
+              <AccuracyFeedback T={T} />
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, background: "#1a1d2e", border: "none", color: "#64748b", padding: "12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, background: T.innerBg, border: "none", color: T.text3, padding: "12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
                 <button onClick={onClose} style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>
@@ -741,7 +741,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
   );
 }
 
-function ShareCard({ result, category }) {
+function ShareCard({ result, category, T = {} }) {
   const [copied, setCopied] = useState(false);
   const cat = getCat(category);
   const sc = getScoreColor(result.score);
@@ -765,21 +765,21 @@ function ShareCard({ result, category }) {
   const twitterText = encodeURIComponent(`Scam alert! This message scored ${result.score}/100 on PhishScore.ai\n\n${result.verdict}\n\nCheck suspicious messages: phishscore.ai`);
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 10, letterSpacing: 3, color: "#334155", fontFamily: "monospace", marginBottom: 8 }}>SHARE THIS WARNING</div>
-      <div style={{ background: "#090b14", border: `1px solid ${sc}30`, borderRadius: 12, padding: 16, marginBottom: 8 }}>
+      <div style={{ fontSize: 10, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 8 }}>SHARE THIS WARNING</div>
+      <div style={{ background: T.cardBg, border: `1px solid ${sc}30`, borderRadius: 12, padding: 16, marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
           <div style={{ width: 44, height: 44, borderRadius: "50%", border: `3px solid ${sc}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: sc, fontFamily: "monospace" }}>{result.score}</span>
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: sc, fontFamily: "monospace" }}>{getStatusLabel(result.score)}</div>
-            <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace" }}>{cat.label} - phishscore.ai</div>
+            <div style={{ fontSize: 10, color: T.text3, fontFamily: "monospace" }}>{cat.label} - phishscore.ai</div>
           </div>
         </div>
-        <div style={{ fontSize: 12, color: "#64748b", fontFamily: "Georgia, serif", lineHeight: 1.5, fontStyle: "italic" }}>"{result.verdict}"</div>
+        <div style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.5, fontStyle: "italic" }}>"{result.verdict}"</div>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={handleCopy} style={{ flex: 1, background: copied ? "#081410" : "#1a1d2e", border: `1px solid ${copied ? "#34d399" : "#2a2d3e"}`, color: copied ? "#34d399" : "#64748b", padding: "9px 12px", borderRadius: 8, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.2s" }}>
+        <button onClick={handleCopy} style={{ flex: 1, background: copied ? "#081410" : T.innerBg, border: `1px solid ${copied ? "#34d399" : "#2a2d3e"}`, color: copied ? "#34d399" : T.text3, padding: "9px 12px", borderRadius: 8, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.2s" }}>
           {copied ? "COPIED!" : "COPY TEXT"}
         </button>
         <a href={`https://twitter.com/intent/tweet?text=${twitterText}`} target="_blank" rel="noopener noreferrer"
@@ -791,7 +791,7 @@ function ShareCard({ result, category }) {
   );
 }
 
-function AccuracyFeedback() {
+function AccuracyFeedback({ T = {} }) {
   const [feedback, setFeedback] = useState(null);
   if (feedback) {
     return (
@@ -801,8 +801,8 @@ function AccuracyFeedback() {
     );
   }
   return (
-    <div style={{ padding: "10px 14px", background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-      <span style={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>Was this result accurate?</span>
+    <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+      <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Was this result accurate?</span>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>YES</button>
         <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>NO</button>
@@ -1200,7 +1200,7 @@ export default function App() {
     const newSub = {
       category,
       source: isAnon ? null : (source || "user-submitted"),
-      preview: isAnon ? null : (text.slice(0, 130) + (text.length > 130 ? "..." : "")),
+      preview: isAnon ? null : (text.slice(0, 80) + (text.length > 80 ? "..." : "")),
       score: result.score,
       tags: result.tags || [],
       visibility: visibility || "public",
@@ -1371,7 +1371,7 @@ export default function App() {
                           {vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}
                         </div>
                       ) : (
-                        <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6 }}>{s.preview}</div>
+                        <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6, maxWidth: "100%", display: "block" }}>{s.preview}</div>
                       )}
                       {!isHidden && s.source && <SourceBadge source={s.source} />}
                     </div>
@@ -1411,7 +1411,7 @@ export default function App() {
         </footer>
       </div>
 
-      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} />}
+      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} />}
 
