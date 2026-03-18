@@ -1193,7 +1193,7 @@ export default function App() {
   const handleFilterChange = (setter, val) => { setter(val); setShowMoreFeed(false); };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060810", color: "#e2e8f0", fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: "Georgia, serif" }}>
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 50% at 5% 0%, #f43f5e08, transparent 55%), radial-gradient(ellipse 50% 40% at 95% 100%, #a78bfa07, transparent 55%)" }} />
       <div style={{ position: "relative" }}>
         {/* ANNOUNCEMENT BAR */}
