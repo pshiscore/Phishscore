@@ -340,7 +340,40 @@ function Tooltip({ text, children }) {
   );
 }
 
-function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
+const THEMES = {
+  dark: {
+    cardBg: "#090b14",
+    cardBorder: "1px solid #1a1d2e",
+    innerBg: "#0d0f1a",
+    innerBorder: "1px solid #1a1d2e",
+    inputBg: "#0d0f1a",
+    inputBorder: "1.5px solid #1a1d2e",
+    text: "#e2e8f0",
+    text2: "#94a3b8",
+    text3: "#64748b",
+    text4: "#334155",
+    tagBg: "#1a1d2e",
+    tagColor: "#64748b",
+    ringTrack: "#1a1d2e",
+  },
+  light: {
+    cardBg: "#ffffff",
+    cardBorder: "1px solid #e2e8f0",
+    innerBg: "#f8fafc",
+    innerBorder: "1px solid #cbd5e1",
+    inputBg: "#f8fafc",
+    inputBorder: "1.5px solid #cbd5e1",
+    text: "#0f172a",
+    text2: "#475569",
+    text3: "#64748b",
+    text4: "#94a3b8",
+    tagBg: "#e2e8f0",
+    tagColor: "#475569",
+    ringTrack: "#e2e8f0",
+  },
+};
+
+function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
   const [showAll, setShowAll] = useState(false);
 
   // Build ordered list: Unknown/AI Detect first, then top 5 by submission count, then rest
@@ -361,22 +394,22 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
           const active = selected === cat.id;
           return (
             <button key={cat.id} onClick={() => onSelect(cat.id)} style={{
-              background: active ? `${cat.color}18` : "#0d0f1a",
-              border: `1.5px solid ${active ? cat.color : "#1a1d2e"}`,
+              background: active ? `${cat.color}18` : T.innerBg,
+              border: active ? `1.5px solid ${cat.color}` : T.innerBorder,
               borderRadius: 10, padding: "11px 10px", cursor: "pointer", textAlign: "left",
               transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)"
             }}>
-              <div style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={22} /></div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
-              {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: "#334155", fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
+              <div style={{ marginBottom: 6 }}><CAT_ICON_SVG icon={cat.icon} color={active ? "#ffffff" : T.text3} size={22} /></div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: active ? cat.color : T.text3, fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
+              {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
             </button>
           );
         })}
       </div>
       {remaining.length > 0 && (
         <button onClick={() => setShowAll(v => !v)} style={{
-          marginTop: 10, width: "100%", background: "none", border: "1px dashed #1a1d2e",
-          color: "#475569", padding: "8px", borderRadius: 8, cursor: "pointer",
+          marginTop: 10, width: "100%", background: "none", border: T.innerBorder,
+          color: T.text4, padding: "8px", borderRadius: 8, cursor: "pointer",
           fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s"
         }}>
           {showAll ? "SHOW LESS" : `+ ${remaining.length} MORE CATEGORIES`}
@@ -386,30 +419,30 @@ function CategoryPicker({ selected, onSelect, submissionCounts = {} }) {
   );
 }
 
-function VisibilityPicker({ selected, onSelect }) {
+function VisibilityPicker({ selected, onSelect, T = {} }) {
   return (
     <div>
-      <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", letterSpacing: 2, marginBottom: 10 }}>WHO CAN SEE THIS SUBMISSION?</div>
+      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 10 }}>WHO CAN SEE THIS SUBMISSION?</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {VISIBILITY_OPTIONS.map(opt => {
           const active = selected === opt.id;
           return (
             <Tooltip key={opt.id} text={opt.description}>
               <button onClick={() => onSelect(opt.id)} style={{
-                background: active ? `${opt.color}18` : "#0d0f1a",
-                border: `1.5px solid ${active ? opt.color : "#1a1d2e"}`,
+                background: active ? `${opt.color}18` : T.innerBg,
+                border: active ? `1.5px solid ${opt.color}` : T.innerBorder,
                 borderRadius: 10, padding: "10px 16px", cursor: "pointer", textAlign: "left",
                 transition: "all 0.15s", minWidth: 120
               }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : "#334155", fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: active ? opt.color : "#64748b", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
-                <div style={{ fontSize: 10, color: active ? `${opt.color}cc` : "#334155", fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : T.text4, fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: active ? opt.color : T.text3, fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
+                <div style={{ fontSize: 10, color: active ? `${opt.color}cc` : T.text4, fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
               </button>
             </Tooltip>
           );
         })}
       </div>
-      <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", marginTop: 8 }}>Hover or tap each option for details</div>
+      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>Hover or tap each option for details</div>
     </div>
   );
 }
@@ -448,7 +481,7 @@ function ConfidenceMeter({ text, source }) {
   );
 }
 
-function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
+function SubmitModal({ onClose, onNewResult, submissionCounts = {}, T = {} }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
@@ -524,6 +557,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
         allSources.push(parsed.detectedSource.trim());
       }
       const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
+      console.log('flags before save:', parsed.safeBrowsingFlagged, parsed.radarFlagged, parsed.urlhausFlagged);
       onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote });
       setStep(3);
     } catch {
@@ -540,20 +574,20 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+      <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#1a1d2e", border: "none", color: "#475569", width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>
-            <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#334155", fontSize: 13 }}>.ai</span>
+            <span style={{ color: step === 3 ? "#ffffff" : T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.text4, fontSize: 13 }}>.ai</span>
           </div>
           {step < 3 && (
             <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               {["Choose Type", "Submit", "Your Score"].map((s, i) => (
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : "#1a1d2e", color: i + 1 <= step ? "#fff" : "#475569", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
-                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : "#334155", fontFamily: "monospace" }}>{s}</span>
-                  {i < 2 && <div style={{ width: 16, height: 1, background: "#1a1d2e" }} />}
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : T.innerBg, color: i + 1 <= step ? "#fff" : "#475569", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
+                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : T.text4, fontFamily: "monospace" }}>{s}</span>
+                  {i < 2 && <div style={{ width: 16, height: 1, background: T.innerBg }} />}
                 </div>
               ))}
             </div>
@@ -563,9 +597,9 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
         {step === 1 && (
           <>
             <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 1 - WHAT TYPE OF SCAM?</div>
-            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} />
+            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #1a1d2e" }}>
-              <VisibilityPicker selected={visibility} onSelect={setVisibility} />
+              <VisibilityPicker selected={visibility} onSelect={setVisibility} T={T} />
             </div>
             <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
               <button onClick={() => setStep(2)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>NEXT</button>
@@ -610,9 +644,9 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
                   }
                 }}
                   placeholder="Paste the full suspicious message here. Include sender address, subject line, and all body text for best results."
-                  style={{ width: "100%", minHeight: 180, background: "#0d0f1a", border: "1.5px solid #1a1d2e", borderRadius: 10, color: "#e2e8f0", padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
+                  style={{ width: "100%", minHeight: 180, background: T.inputBg, border: T.inputBorder, borderRadius: 10, color: T.text, padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"}
-                  onBlur={e => e.target.style.borderColor = "#1a1d2e"} />
+                  onBlur={e => e.target.style.border = T.inputBorder} />
                 <ConfidenceMeter text={text} source={source} />
               </>
             ) : (
@@ -635,12 +669,12 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
 
             {visibility !== "anonymous" && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
                 <input value={source} onChange={e => setSource(e.target.value)}
                   placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
-                  style={{ width: "100%", background: "#0d0f1a", border: "1.5px solid #1a1d2e", borderRadius: 8, color: "#e2e8f0", padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", background: T.inputBg, border: T.inputBorder, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"}
-                  onBlur={e => e.target.style.borderColor = "#1a1d2e"} />
+                  onBlur={e => e.target.style.border = T.inputBorder} />
                 <div style={{ fontSize: 10, color: "#1e2030", fontFamily: "monospace", marginTop: 4 }}>Helps identify scam origins for the community</div>
               </div>
             )}
@@ -659,7 +693,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
               </div>
             )}
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
-              <button onClick={() => setStep(1)} style={{ background: "#1a1d2e", border: "none", color: "#64748b", padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
+              <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
               <button onClick={analyze} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
                 {loading ? "ANALYZING..." : "GET MY SCORE"}
               </button>
@@ -675,7 +709,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
                 <div style={{ fontSize: 26, fontWeight: 800, color: sc, fontFamily: "monospace", letterSpacing: 1 }}>{getStatusLabel(result.score)}</div>
                 <div style={{ color: "#cbd5e1", fontSize: 14, marginTop: 5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{result.verdict}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {result.tags?.map(t => <span key={t} style={{ background: "#1a1d2e", color: "#64748b", fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                  {result.tags?.map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                   <VisibilityBadge visibility={visibility} />
                   {result.classificationNote === "auto" && (
                     <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12" }}>AUTO-CLASSIFIED</span>
@@ -693,7 +727,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
                   <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", background: "#f43f5e12", border: "1px solid #f43f5e35", padding: "2px 8px", borderRadius: 20, letterSpacing: 1 }}>GOOGLE SAFE BROWSING: FLAGGED</span>
                 )}
               </div>
-              <p style={{ color: "#94a3b8", fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
+              <p style={{ color: T.text2, fontSize: 14, lineHeight: 1.8, margin: 0, fontFamily: "Georgia, serif" }}>{result.analysis}</p>
             </div>
             {result.redFlags?.length > 0 && (
               <div style={{ background: "#160810", border: "1px solid #f43f5e25", borderRadius: 10, padding: 16, marginBottom: 16 }}>
@@ -728,7 +762,7 @@ function SubmitModal({ onClose, onNewResult, submissionCounts = {} }) {
               <ShareCard result={result} category={result.finalCategory || category} />
               <AccuracyFeedback />
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, background: "#1a1d2e", border: "none", color: "#64748b", padding: "12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, background: T.innerBg, border: "none", color: "#64748b", padding: "12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
                 <button onClick={onClose} style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>
@@ -810,7 +844,7 @@ function AccuracyFeedback() {
 }
 
 // -- FAQ PAGE ------------------------------------------------------------------
-function FAQPage({ onClose }) {
+function FAQPage({ onClose, theme = "dark", T = {} }) {
   const faqs = [
     {
       q: "What is PhishScore.ai?",
@@ -868,15 +902,15 @@ function FAQPage({ onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(14px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 300, padding: 16, overflowY: "auto" }}>
-      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 700, padding: 40, position: "relative", margin: "20px 0" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#1a1d2e", border: "none", color: "#475569", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+      <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 20, width: "100%", maxWidth: 700, padding: 40, position: "relative", margin: "20px 0" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>HELP CENTER</div>
-          <h1 style={{ color: "#fff", fontFamily: "monospace", fontSize: 24, fontWeight: 800, margin: "0 0 8px", letterSpacing: 1 }}>
-            <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#334155" }}>.ai</span> FAQ
+          <h1 style={{ color: T.text, fontFamily: "monospace", fontSize: 24, fontWeight: 800, margin: "0 0 8px", letterSpacing: 1 }}>
+            <span style={{ color: T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.text4 }}>.ai</span> FAQ
           </h1>
-          <p style={{ color: "#64748b", fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, margin: 0 }}>
+          <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, margin: 0 }}>
             Everything you need to know about submitting scams, protecting your privacy, and getting the most accurate results.
           </p>
         </div>
@@ -918,12 +952,12 @@ function FAQPage({ onClose }) {
         {/* FAQ items */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {faqs.map((faq, i) => (
-            <FAQItem key={i} q={faq.q} a={faq.a} />
+            <FAQItem key={i} q={faq.q} a={faq.a} T={T} />
           ))}
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #1a1d2e", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#475569", fontFamily: "monospace", marginBottom: 8 }}>STILL HAVE QUESTIONS?</div>
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: T.cardBorder, textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace", marginBottom: 8 }}>STILL HAVE QUESTIONS?</div>
           <a href="mailto:contact@phishscore.ai" style={{ color: "#f43f5e", fontFamily: "monospace", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
         </div>
       </div>
@@ -931,16 +965,16 @@ function FAQPage({ onClose }) {
   );
 }
 
-function FAQItem({ q, a }) {
+function FAQItem({ q, a, T = {} }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, overflow: "hidden" }}>
+    <div style={{ background: T.innerBg, border: T.innerBorder, borderRadius: 10, overflow: "hidden" }}>
       <button onClick={() => setOpen(!open)} style={{ width: "100%", padding: "14px 18px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#cbd5e1", fontFamily: "monospace", textAlign: "left", lineHeight: 1.4 }}>{q}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace", textAlign: "left", lineHeight: 1.4 }}>{q}</span>
         <span style={{ color: "#f43f5e", fontSize: 16, flexShrink: 0, fontFamily: "monospace", transform: open ? "rotate(45deg)" : "rotate(0)", transition: "transform 0.2s" }}>+</span>
       </button>
       {open && (
-        <div style={{ padding: "0 18px 16px", color: "#94a3b8", fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, borderTop: "1px solid #1a1d2e" }}>
+        <div style={{ padding: "0 18px 16px", color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, borderTop: T.innerBorder }}>
           <div style={{ paddingTop: 14 }}>{a}</div>
         </div>
       )}
@@ -948,7 +982,7 @@ function FAQItem({ q, a }) {
   );
 }
 
-function TransparencyPage({ onClose, submissions }) {
+function TransparencyPage({ onClose, submissions, theme = "dark", T = {} }) {
   const total = submissions.length;
   const scams = submissions.filter(s => s.score >= 75).length;
   const suspicious = submissions.filter(s => s.score >= 45 && s.score < 75).length;
@@ -966,14 +1000,14 @@ function TransparencyPage({ onClose, submissions }) {
   const month = now.toLocaleString("default", { month: "long", year: "numeric" });
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(14px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 300, padding: 16, overflowY: "auto" }}>
-      <div style={{ background: "#090b14", border: "1px solid #1a1d2e", borderRadius: 20, width: "100%", maxWidth: 680, padding: 40, position: "relative", margin: "20px 0" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#1a1d2e", border: "none", color: "#475569", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+      <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: 20, width: "100%", maxWidth: 680, padding: 40, position: "relative", margin: "20px 0" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>TRANSPARENCY REPORT</div>
-          <h1 style={{ color: "#fff", fontFamily: "monospace", fontSize: 22, fontWeight: 800, margin: "0 0 6px", letterSpacing: 1 }}>
-            <span style={{ color: "#fff" }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: "#334155" }}>.ai</span>
+          <h1 style={{ color: T.text, fontFamily: "monospace", fontSize: 22, fontWeight: 800, margin: "0 0 6px", letterSpacing: 1 }}>
+            <span style={{ color: T.text }}>PHISH</span><span style={{ color: "#f43f5e" }}>SCORE</span><span style={{ color: T.text4 }}>.ai</span>
           </h1>
-          <p style={{ color: "#475569", fontFamily: "monospace", fontSize: 11, margin: 0 }}>Live data as of {month}. Updated in real time.</p>
+          <p style={{ color: T.text3, fontFamily: "monospace", fontSize: 11, margin: 0 }}>Live data as of {month}. Updated in real time.</p>
         </div>
 
         {/* Key stats */}
@@ -984,16 +1018,16 @@ function TransparencyPage({ onClose, submissions }) {
             { label: "SCAM RATE", value: scamRate + "%", color: "#fb923c" },
             { label: "LIKELY SAFE", value: safe, color: "#34d399" },
           ].map(s => (
-            <div key={s.label} style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "14px 16px", borderTop: "2px solid " + s.color }}>
-              <div style={{ fontSize: 9, color: "#475569", letterSpacing: 2, fontFamily: "monospace", marginBottom: 6 }}>{s.label}</div>
+            <div key={s.label} style={{ background: T.innerBg, border: T.innerBorder, borderRadius: 10, padding: "14px 16px", borderTop: "2px solid " + s.color }}>
+              <div style={{ fontSize: 9, color: T.text3, letterSpacing: 2, fontFamily: "monospace", marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.value}</div>
             </div>
           ))}
         </div>
 
         {/* Privacy breakdown */}
-        <div style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 14 }}>SUBMISSION PRIVACY BREAKDOWN</div>
+        <div style={{ background: T.innerBg, border: T.innerBorder, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 14 }}>SUBMISSION PRIVACY BREAKDOWN</div>
           {[
             { label: "Public", value: pubCount, color: "#34d399", note: "Full details visible" },
             { label: "Private", value: privCount, color: "#38bdf8", note: "Score and category only" },
@@ -1001,42 +1035,42 @@ function TransparencyPage({ onClose, submissions }) {
           ].map(v => (
             <div key={v.label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
               <div style={{ width: 60, fontSize: 10, color: v.color, fontFamily: "monospace", fontWeight: 700 }}>{v.label}</div>
-              <div style={{ flex: 1, background: "#1a1d2e", borderRadius: 3, height: 5 }}>
+              <div style={{ flex: 1, background: T.ringTrack, borderRadius: 3, height: 5 }}>
                 <div style={{ height: "100%", borderRadius: 3, background: v.color, width: total > 0 ? `${Math.round(v.value / total * 100)}%` : "0%" }} />
               </div>
               <div style={{ fontSize: 10, color: v.color, fontFamily: "monospace", width: 30, textAlign: "right" }}>{v.value}</div>
-              <div style={{ fontSize: 10, color: "#334155", fontFamily: "Georgia, serif", minWidth: 120 }}>{v.note}</div>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "Georgia, serif", minWidth: 120 }}>{v.note}</div>
             </div>
           ))}
         </div>
 
         {/* AI Classification */}
-        <div style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 14 }}>AI CLASSIFICATION ACTIVITY</div>
+        <div style={{ background: T.innerBg, border: T.innerBorder, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 14 }}>AI CLASSIFICATION ACTIVITY</div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 120 }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#a78bfa", fontFamily: "monospace" }}>{autoCount}</div>
-              <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", letterSpacing: 1 }}>AUTO-CLASSIFIED</div>
-              <div style={{ fontSize: 11, color: "#64748b", fontFamily: "Georgia, serif", marginTop: 4 }}>Submitted as Unknown, AI detected correct category</div>
+              <div style={{ fontSize: 10, color: T.text3, fontFamily: "monospace", letterSpacing: 1 }}>AUTO-CLASSIFIED</div>
+              <div style={{ fontSize: 11, color: T.text2, fontFamily: "Georgia, serif", marginTop: 4 }}>Submitted as Unknown, AI detected correct category</div>
             </div>
             <div style={{ flex: 1, minWidth: 120 }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#f97316", fontFamily: "monospace" }}>{reclassCount}</div>
-              <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</div>
-              <div style={{ fontSize: 11, color: "#64748b", fontFamily: "Georgia, serif", marginTop: 4 }}>User picked wrong category, AI corrected it</div>
+              <div style={{ fontSize: 10, color: T.text3, fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</div>
+              <div style={{ fontSize: 11, color: T.text2, fontFamily: "Georgia, serif", marginTop: 4 }}>User picked wrong category, AI corrected it</div>
             </div>
           </div>
         </div>
 
         {/* Top categories */}
         {catBreakdown.length > 0 && (
-          <div style={{ background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 10, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 14 }}>TOP SCAM CATEGORIES REPORTED</div>
+          <div style={{ background: T.innerBg, border: T.innerBorder, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 14 }}>TOP SCAM CATEGORIES REPORTED</div>
             {catBreakdown.slice(0, 6).map((cat, i) => (
               <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace", width: 16 }}>{i + 1}</div>
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", width: 16 }}>{i + 1}</div>
                 <CAT_ICON_SVG icon={cat.icon} color={cat.color} size={14} />
-                <div style={{ flex: 1, fontSize: 12, color: "#94a3b8", fontFamily: "monospace" }}>{cat.label}</div>
-                <div style={{ background: "#1a1d2e", borderRadius: 3, height: 5, width: 80 }}>
+                <div style={{ flex: 1, fontSize: 12, color: T.text2, fontFamily: "monospace" }}>{cat.label}</div>
+                <div style={{ background: T.ringTrack, borderRadius: 3, height: 5, width: 80 }}>
                   <div style={{ height: "100%", borderRadius: 3, background: cat.color, width: `${Math.round(cat.count / catBreakdown[0].count * 100)}%` }} />
                 </div>
                 <div style={{ fontSize: 11, color: cat.color, fontFamily: "monospace", width: 24, textAlign: "right" }}>{cat.count}</div>
@@ -1131,6 +1165,8 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
+  const [theme, setTheme] = useState("dark");
+  const T = THEMES[theme] || THEMES.dark;
   const [barDismissed, setBarDismissed] = useState(() => {
     try { return localStorage.getItem("phishscore_bar_dismissed") === "1"; } catch { return false; }
   });
@@ -1160,6 +1196,9 @@ export default function App() {
       tags: result.tags || [],
       visibility: visibility || "public",
       classification_note: classificationNote || null,
+      gsb_flagged: result.safeBrowsingFlagged === true,
+      radar_flagged: result.radarFlagged === true,
+      urlhaus_flagged: result.urlhausFlagged === true,
     };
     try {
       const saved = await db.insertSubmission(newSub);
@@ -1362,9 +1401,9 @@ export default function App() {
         </footer>
       </div>
 
-      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} />}
-      {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} />}
-      {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} />}
+      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} T={T} />}
+      {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} theme={theme} T={T} />}
+      {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} theme={theme} T={T} />}
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
