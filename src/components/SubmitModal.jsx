@@ -158,6 +158,8 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
   const [result, setResult] = useState(null);
   const [duplicate, setDuplicate] = useState(null);
   const fileRef = useRef();
+  // CHANGE: double-submit prevention — hard lock at function level
+  const isSubmitting = useRef(false);
   const cat = getCat(category);
 
   const handleImageUpload = (e) => {
@@ -168,8 +170,11 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
   };
 
   const analyze = async () => {
+    // CHANGE: block if already in flight
+    if (isSubmitting.current) return;
     if (inputMode === "text" && !text.trim()) return;
     if (inputMode === "image" && !image) return;
+    isSubmitting.current = true;
     if (inputMode === "text" && text.trim().length > 30) {
       const dup = await db.checkDuplicate(text.slice(0, 130));
       if (dup) setDuplicate(dup);
@@ -177,14 +182,17 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
     setLoading(true);
     try {
       let messages;
+      // CHANGE: prompts now include "legal" category and request a "summary" field
+      const categoryList = "publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, other";
+      const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<2 plain-English sentences describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}`;
       if (inputMode === "image" && image) {
         const base64 = image.split(",")[1], mimeType = image.split(";")[0].split(":")[1];
         messages = [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}` }
+          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources visible in the image (phone numbers, emails, names, usernames, domains, handles).\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}` }
         ]}];
       } else {
-        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, other. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n{"score":<0-100>,"tags":[<2-4 labels>],"verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<source1>","...all visible identifiers, empty array if none"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}\n\nMessage:\n${text}` }];
+        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ALL identifiable sources in the message (phone numbers, email addresses, names, usernames, domains).\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}\n\nMessage:\n${text}` }];
       }
       const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }) });
       const data = await res.json();
@@ -202,13 +210,17 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
       if (Array.isArray(parsed.detectedSources)) { parsed.detectedSources.forEach(s => { if (s && s.trim() && !allSources.includes(s.trim())) allSources.push(s.trim()); }); }
       else if (parsed.detectedSource?.trim()) allSources.push(parsed.detectedSource.trim());
       const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
-      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote });
+      // CHANGE: pass summary to onNewResult so it can be stored in Supabase
+      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null });
       setStep(3);
     } catch {
       setResult({ score: 0, tags: ["Error"], verdict: "Analysis failed.", analysis: "Please try again.", redFlags: [], whatToDo: "Try submitting again." });
       setStep(3);
+    } finally {
+      // CHANGE: always release the lock
+      isSubmitting.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const sc = result ? getScoreColor(result.score) : "#fff";
@@ -315,7 +327,7 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
             )}
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
               <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
-              <button onClick={analyze} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
+              <button onClick={e => { e.preventDefault(); analyze(); }} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
                 {loading ? "ANALYZING..." : "GET MY SCORE"}
               </button>
             </div>
