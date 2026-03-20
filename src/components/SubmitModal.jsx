@@ -183,8 +183,8 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
     try {
       let messages;
       const categoryList = "publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, other";
-      // CHANGE: only ask Claude to extract phones and email addresses — no domains, URLs, names, or usernames
-      const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<2 plain-English sentences describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}`;
+      // CHANGE: summary trimmed to 1 sentence; whatToDo explicitly banned from including any URLs
+      const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<ONE plain-English sentence describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action sentence — NEVER include any URLs, domain names, or web addresses of any kind, not even official ones. Say 'go to the official website' or 'contact your bank directly' instead>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}`;
       if (inputMode === "image" && image) {
         const base64 = image.split(",")[1], mimeType = image.split(";")[0].split(":")[1];
         messages = [{ role: "user", content: [
