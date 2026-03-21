@@ -1,8 +1,7 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY; // use service key server-side
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-// Maps category IDs to human-readable sector labels
 const SECTOR_MAP = {
   publishing: "Authors & Writers",
   delivery: "Online Shoppers",
@@ -22,19 +21,40 @@ const SECTOR_MAP = {
   other: null,
 };
 
-// Fetch submissions from a given time window
-async function fetchWindow(fromISO) {
-  const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags,summary&created_at=gte.${fromISO}&order=created_at.desc`;
+// Seasonal scam context by month
+const SEASONAL_CONTEXT = {
+  1:  "January: Post-holiday refund scams, W-2 and tax prep phishing, New Year charity fraud.",
+  2:  "February: Valentine's Day romance scams, gift card fraud, fake flower and gift delivery notices.",
+  3:  "March: Early tax season IRS impersonation, March Madness prize scams, spring break travel fraud.",
+  4:  "April: Peak IRS tax scams, fake refund notices, stimulus check impersonation, deadline urgency scams. This is the highest risk month for government impersonation scams.",
+  5:  "May: Mother's Day gift scams, fake charity drives, summer travel booking fraud emerging.",
+  6:  "June: Summer travel scams, fake vacation rental fraud, graduation gift card scams.",
+  7:  "July: Summer travel fraud peaks, fake hotel and airline deals, BBQ and event ticket scams.",
+  8:  "August: Back-to-school supply scams, fake scholarship offers, end-of-summer travel fraud.",
+  9:  "September: Fake hurricane relief charity scams, back-to-school loan fraud, harvest festival ticket scams.",
+  10: "October: Halloween costume and event ticket scams, fake charity drives, holiday shopping fraud beginning.",
+  11: "November: Black Friday and Cyber Monday fake deals, fake package delivery surges, holiday charity scams.",
+  12: "December: Peak holiday shopping fraud, fake gift cards, charity impersonation, year-end tax scams.",
+};
+
+// Fetch last 100 submissions (privacy-safe fields only)
+async function fetchLast100() {
+  const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags,summary&order=created_at.desc&limit=100`;
   const res = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   });
   return res.json();
 }
 
-// Aggregate submissions into per-category stats
+// Fetch previous 100 for surge comparison (offset by 100)
+async function fetchPrevious100() {
+  const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags&order=created_at.desc&limit=100&offset=100`;
+  const res = await fetch(url, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  return res.json();
+}
+
 function aggregate(submissions) {
   const map = {};
   for (const s of submissions) {
@@ -43,14 +63,12 @@ function aggregate(submissions) {
     map[cat].count++;
     map[cat].totalScore += s.score || 0;
     if (s.score >= 75) map[cat].scamCount++;
-    // Count tag frequency
     if (Array.isArray(s.tags)) {
       for (const tag of s.tags) {
         map[cat].tags[tag] = (map[cat].tags[tag] || 0) + 1;
       }
     }
   }
-  // Compute averages and top tags
   return Object.values(map).map(c => ({
     category: c.category,
     count: c.count,
@@ -61,34 +79,23 @@ function aggregate(submissions) {
   })).sort((a, b) => b.count - a.count);
 }
 
-// Compute threat level 1-5 based on volume, avg score, and surge
 function computeThreatLevel(currentAgg, previousAgg) {
   if (!currentAgg.length) return 1;
-
-  const totalSubmissions = currentAgg.reduce((s, c) => s + c.count, 0);
-  const avgScore = currentAgg.reduce((s, c) => s + c.avgScore * c.count, 0) / Math.max(totalSubmissions, 1);
+  const total = currentAgg.reduce((s, c) => s + c.count, 0);
+  const avgScore = currentAgg.reduce((s, c) => s + c.avgScore * c.count, 0) / Math.max(total, 1);
   const highRiskCats = currentAgg.filter(c => c.avgScore >= 80).length;
-
-  // Surge: compare current week total vs previous
   const prevTotal = previousAgg.reduce((s, c) => s + c.count, 0);
-  const surgeRatio = prevTotal > 0 ? totalSubmissions / prevTotal : 1;
+  const surgeRatio = prevTotal > 0 ? total / prevTotal : 1;
 
   let score = 0;
-  // Volume
-  if (totalSubmissions >= 50) score += 2;
-  else if (totalSubmissions >= 20) score += 1;
-  // Average score
-  if (avgScore >= 85) score += 2;
-  else if (avgScore >= 70) score += 1;
-  // High risk categories
+  if (total >= 50) score += 2; else if (total >= 20) score += 1;
+  if (avgScore >= 85) score += 2; else if (avgScore >= 70) score += 1;
   if (highRiskCats >= 4) score += 1;
-  // Surge
   if (surgeRatio >= 2) score += 1;
-
   return Math.min(Math.max(score, 1), 5);
 }
 
-// Build sector warnings for categories with high scam rates this week
+// Top 3 sector warnings only
 function buildSectorWarnings(currentAgg, previousAgg) {
   const warnings = [];
   for (const cat of currentAgg) {
@@ -96,7 +103,6 @@ function buildSectorWarnings(currentAgg, previousAgg) {
     const prev = previousAgg.find(p => p.category === cat.category);
     const prevCount = prev?.count || 0;
     const surge = prevCount > 0 ? Math.round((cat.count / prevCount - 1) * 100) : null;
-
     if (cat.avgScore >= 80 || cat.scamRate >= 70) {
       warnings.push({
         sector: cat.sector,
@@ -109,26 +115,41 @@ function buildSectorWarnings(currentAgg, previousAgg) {
       });
     }
   }
-  return warnings.slice(0, 5);
+  return warnings.slice(0, 3);
 }
 
-// Call Gemini for a 2-sentence safety warning
-async function callGemini(threatLevel, currentAgg, sectorWarnings) {
-  const topCategories = currentAgg.slice(0, 5).map(c =>
-    `${c.category} (${c.count} reports, avg score ${c.avgScore}, top tags: ${c.topTags.join(", ")})`
+// Pull recent confirmed scam summaries for Gemini context
+function buildRecentSummaries(submissions) {
+  return submissions
+    .filter(s => s.summary && s.score >= 75)
+    .slice(0, 15)
+    .map(s => `[${s.category}] ${s.summary}`)
+    .join("\n");
+}
+
+// Gemini prompt 1: Threat level card — 3 sentences including seasonal warning
+async function callGeminiThreatWarning(threatLevel, currentAgg, sectorWarnings, month) {
+  const seasonal = SEASONAL_CONTEXT[month] || "";
+  const topCategories = currentAgg.slice(0, 6).map(c =>
+    `${c.category} (${c.count} reports, avg score ${c.avgScore}, scam rate ${c.scamRate}%, top tags: ${c.topTags.join(", ")})`
   ).join("; ");
+  const surges = sectorWarnings.filter(w => w.surge).map(w => `${w.sector} up ${w.surge}%`).join(", ");
+  const topSectors = sectorWarnings.map(w => w.sector).join(", ");
 
-  const surges = sectorWarnings.filter(w => w.surge).map(w =>
-    `${w.sector} up ${w.surge}%`
-  ).join(", ");
-
-  const prompt = `You are PhishScore.ai's threat intelligence system. Based on community scam reports from the last 7 days, write exactly 2 plain-English sentences for a public safety warning. Be specific about which scam types are active. Do not use technical jargon. Do not include URLs. Do not mention specific companies by name unless they are being impersonated.
+  const prompt = `You are PhishScore.ai's threat intelligence analyst. Write a public threat advisory based on current scam data.
 
 Current threat level: ${threatLevel}/5
-Top scam categories this week: ${topCategories}
-${surges ? `Notable surges: ${surges}` : "No major surges detected."}
+Current month scam context: ${seasonal}
+Most active scam categories (last 100 community reports): ${topCategories}
+${surges ? `Surging sectors: ${surges}` : "No major surges detected."}
+${topSectors ? `Highest risk sectors right now: ${topSectors}` : ""}
 
-Respond with only the 2 sentences, nothing else.`;
+Write EXACTLY 3 sentences:
+1. Which scam types are most active right now and who is being targeted.
+2. What specific seasonal or timely scams people should watch for this month — be specific about the scam type (e.g. IRS refund scams, Easter gift card fraud, tax deadline urgency scams). Do not be vague.
+3. One clear protective action people should take.
+
+Rules: No URLs. No bullet points. Plain English. 3 flowing sentences only.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
@@ -137,15 +158,52 @@ Respond with only the 2 sentences, nothing else.`;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 120 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 200 },
       }),
     }
   );
   const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Community scam reports are active. Stay vigilant and verify any unexpected messages.";
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+    "Multiple scam types are currently active. Be especially cautious this month with government and financial impersonation messages. Verify any unexpected request directly with the official organization before responding.";
 }
 
-// Store the trend snapshot in Supabase
+// Gemini prompt 2: Intelligence summary — specific insights from recent scam content
+async function callGeminiIntelligenceSummary(currentAgg, recentSummaries, month) {
+  const seasonal = SEASONAL_CONTEXT[month] || "";
+  const topCategories = currentAgg.slice(0, 5).map(c =>
+    `${c.category}: ${c.count} reports, avg score ${c.avgScore}, top tactics: ${c.topTags.join(", ")}`
+  ).join("; ");
+
+  const prompt = `You are PhishScore.ai's intelligence analyst. Review the latest community-submitted scam data and write a specific intelligence briefing.
+
+Top categories from last 100 community reports: ${topCategories}
+Current month context: ${seasonal}
+Recent confirmed scam summaries submitted by users:
+${recentSummaries || "No detailed summaries available."}
+
+Write 2-3 sentences that:
+- Identify the specific tactics and themes scammers are using right now based on the summaries above.
+- Highlight any patterns (e.g. urgency tactics, brand impersonation, fake fees).
+- Mention the most targeted groups if clear from the data.
+
+Rules: Be specific — name the scam types and tactics. Do not say generic things like "stay vigilant" or "be careful." No URLs. No bullet points. Plain flowing sentences.`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.5, maxOutputTokens: 180 },
+      }),
+    }
+  );
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+    "Scam activity is concentrated in financial and publishing categories. Urgency manipulation and brand impersonation are the most common tactics appearing across recent reports.";
+}
+
 async function storeTrend(payload) {
   await fetch(`${SUPABASE_URL}/rest/v1/trends`, {
     method: "POST",
@@ -162,48 +220,45 @@ async function storeTrend(payload) {
 // ── Main handler ──────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  // Simple internal auth — pass a secret to prevent public triggering
   if (req.headers["x-internal-secret"] !== process.env.INTERNAL_SECRET) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const month = new Date().getMonth() + 1;
 
-    // Fetch current and previous windows in parallel
     const [currentRaw, previousRaw] = await Promise.all([
-      fetchWindow(sevenDaysAgo),
-      fetchWindow(fourteenDaysAgo),
+      fetchLast100(),
+      fetchPrevious100(),
     ]);
 
-    if (!Array.isArray(currentRaw)) throw new Error("Failed to fetch current submissions");
-
-    // Filter previous to only 7-14 day window
-    const previousFiltered = Array.isArray(previousRaw)
-      ? previousRaw.filter(s => new Date(s.created_at) < new Date(sevenDaysAgo))
-      : [];
+    if (!Array.isArray(currentRaw)) throw new Error("Failed to fetch submissions");
 
     const currentAgg = aggregate(currentRaw);
-    const previousAgg = aggregate(previousFiltered);
+    const previousAgg = Array.isArray(previousRaw) ? aggregate(previousRaw) : [];
     const threatLevel = computeThreatLevel(currentAgg, previousAgg);
     const sectorWarnings = buildSectorWarnings(currentAgg, previousAgg);
-    const aiWarning = await callGemini(threatLevel, currentAgg, sectorWarnings);
+    const recentSummaries = buildRecentSummaries(currentRaw);
+
+    // Run both Gemini calls in parallel
+    const [threatWarning, intelligenceSummary] = await Promise.all([
+      callGeminiThreatWarning(threatLevel, currentAgg, sectorWarnings, month),
+      callGeminiIntelligenceSummary(currentAgg, recentSummaries, month),
+    ]);
 
     const snapshot = {
       threat_level: threatLevel,
-      ai_warning: aiWarning,
+      threat_warning: threatWarning,
+      ai_warning: intelligenceSummary,
       sector_warnings: sectorWarnings,
       aggregation_snapshot: currentAgg,
-      week_current: { total: currentRaw.length, from: sevenDaysAgo },
-      week_previous: { total: previousFiltered.length, from: fourteenDaysAgo },
+      total_reports: currentRaw.length,
+      previous_total: previousRaw?.length || 0,
     };
 
     await storeTrend(snapshot);
-
     return res.status(200).json({ success: true, data: snapshot });
+
   } catch (err) {
     console.error("generate-trends error:", err);
     return res.status(500).json({ error: "Failed to generate trends" });
