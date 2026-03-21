@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import db from "./db";
-import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo } from "./components/Primitives";
+import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
 import SubmitModal from "./components/SubmitModal";
 import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
+import ComingSoon from "./components/ComingSoon";
 
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
@@ -13,6 +14,8 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showTransparency, setShowTransparency] = useState(false);
+  const [showTrends, setShowTrends] = useState(false);
+  const [showInvestigation, setShowInvestigation] = useState(false);
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVis, setFilterVis] = useState("all");
@@ -113,10 +116,47 @@ export default function App() {
             <PhishScoreLogo T={T} size={22} dotSize={13} />
             <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>FAQ</button>
-            <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, padding: "10px 18px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{theme === "dark" ? "LIGHT" : "DARK"}</button>
-            <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 26px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {/* FAQ — question mark circle */}
+            <Tooltip text="FAQ & Help" T={T}>
+              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </button>
+            </Tooltip>
+            {/* Trends — trending up */}
+            <Tooltip text="Trends — Coming Soon" T={T}>
+              <button onClick={() => setShowTrends(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+              </button>
+            </Tooltip>
+            {/* Deep Investigation — magnifying glass */}
+            <Tooltip text="Deep Investigation — Coming Soon" T={T}>
+              <button onClick={() => setShowInvestigation(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </button>
+            </Tooltip>
+            {/* Light/Dark toggle — sun or moon */}
+            <Tooltip text={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"} T={T}>
+              <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {theme === "dark" ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                )}
+              </button>
+            </Tooltip>
+            {/* Primary CTA */}
+            <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
@@ -230,9 +270,10 @@ export default function App() {
 
       {/* MODALS */}
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
-      {/* FIX: pass T to FAQPage and TransparencyPage so they respect the theme */}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
+      {showTrends && <ComingSoon onClose={() => setShowTrends(false)} title="Trends" icon="trending" description="See what scam types are surging this week, which categories are growing, and where scams are originating from. Powered by real community data." T={T} />}
+      {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="Deep Investigation" icon="search" description="Submit a domain, phone number, or email address for a comprehensive threat intelligence report across multiple databases and AI analysis." T={T} />}
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
