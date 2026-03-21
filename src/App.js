@@ -125,11 +125,15 @@ export default function App() {
                 </svg>
               </button>
             </Tooltip>
-            {/* Trends — trending up */}
-            <Tooltip text="Trends — Coming Soon" T={T}>
+            {/* Radar — sonar pulse */}
+            <Tooltip text="PhishScore Radar — Coming Soon" T={T}>
               <button onClick={() => setShowTrends(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                  <circle cx="12" cy="12" r="2"/>
+                  <path d="M12 2a10 10 0 0 1 10 10"/>
+                  <path d="M12 6a6 6 0 0 1 6 6"/>
+                  <path d="M12 10a2 2 0 0 1 2 2"/>
+                  <line x1="12" y1="12" x2="19.5" y2="4.5"/>
                 </svg>
               </button>
             </Tooltip>
@@ -272,7 +276,7 @@ export default function App() {
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
-      {showTrends && <ComingSoon onClose={() => setShowTrends(false)} title="Trends" icon="trending" description="See what scam types are surging this week, which categories are growing, and where scams are originating from. Powered by real community data." T={T} />}
+      {showTrends && <ComingSoon onClose={() => setShowTrends(false)} title="PhishScore Radar" icon="radar" description="See what scam types are surging this week, which categories are growing, and where scams are originating from. Powered by real community data." T={T} />}
       {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="Deep Investigation" icon="search" description="Submit a domain, phone number, or email address for a comprehensive threat intelligence report across multiple databases and AI analysis." T={T} />}
 
       <style>{`
