@@ -59,17 +59,20 @@ export const CatIconSvg = ({ icon, color, size = 22 }) => {
 };
 
 // ── Tooltip ────────────────────────────────────────────────────────────────────
-export function Tooltip({ text, children }) {
+export function Tooltip({ text, children, T = {} }) {
   const [show, setShow] = useState(false);
+  const bg = T.cardBg || "#1a1d2e";
+  const border = T.cardBorder || "#2a2d3e";
+  const color = T.text3 || "#94a3b8";
   return (
     <div style={{ position: "relative", display: "inline-block" }}
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}
       onTouchStart={() => setShow(true)} onTouchEnd={() => setTimeout(() => setShow(false), 2000)}>
       {children}
       {show && (
-        <div style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", background: "#1a1d2e", border: "1px solid #2a2d3e", borderRadius: 8, padding: "10px 14px", width: 240, fontSize: 12, color: "#94a3b8", fontFamily: "Georgia, serif", lineHeight: 1.6, zIndex: 999, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 12px", width: "max-content", maxWidth: 200, fontSize: 11, color: color, fontFamily: "monospace", lineHeight: 1.5, zIndex: 999, boxShadow: "0 8px 32px rgba(0,0,0,0.3)", pointerEvents: "none", whiteSpace: "normal" }}>
           {text}
-          <div style={{ position: "absolute", bottom: -5, left: "50%", width: 8, height: 8, background: "#1a1d2e", border: "1px solid #2a2d3e", borderTop: "none", borderLeft: "none", transform: "translateX(-50%) rotate(45deg)" }} />
+          <div style={{ position: "absolute", bottom: -5, left: "50%", width: 8, height: 8, background: bg, border: `1px solid ${border}`, borderTop: "none", borderLeft: "none", transform: "translateX(-50%) rotate(45deg)" }} />
         </div>
       )}
     </div>
