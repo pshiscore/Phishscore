@@ -12,22 +12,29 @@ const THREAT_CONFIG = [
   { level: 5, label: "CRITICAL", color: "#f43f5e", bg: "#f43f5e12", desc: "Critical scam surge. Exercise extreme caution." },
 ];
 
-function ThreatMeter({ level, T }) {
+function ThreatMeter({ level, T, warning }) {
   const config = THREAT_CONFIG[level - 1] || THREAT_CONFIG[0];
   return (
-    <div style={{ background: config.bg, border: `1px solid ${config.color}40`, borderRadius: 14, padding: "18px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 }}>
-      {/* Radar pulse animation */}
-      <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `2px solid ${config.color}`, animation: "radarPulse 2s ease-out infinite" }} />
-        <div style={{ position: "absolute", inset: 6, borderRadius: "50%", border: `2px solid ${config.color}80`, animation: "radarPulse 2s ease-out infinite 0.5s" }} />
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: config.color, fontFamily: "monospace" }}>{level}</span>
+    <div style={{ background: config.bg, border: `1px solid ${config.color}40`, borderRadius: 14, padding: "18px 20px", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: warning ? 14 : 0 }}>
+        {/* Radar pulse animation */}
+        <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `2px solid ${config.color}`, animation: "radarPulse 2s ease-out infinite" }} />
+          <div style={{ position: "absolute", inset: 6, borderRadius: "50%", border: `2px solid ${config.color}80`, animation: "radarPulse 2s ease-out infinite 0.5s" }} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: config.color, fontFamily: "monospace" }}>{level}</span>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: config.color, fontFamily: "monospace", marginBottom: 4 }}>THREAT LEVEL — {config.label}</div>
+          <div style={{ fontSize: 13, color: T.text2, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{config.desc}</div>
         </div>
       </div>
-      <div>
-        <div style={{ fontSize: 10, letterSpacing: 3, color: config.color, fontFamily: "monospace", marginBottom: 4 }}>THREAT LEVEL — {config.label}</div>
-        <div style={{ fontSize: 13, color: T.text2, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{config.desc}</div>
-      </div>
+      {warning && (
+        <div style={{ borderTop: `1px solid ${config.color}30`, paddingTop: 12 }}>
+          <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{warning}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -155,15 +162,15 @@ export default function RadarModal({ onClose, T = {} }) {
         {/* Data */}
         {!loading && !error && data && (
           <>
-            <ThreatMeter level={data.threat_level || 1} T={T} />
+            <ThreatMeter level={data.threat_level || 1} T={T} warning={data.threat_warning} />
 
-            {/* AI Warning */}
+            {/* AI Intelligence Summary */}
             <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
               <div style={{ fontSize: 9, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 8 }}>INTELLIGENCE SUMMARY</div>
               <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{data.ai_warning}</p>
             </div>
 
-            {/* Sector Warnings */}
+            {/* Sector Warnings — top 3 */}
             {Array.isArray(data.sector_warnings) && data.sector_warnings.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>SECTOR ALERTS</div>
@@ -173,12 +180,12 @@ export default function RadarModal({ onClose, T = {} }) {
               </div>
             )}
 
-            {/* Category snapshot */}
+            {/* Activity — last 100 reports, 5 categories */}
             {Array.isArray(data.aggregation_snapshot) && data.aggregation_snapshot.length > 0 && (
               <div>
-                <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>ACTIVITY THIS WEEK</div>
+                <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>ACTIVITY — LAST 100 REPORTS</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {data.aggregation_snapshot.slice(0, 6).map((cat, i) => {
+                  {data.aggregation_snapshot.slice(0, 5).map((cat, i) => {
                     const catInfo = getCat(cat.category);
                     const barWidth = Math.max(10, Math.min(100, (cat.count / (data.aggregation_snapshot[0]?.count || 1)) * 100));
                     return (
@@ -198,7 +205,7 @@ export default function RadarModal({ onClose, T = {} }) {
             )}
 
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.cardBorder}`, fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center" }}>
-              Based on {data.week_current?.total || 0} community reports • AI analysis by Gemini
+              Analysis based on last 100 community reports • AI analysis by Gemini
             </div>
           </>
         )}
