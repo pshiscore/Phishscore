@@ -7,6 +7,7 @@ import SubmitModal from "./components/SubmitModal";
 import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import ComingSoon from "./components/ComingSoon";
+import RadarModal from "./components/RadarModal";
 
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
@@ -276,7 +277,7 @@ export default function App() {
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
-      {showTrends && <ComingSoon onClose={() => setShowTrends(false)} title="PhishScore Radar" icon="radar" description="See what scam types are surging this week, which categories are growing, and where scams are originating from. Powered by real community data." T={T} />}
+      {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
       {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="Deep Investigation" icon="search" description="Submit a domain, phone number, or email address for a comprehensive threat intelligence report across multiple databases and AI analysis." T={T} />}
 
       <style>{`
