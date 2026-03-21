@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import db from "./db";
-import { ScoreRing, CatIconSvg, VisibilityBadge, SourceBadge, PhishScoreLogo } from "./components/Primitives";
+import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
 import SubmitModal from "./components/SubmitModal";
 import FAQPage from "./components/FAQPage";
@@ -196,19 +196,7 @@ export default function App() {
                           {s.summary || s.preview || ""}
                         </div>
                       )}
-                      {!isHidden && s.source && s.source !== "user-submitted" && (() => {
-                        // CHANGE: only show badge if source contains a phone or email — no domains or URLs
-                        try {
-                          const sources = JSON.parse(s.source);
-                          const filtered = Array.isArray(sources)
-                            ? sources.filter(v => v && (v.includes("@") || /^[\+\d\s\-\(\)]{7,}$/.test(v.trim())))
-                            : [];
-                          return filtered.length > 0 ? <SourceBadge source={JSON.stringify(filtered)} /> : null;
-                        } catch {
-                          const v = s.source.trim();
-                          return (v.includes("@") || /^[\+\d\s\-\(\)]{7,}$/.test(v)) ? <SourceBadge source={s.source} /> : null;
-                        }
-                      })()}
+                      
                     </div>
                     <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
                   </div>
