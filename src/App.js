@@ -118,48 +118,62 @@ export default function App() {
             <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {/* FAQ — question mark circle */}
+
+            {/* FAQ */}
             <Tooltip text="FAQ & Help" T={T}>
-              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>FAQ</span>
               </button>
             </Tooltip>
-            {/* Radar — sonar pulse */}
-            <Tooltip text="PhishScore Radar — Coming Soon" T={T}>
-              <button onClick={() => setShowTrends(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="2"/>
-                  <path d="M12 2a10 10 0 0 1 10 10"/>
-                  <path d="M12 6a6 6 0 0 1 6 6"/>
-                  <path d="M12 10a2 2 0 0 1 2 2"/>
-                  <line x1="12" y1="12" x2="19.5" y2="4.5"/>
-                </svg>
+
+            {/* Radar — live pulse on icon */}
+            <Tooltip text="PhishScore Radar — Live Intelligence" T={T}>
+              <button onClick={() => setShowTrends(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <span style={{ position: "relative", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="2"/>
+                    <path d="M12 2a10 10 0 0 1 10 10"/>
+                    <path d="M12 6a6 6 0 0 1 6 6"/>
+                    <path d="M12 10a2 2 0 0 1 2 2"/>
+                    <line x1="12" y1="12" x2="19.5" y2="4.5"/>
+                  </svg>
+                </span>
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>RADAR</span>
               </button>
             </Tooltip>
-            {/* Deep Investigation — magnifying glass */}
-            <Tooltip text="Deep Investigation — Coming Soon" T={T}>
-              <button onClick={() => setShowInvestigation(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+
+            {/* Deep Intel */}
+            <Tooltip text="PhishScore Deep Intel — Coming Soon" T={T}>
+              <button onClick={() => setShowInvestigation(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>DEEP INTEL</span>
               </button>
             </Tooltip>
-            {/* Light/Dark toggle — sun or moon */}
+
+            {/* Theme toggle — shows current mode with active dot */}
             <Tooltip text={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"} T={T}>
-              <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, width: 40, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 {theme === "dark" ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                   </svg>
                 ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                   </svg>
                 )}
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>
+                  <span style={{ color: "#f43f5e", marginRight: 3 }}>●</span>{theme === "dark" ? "DARK" : "LIGHT"}
+                </span>
               </button>
             </Tooltip>
+
             {/* Primary CTA */}
             <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
@@ -282,6 +296,7 @@ export default function App() {
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+        @keyframes radarNavPulse { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.2);opacity:0} }
         * { box-sizing: border-box; }
         body { margin: 0; background: ${T.pageBg}; }
         ::-webkit-scrollbar { width: 5px; }
@@ -290,6 +305,8 @@ export default function App() {
         button { transition: all 0.15s; }
         a { transition: color 0.15s; }
         a:hover { color: #f43f5e !important; }
+        .nav-label { display: none; }
+        @media (min-width: 768px) { .nav-label { display: inline; } }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }
           .modal-inner .step-indicators { gap: 4px !important; }
