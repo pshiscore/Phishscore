@@ -234,6 +234,7 @@ async function sendReportEmail(email, caseId, reportToken, report, urlscanData, 
     body: JSON.stringify({
       from: 'PhishScore Deep Intel <reports@phishscore.ai>',
       to: email,
+      cc: 'contact@phishscore.ai',
       subject: `Your PhishScore Deep Intel Case File — Case #${caseId.slice(0, 8).toUpperCase()}`,
       html: `
         <div style="font-family:Georgia,serif;max-width:640px;margin:0 auto;background:#fff;padding:32px;">
