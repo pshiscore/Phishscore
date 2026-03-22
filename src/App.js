@@ -274,7 +274,7 @@ export default function App() {
       </div>
 
       {/* MODALS */}
-      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
+      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={() => { setShowModal(false); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
