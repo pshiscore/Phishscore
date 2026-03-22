@@ -278,7 +278,7 @@ export default function App() {
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
-      {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="Deep Investigation" icon="search" description="Submit a domain, phone number, or email address for a comprehensive threat intelligence report across multiple databases and AI analysis." T={T} />}
+      {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="PhishScore Deep Intel" badge="BETA" icon="search" description="AI-powered forensic investigation into scams that have already hit you. Get a full intelligence report combining multiple threat databases, WHOIS analysis, IP history, and a personalized recovery plan — all synthesized by AI." features={["Instant AI Forensic Report with evidence and recovery checklist", "Optional human Sanity Check review for complex cases", "Expert OSINT investigation tier for serious incidents", "Multiple service tiers to match your situation and urgency"]} T={T} />}
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
