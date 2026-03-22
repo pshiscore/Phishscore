@@ -145,7 +145,7 @@ function AccuracyFeedback({ compact = false, T = {} }) {
 }
 
 // ── Main modal ─────────────────────────────────────────────────────────────────
-export default function SubmitModal({ onClose, onNewResult, submissionCounts = {}, theme = "dark", T = {} }) {
+export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
@@ -157,6 +157,7 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [duplicate, setDuplicate] = useState(null);
+  const [errorState, setErrorState] = useState(null);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -195,6 +196,22 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
         messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}\n\nMessage:\n${text}` }];
       }
       const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }) });
+
+      // Handle rate limit specifically
+      if (res.status === 429) {
+        const errData = await res.json().catch(() => ({}));
+        setErrorState({ type: "rate_limit", message: errData.message || "You've sent too many scans. Please wait a moment before trying again." });
+        setStep("error");
+        return;
+      }
+
+      // Handle service unavailable
+      if (!res.ok) {
+        setErrorState({ type: "unavailable", message: "The AI analysis service is temporarily unavailable. Please try again in a few minutes." });
+        setStep("error");
+        return;
+      }
+
       const data = await res.json();
       const raw = data.content?.map(c => c.text || "").join("") || "";
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
@@ -206,8 +223,6 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
       parsed.finalCategory = finalCategory; parsed.classificationNote = classificationNote;
       setResult(parsed);
 
-      // CHANGE: only keep user-entered source if it's a phone or email, discard everything else
-      // AI-detected sources are also filtered to phones and emails only — no domains or URLs stored
       const isPhoneOrEmail = (val) => {
         if (!val || !val.trim()) return false;
         const v = val.trim();
@@ -224,10 +239,9 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
       onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null });
       setStep(3);
     } catch {
-      setResult({ score: 0, tags: ["Error"], verdict: "Analysis failed.", analysis: "Please try again.", redFlags: [], whatToDo: "Try submitting again." });
-      setStep(3);
+      setErrorState({ type: "unavailable", message: "Something went wrong during analysis. Please try again." });
+      setStep("error");
     } finally {
-      // CHANGE: always release the lock
       isSubmitting.current = false;
       setLoading(false);
     }
@@ -344,6 +358,24 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
           </>
         )}
 
+        {step === "error" && errorState && (
+          <div style={{ textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>
+              {errorState.type === "rate_limit" ? "🐾" : "⚡"}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace", letterSpacing: 1, marginBottom: 10 }}>
+              {errorState.type === "rate_limit" ? "SLOW DOWN A LITTLE" : "SERVICE TEMPORARILY UNAVAILABLE"}
+            </div>
+            <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 13, lineHeight: 1.7, margin: "0 0 24px" }}>
+              {errorState.message}
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => { setStep(2); setErrorState(null); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>TRY AGAIN</button>
+              <button onClick={onClose} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>CLOSE</button>
+            </div>
+          </div>
+        )}
+
         {step === 3 && result && (
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20 }}>
@@ -382,15 +414,33 @@ export default function SubmitModal({ onClose, onNewResult, submissionCounts = {
               <p style={{ color: "#86efac", fontSize: 13, margin: 0, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>{result.whatToDo}</p>
             </div>
             {result.score >= 75 && (
-              <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", marginBottom: 20, textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#1a1400"} onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
-                <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
-              </a>
+              <>
+                {/* Deep Intel teaser — only shown on confirmed scams */}
+                <button onClick={onDeepIntel} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "linear-gradient(135deg, #1a0a2e, #0d0520)", border: "1px solid #a78bfa50", borderRadius: 10, padding: "13px 16px", marginBottom: 10, cursor: "pointer", textDecoration: "none", transition: "all 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "#a78bfa"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "#a78bfa50"}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                    </svg>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", fontFamily: "monospace", letterSpacing: 1 }}>UNCOVER THIS SCAM — PHISHSCORE DEEP INTEL</div>
+                      <div style={{ fontSize: 10, color: "#7c5cbf", fontFamily: "Georgia, serif", marginTop: 2 }}>Forensic report, recovery plan, human & expert review — coming soon</div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 9, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>BETA</span>
+                </button>
+                <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", marginBottom: 20, textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#1a1400"} onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
+                  <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
+                </a>
+              </>
             )}
             <div>
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                 <AccuracyFeedback compact />
-                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); }} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); setErrorState(null); }} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
                 <button onClick={onClose} style={{ flex: 1, minWidth: 120, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>
