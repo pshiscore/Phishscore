@@ -83,10 +83,6 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
 
   const handleAnalyze = async () => {
     if (!message.trim() && !story.trim()) return;
-    if (!email.trim() || !email.includes("@")) {
-      setError("Please enter a valid email address — your report will be delivered there.");
-      return;
-    }
     setError(null);
     setLoading(true);
     try {
@@ -112,8 +108,11 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
   };
 
   const handleCheckout = async (tier) => {
-    setCheckoutLoading(true);
-    setError(null);
+    if (!email.trim() || !email.includes("@")) {
+      setError("Please enter a valid email address to receive your report.");
+      setCheckoutLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/create-checkout", {
         method: "POST",
@@ -153,13 +152,16 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
             </svg>
             <span style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 800, color: T.text, letterSpacing: 1 }}>DEEP INTEL</span>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
+            <span style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>—</span>
+            <a href="mailto:contact@phishscore.ai?subject=Deep Intel Beta Tester Request" style={{ fontSize: 10, color: "#a78bfa", fontFamily: "monospace", textDecoration: "none", fontWeight: 700 }}>contact us</a>
+            <span style={{ fontSize: 10, color: T.text4, fontFamily: "Georgia, serif", fontStyle: "italic" }}>before using</span>
           </div>
           <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>FORENSIC SCAM INVESTIGATION</div>
         </div>
@@ -181,6 +183,14 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
         {/* ── STEP: INTAKE ── */}
         {step === "intake" && (
           <>
+            {/* Intro */}
+            <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>NEED A DEEP DIVE INVESTIGATION?</div>
+              <p style={{ color: T.text3, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>
+                Paste the suspicious message below and tell us what happened. Our AI will first analyze the <strong style={{ color: T.text2 }}>Intel Value Score</strong> — the likelihood that a full forensic investigation will uncover something important. No payment required for this step.
+              </p>
+            </div>
+
             <div style={{ fontSize: 11, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 16 }}>
               {isFreshEntry ? "STEP 1 — PASTE SUSPICIOUS MESSAGE" : "STEP 1 — ADD MORE CONTEXT"}
             </div>
@@ -216,7 +226,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
             </div>
 
             {/* Image upload */}
-            <div style={{ marginBottom: 14 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>ADDITIONAL SCREENSHOTS (optional, up to 3)</div>
               <input type="file" accept="image/*" multiple ref={fileRef} onChange={handleImageUpload} style={{ display: "none" }} />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -232,21 +242,6 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
               </div>
             </div>
 
-            {/* Email */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR EMAIL — REPORT DELIVERED HERE <span style={{ color: "#f43f5e" }}>*</span></div>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = "#a78bfa55"}
-                onBlur={e => e.target.style.borderColor = T.inputBorder}
-              />
-              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>No account needed. Your case file PDF will be emailed within minutes of payment.</div>
-            </div>
-
             {error && <div style={{ fontSize: 12, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12, padding: "8px 12px", background: "#f43f5e10", border: "1px solid #f43f5e30", borderRadius: 8 }}>{error}</div>}
 
             <button
@@ -255,6 +250,12 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
               style={{ width: "100%", background: loading || (!message.trim() && !story.trim()) ? T.innerBg : "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: loading || (!message.trim() && !story.trim()) ? T.text4 : "#fff", padding: "14px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || (!message.trim() && !story.trim()) ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading ? "none" : "0 4px 20px rgba(167,139,250,0.35)", transition: "all 0.15s" }}>
               {loading ? "ANALYZING INTEL VALUE..." : "ANALYZE INVESTIGATION VALUE →"}
             </button>
+
+            {/* Contact footer */}
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Complex investigation? Contact us directly — </span>
+              <a href="mailto:contact@phishscore.ai?subject=Deep Investigation Request" style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
+            </div>
           </>
         )}
 
@@ -345,8 +346,19 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
 
             {error && <div style={{ fontSize: 12, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12, padding: "8px 12px", background: "#f43f5e10", border: "1px solid #f43f5e30", borderRadius: 8 }}>{error}</div>}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep("scoring")} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>← BACK</button>
+            {/* Email collected here — only when user is ready to pay */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR EMAIL — REPORT DELIVERED HERE <span style={{ color: "#f43f5e" }}>*</span></div>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#a78bfa55"}
+                onBlur={e => e.target.style.borderColor = T.inputBorder}
+              />
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>No account needed. Report emailed within minutes of payment.</div>
             </div>
 
             <div style={{ marginTop: 16, padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8 }}>
