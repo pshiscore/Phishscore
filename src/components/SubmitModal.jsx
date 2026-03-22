@@ -416,7 +416,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
             {result.score >= 75 && (
               <>
                 {/* Deep Intel teaser — only shown on confirmed scams */}
-                <button onClick={onDeepIntel} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "linear-gradient(135deg, #1a0a2e, #0d0520)", border: "1px solid #a78bfa50", borderRadius: 10, padding: "13px 16px", marginBottom: 10, cursor: "pointer", textDecoration: "none", transition: "all 0.15s" }}
+                <button onClick={() => onDeepIntel({ message: text, score: result.score, category: result.finalCategory })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "linear-gradient(135deg, #1a0a2e, #0d0520)", border: "1px solid #a78bfa50", borderRadius: 10, padding: "13px 16px", marginBottom: 10, cursor: "pointer", textDecoration: "none", transition: "all 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = "#a78bfa"}
                   onMouseLeave={e => e.currentTarget.style.borderColor = "#a78bfa50"}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
