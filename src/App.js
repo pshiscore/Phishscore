@@ -9,6 +9,7 @@ import TransparencyPage from "./components/TransparencyPage";
 import ComingSoon from "./components/ComingSoon";
 import RadarModal from "./components/RadarModal";
 import DeepIntelModal from "./components/DeepIntelModal";
+import ReportStatusModal from "./components/ReportStatusModal";
 
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
@@ -19,6 +20,10 @@ export default function App() {
   const [showTrends, setShowTrends] = useState(false);
   const [showInvestigation, setShowInvestigation] = useState(false);
   const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
+  const [reportCaseId, setReportCaseId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("case") || null;
+  });
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVis, setFilterVis] = useState("all");
@@ -294,6 +299,7 @@ export default function App() {
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
+      {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
 
       <style>{`
