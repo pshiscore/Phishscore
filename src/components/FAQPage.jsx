@@ -2,19 +2,87 @@ import { useState } from "react";
 import { PhishScoreLogo } from "./Primitives";
 
 const FAQS = [
-  { q: "What is PhishScore.ai?", a: "PhishScore.ai is a free community-powered scam detection tool. Paste or screenshot any suspicious message - email, text, social media DM, or letter - and our AI instantly scores the likelihood it is a scam from 0 to 100, explains why, and tells you what to do." },
-  { q: "What types of scams can I submit?", a: "Any suspicious communication: publishing scams (fake literary agents, vanity presses), delivery scams (fake USPS/FedEx texts), retail scams (fake Amazon alerts), phone carrier scams (fake rewards texts), traffic and toll notices, social media phishing, banking alerts, IRS impersonation, prize and lottery fraud, romance scams, fake job offers, tech support scams, travel and vacation scams, and political campaign scams. Not sure what type? Select Other / Not Sure and the AI will figure out the category automatically." },
-  { q: "What happens when I select Other / Not Sure?", a: "Selecting Other / Not Sure tells the AI to determine the category itself. After analyzing the message, if the AI is 70% or more confident, it automatically assigns the most likely category. The submission appears in the dashboard under that detected category with a small AUTO label. If the AI is not confident enough, the submission stays listed under Other. Additionally, even if you select a specific category, if the AI is 85% or more confident the content actually belongs to a different category, it will automatically reclassify it and show a RECLASSIFIED label." },
-  { q: "What is the difference between Public, Private, and Anonymous?", a: "Private is the default and recommended setting - your score and category appear in the community feed but message content and sender are never shown publicly. Public submissions share full details to help the community and are best when your message contains no personal info. Anonymous submissions store nothing after analysis - only score and category briefly appear in the feed." },
-  { q: "How do I submit for the best results?", a: "The more information you include, the better the score. Include the full message text, the sender email or phone number, and the subject line if it is an email. For texts, include the full phone number. For emails, including the email headers (see below) gives the most accurate analysis." },
-  { q: "What are email headers and how do I find them?", a: "Email headers are hidden technical data that show the true origin of an email, even if the sender name looks legitimate. In Gmail: open the email, click the three dots menu, click Show original. In Apple Mail: open the email, go to View menu, then Message, then All Headers. In Outlook: open the email, click File, then Properties. Copy all of that text and paste it into PhishScore along with the message body for the most accurate analysis." },
-  { q: "Why should I include the sender address?", a: "Scammers often disguise their real email address. The display name might say Apple Support but the actual address is random-letters@suspicious-domain.net. Including the full sender address helps our AI spot spoofed domains, lookalike addresses, and known scam infrastructure." },
-  { q: "Can I upload a screenshot instead of typing?", a: "Yes. Use the Upload Screenshot option in the submission flow. Our AI will read all visible text in the image including sender information, logos, links, and message content. This is especially useful for text message scams that are easier to screenshot than type out." },
-  { q: "Is my data safe?", a: "Public and Private submissions store the message content and source in our database to power the community dashboard. Anonymous submissions store nothing after analysis. We never sell data or share it with third parties. Contact us at contact@phishscore.ai to request removal." },
-  { q: "What does the score mean?", a: "The score is the AI's estimated probability that the message is a scam, from 0 to 100. A score of 75 or above is flagged as SCAM. Between 45 and 74 is SUSPICIOUS and worth treating with caution. Below 45 is LIKELY SAFE, though no automated tool is perfect and you should always trust your instincts." },
-  { q: "What external databases does PhishScore use?", a: "PhishScore checks submitted URLs against three independent threat intelligence databases: Google Safe Browsing, Cloudflare Radar, and URLhaus. When any of these databases flag a URL in your submission, the score is automatically adjusted and the source is shown in your result." },
-  { q: "Why does the community feed only show a limited number of submissions?", a: "The default dashboard view shows the 3 most recent community submissions from the last 20 to keep the feed fast and focused. This keeps load times fast as the database grows and ensures you are always seeing the most relevant and recent intelligence." },
-  { q: "Can I report a scam that already happened to me?", a: "Yes. Submit the original message even if you already fell for it. Your submission helps others recognize the same scam and may help identify patterns. For financial fraud, also report to the FTC at reportfraud.ftc.gov, the FBI at ic3.gov, and your bank immediately." },
+  // ── Core product ─────────────────────────────────────────────────────────────
+  {
+    q: "What is PhishScore.ai?",
+    a: "PhishScore.ai is a free community-powered scam detection platform. Paste or screenshot any suspicious message — email, text, social media DM, or letter — and our AI instantly scores the likelihood it is a scam from 0 to 100, explains why, identifies red flags, and tells you what to do. Every submission contributes to a live community intelligence dashboard that helps protect others."
+  },
+  {
+    q: "What types of scams can I submit?",
+    a: "Any suspicious communication across 15 categories: Publishing & Literary (fake agents, vanity presses), Package & Delivery (fake USPS/FedEx notices), Retail & Shopping (fake Amazon alerts), Phone & Telecom (carrier reward scams), Traffic & Tolls (fake tickets), Social Media (phishing DMs), Banking & Finance (crypto and bank scams), Government & IRS (IRS impersonation), Prize & Lottery, Romance & Friendship, Job & Employment (fake offers), Tech Support (fake Microsoft/Apple alerts), Political Campaign (fake fundraising), Travel & Vacation (fake hotel and airline deals), and Legal & Compliance (fake court notices, debt collection scams). Not sure of the type? Select Unknown / AI Detect and the AI will classify it automatically."
+  },
+  {
+    q: "What happens when I select Unknown / AI Detect?",
+    a: "The AI determines the category itself. If it is 70% or more confident, it assigns the most likely category and marks the submission with an AUTO label in the feed. If it is less certain, the submission stays listed under Other. Even if you pick a specific category, if the AI is 85% or more confident the content belongs to a different one, it will reclassify it and show a RECLASSIFIED label — so you always know when this happens."
+  },
+  {
+    q: "What do the score ranges mean?",
+    a: "The score is the AI's estimated probability that the message is a scam, from 0 to 100. A score of 75 or above is flagged as SCAM — treat this message as confirmed fraud. Between 45 and 74 is SUSPICIOUS — proceed with caution and verify before acting. Below 45 is LIKELY SAFE — but no automated tool is perfect, so always trust your instincts if something feels off."
+  },
+
+  // ── Submission ────────────────────────────────────────────────────────────────
+  {
+    q: "How do I get the most accurate score?",
+    a: "Include as much context as possible: the full message text, the sender email or phone number, the subject line for emails, and any links. For emails, pasting the email headers alongside the message body gives the deepest analysis — the headers reveal the true sending server even when the display name looks legitimate. For text messages, include the full phone number with country code."
+  },
+  {
+    q: "What are email headers and how do I find them?",
+    a: "Email headers are hidden technical data showing the true origin of a message. In Gmail: open the email, click the three dots menu, click Show original. In Apple Mail: go to View > Message > All Headers. In Outlook: click File > Properties > Internet headers. In Yahoo Mail: open the email, click the three dots menu, click View raw message. Copy all of that text and paste it into PhishScore along with the message body."
+  },
+  {
+    q: "Can I upload a screenshot instead of typing?",
+    a: "Yes. Use the Upload Screenshot option in the submission flow. The AI reads all visible text in the image including sender information, logos, links, and message content. This is especially useful for text message scams that are easier to screenshot than type out."
+  },
+  {
+    q: "What is the difference between Public, Private, and Anonymous?",
+    a: "Private is the default — your score, category, and tags appear in the community feed but message content and sender are never shown publicly. Public shares a one-sentence AI summary along with your score and tags to help the community recognize the same scam — best used when your message contains no personal information. Anonymous stores nothing after analysis — only the score and category briefly appear in the feed, with no content retained."
+  },
+
+  // ── Privacy & data ────────────────────────────────────────────────────────────
+  {
+    q: "Is my data safe?",
+    a: "Public and Private submissions store your score, category, tags, and an AI-generated summary in our database. The AI summary is two plain-English sentences describing the scam type — no personal information, email addresses, or raw message content. Anonymous submissions store nothing after analysis completes. We never sell data or share it with advertisers or third parties. Contact contact@phishscore.ai to request removal of any submission."
+  },
+  {
+    q: "What information is shown publicly on the feed?",
+    a: "For Public submissions: the score, category, tags, and a one-sentence AI-generated summary describing the scam type and tactic — nothing else. For Private submissions: only the score, category, and tags. No raw message text, no sender addresses, no personal details are ever shown publicly regardless of submission type."
+  },
+
+  // ── Intelligence features ─────────────────────────────────────────────────────
+  {
+    q: "What external databases does PhishScore check?",
+    a: "PhishScore cross-checks submitted URLs against three independent threat intelligence databases in addition to AI analysis. Google Safe Browsing monitors known phishing, malware, and social engineering sites in real time. Cloudflare Radar uses traffic intelligence from Cloudflare's global network to catch threats based on actual patterns. URLhaus, operated by abuse.ch, tracks active malware distribution URLs and botnet infrastructure. When any of these flag a URL in your submission, the score is boosted accordingly and the flagging source is shown in your results."
+  },
+  {
+    q: "What is PhishScore Radar?",
+    a: "PhishScore Radar is a live threat intelligence dashboard accessible from the radar icon in the navigation bar. It analyzes the last 100 community submissions to produce a color-coded Threat Level (1 to 5), a Gemini AI-powered intelligence summary highlighting current scam tactics and seasonal threats, sector-specific alerts showing which communities are most targeted, and an activity breakdown by scam category. Radar data refreshes every 48 hours and is powered by Gemini AI."
+  },
+  {
+    q: "Why does the community feed show a limited number of submissions?",
+    a: "The feed defaults to showing the 3 most recent submissions from the last 20 to keep the dashboard fast and focused. You can expand to see all 20 using the Show More button. Stats like Total Reports and category breakdowns are calculated across the last 1,000 submissions so the numbers always reflect the full picture."
+  },
+  {
+    q: "Can I report a scam that already happened to me?",
+    a: "Yes — submit the original message even if you already fell for it. Your submission helps others recognize the same scam and contributes to community intelligence. For financial fraud, also report to the FTC at reportfraud.ftc.gov, the FBI Internet Crime Complaint Center at ic3.gov, and contact your bank immediately to initiate a fraud claim."
+  },
+
+  // ── Deep Intel ────────────────────────────────────────────────────────────────
+  {
+    q: "What is PhishScore Deep Intel?",
+    a: "PhishScore Deep Intel is a premium investigation service currently in beta. When a scam scores above 75 and you need to go further — whether to recover from fraud, protect your accounts, or understand exactly what happened — Deep Intel conducts a full forensic investigation combining multiple threat intelligence databases and AI analysis into a professional case file report."
+  },
+  {
+    q: "What does a Deep Intel investigation include?",
+    a: "A Deep Intel report pulls data from URLScan.io (live screenshot and page analysis), VirusTotal (verdicts from 70+ security engines), AbuseIPDB (IP history and victim reports), and WhoisXML (domain ownership and age — most scam domains are under 30 days old). Claude AI synthesizes all of this with your personal account of what happened to produce a structured case file with an evidence summary, a specific recovery checklist tailored to your situation, and recommended next steps."
+  },
+  {
+    q: "What service tiers will Deep Intel offer?",
+    a: "Deep Intel will launch with multiple tiers to match different situations and levels of urgency. The entry tier delivers a fully automated AI forensic report. Higher tiers add a human Sanity Check review for complex or subtle cases, and an expert OSINT investigation for serious incidents requiring manual research and a custom recovery strategy. Pricing has not been announced. Contact contact@phishscore.ai to be notified at launch or to request early access."
+  },
+  {
+    q: "How do I access Deep Intel?",
+    a: "After any scan that returns a score above 75, you will see an Uncover This Scam — PhishScore Deep Intel button above the Report to FTC button on your results screen. You can also access it from the magnifying glass icon in the navigation bar. The service is currently in beta and coming soon — clicking either entry point will show you a preview of what is coming and how to get early access."
+  },
 ];
 
 function FAQItem({ q, a, T }) {
@@ -77,8 +145,51 @@ export default function FAQPage({ onClose, T = {} }) {
           ))}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {FAQS.map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* Core product */}
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>THE BASICS</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {FAQS.slice(0, 4).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+            </div>
+          </div>
+
+          {/* Submission */}
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>SUBMITTING SCAMS</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {FAQS.slice(4, 8).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+            </div>
+          </div>
+
+          {/* Privacy */}
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>PRIVACY & YOUR DATA</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {FAQS.slice(8, 10).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+            </div>
+          </div>
+
+          {/* Intelligence */}
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>INTELLIGENCE FEATURES</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {FAQS.slice(10, 13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+            </div>
+          </div>
+
+          {/* Deep Intel */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingLeft: 4 }}>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace" }}>PHISHSCORE DEEP INTEL</div>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {FAQS.slice(13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+            </div>
+          </div>
+
         </div>
 
         <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${T.cardBorder}`, textAlign: "center" }}>
