@@ -8,6 +8,7 @@ import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import ComingSoon from "./components/ComingSoon";
 import RadarModal from "./components/RadarModal";
+import DeepIntelModal from "./components/DeepIntelModal";
 
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
@@ -17,6 +18,7 @@ export default function App() {
   const [showTransparency, setShowTransparency] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
   const [showInvestigation, setShowInvestigation] = useState(false);
+  const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVis, setFilterVis] = useState("all");
@@ -288,11 +290,11 @@ export default function App() {
       </div>
 
       {/* MODALS */}
-      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={() => { setShowModal(false); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
+      {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
-      {showInvestigation && <ComingSoon onClose={() => setShowInvestigation(false)} title="PhishScore Deep Intel" badge="BETA" icon="search" description="AI-powered forensic investigation into scams that have already hit you. Get a full intelligence report combining multiple threat databases, WHOIS analysis, IP history, and a personalized recovery plan — all synthesized by AI." features={["Instant AI Forensic Report with evidence and recovery checklist", "Optional human Sanity Check review for complex cases", "Expert OSINT investigation tier for serious incidents", "Multiple service tiers to match your situation and urgency"]} T={T} />}
+      {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
