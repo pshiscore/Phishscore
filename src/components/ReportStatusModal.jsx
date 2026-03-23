@@ -54,7 +54,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
   const fetchStatus = async () => {
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email`,
+        `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`,
         {
           headers: {
             apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
@@ -103,7 +103,15 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
     }
   };
 
-  const isReportReady = caseData?.report_generated_at;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    const link = `https://phishscore.ai/report?token=${caseData.report_token}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
   const isPaid = caseData?.payment_status === "paid";
   const tierPurchased = caseData?.tier || 1;
 
@@ -170,6 +178,20 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
                   </p>
                 </div>
               </div>
+              {/* Copy link — shown when report is ready */}
+              {isReportReady && caseData.report_token && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${isReportReady ? "#34d39930" : "#fbbf2430"}` }}>
+                  <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR REPORT LINK — SAVE THIS</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <div style={{ flex: 1, background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 11, color: T.text3, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      phishscore.ai/report?token={caseData.report_token.slice(0, 16)}...
+                    </div>
+                    <button onClick={handleCopyLink} style={{ background: copied ? "#34d39918" : T.innerBg, border: `1px solid ${copied ? "#34d39960" : T.innerBorder}`, color: copied ? "#34d399" : T.text3, padding: "8px 14px", borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.2s" }}>
+                      {copied ? "COPIED ✓" : "COPY LINK"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Case details */}
