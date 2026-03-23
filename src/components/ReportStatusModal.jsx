@@ -26,7 +26,7 @@ const TIER_UPGRADE = [
   },
 ];
 
-export default function ReportStatusModal({ caseId, onClose, T = {} }) {
+export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,15 +35,15 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!caseId) return;
     fetchStatus();
-  }, [caseId]);
+  }, []);
 
-  // Poll every 15s if report not ready yet
+  // Poll every 15s if report not ready yet (Tier 1 only)
   useEffect(() => {
     if (!caseData) return;
-    if (caseData.report_generated_at) return; // already done
-    if (caseData.payment_status !== "paid") return; // not paid
+    if (caseData.tier !== 1) return; // T2/T3 don't auto-generate
+    if (caseData.report_generated_at) return;
+    if (caseData.payment_status !== "paid") return;
 
     const timer = setTimeout(() => {
       setPollCount(p => p + 1);
@@ -54,25 +54,29 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`,
-        {
-          headers: {
-            apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
-          }
+      let url;
+      if (token) {
+        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?report_token=eq.${token}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`;
+      } else {
+        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
         }
-      );
+      });
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0) {
         const data = rows[0];
         setCaseData(data);
-        // If paid but report not started yet — trigger from frontend
-        if (data.payment_status === 'paid' && !data.report_generated_at) {
-          triggerAnalysis();
+        // Trigger analysis for T1 if paid but not yet generated
+        if (data.tier === 1 && data.payment_status === 'paid' && !data.report_generated_at) {
+          triggerAnalysis(data.id);
         }
       } else {
-        setError("Case not found.");
+        setError("Case not found. The link may have expired or be incorrect.");
       }
     } catch (err) {
       setError("Unable to load case status.");
@@ -81,12 +85,12 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
     }
   };
 
-  const triggerAnalysis = async () => {
+  const triggerAnalysis = async (id) => {
     try {
       await fetch('/api/deep-intel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId })
+        body: JSON.stringify({ caseId: id || caseId })
       });
     } catch (err) {
       console.error('Failed to trigger analysis:', err);
@@ -104,7 +108,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
           tier,
           email: caseData.email,
           message: "",
-          story: `Upgrade from Tier ${caseData.tier} — original case ${caseId}`,
+          story: `Upgrade from Tier ${caseData.tier} — original case ${caseData.id}`,
           originalScore: caseData.original_score,
           originalCategory: caseData.original_category,
           ivsScore: caseData.ivs_score,
@@ -122,12 +126,15 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
   };
 
   const handleCopyLink = () => {
-    const link = `https://phishscore.ai/report?token=${caseData.report_token}`;
-    navigator.clipboard.writeText(link).then(() => {
+    const reportLink = caseData.report_token
+      ? `https://phishscore.ai/report?token=${caseData.report_token}`
+      : `https://phishscore.ai/report?case=${caseData.id}`;
+    navigator.clipboard.writeText(reportLink).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
   };
+
   const isReportReady = caseData?.report_generated_at;
   const isPaid = caseData?.payment_status === "paid";
   const tierPurchased = caseData?.tier || 1;
@@ -172,7 +179,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
             <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 2 }}>CASE ID</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace" }}>#{caseId.slice(0, 8).toUpperCase()}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace" }}>#{caseData.id.slice(0, 8).toUpperCase()}</div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 2 }}>TIER</div>
@@ -180,57 +187,85 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
               </div>
             </div>
 
-            {/* Status */}
-            <div style={{ background: isReportReady ? "#34d39912" : "#fbbf2412", border: `1px solid ${isReportReady ? "#34d39930" : "#fbbf2430"}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 24 }}>{isReportReady ? "✅" : "⏳"}</div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: isReportReady ? "#34d399" : "#fbbf24", fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
-                    {isReportReady ? "REPORT DELIVERED" : "GENERATING YOUR REPORT"}
-                  </div>
-                  <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
-                    {isReportReady
-                      ? `Your forensic case file has been emailed to ${caseData.email}. Check your inbox — including spam folder.`
-                      : `Our AI agent is running forensic checks now. Your report will be emailed to ${caseData.email} within a few minutes. This page updates automatically.`}
-                  </p>
-                </div>
-              </div>
-              {/* Copy link — shown when report is ready */}
-              {isReportReady && caseData.report_token && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${isReportReady ? "#34d39930" : "#fbbf2430"}` }}>
-                  <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR REPORT LINK — SAVE THIS</div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ flex: 1, background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 11, color: T.text3, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      phishscore.ai/report?token={caseData.report_token.slice(0, 16)}...
+            {/* ── TIER 1 STATUS ── */}
+            {tierPurchased === 1 && (
+              <div style={{ background: isReportReady ? "#34d39912" : "#fbbf2412", border: `1px solid ${isReportReady ? "#34d39930" : "#fbbf2430"}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 24 }}>{isReportReady ? "✅" : "⏳"}</div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: isReportReady ? "#34d399" : "#fbbf24", fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
+                      {isReportReady ? "REPORT DELIVERED" : "GENERATING YOUR REPORT"}
                     </div>
-                    <button onClick={handleCopyLink} style={{ background: copied ? "#34d39918" : T.innerBg, border: `1px solid ${copied ? "#34d39960" : T.innerBorder}`, color: copied ? "#34d399" : T.text3, padding: "8px 14px", borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.2s" }}>
-                      {copied ? "COPIED ✓" : "COPY LINK"}
-                    </button>
+                    <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
+                      {isReportReady
+                        ? `Your forensic case file has been emailed to ${caseData.email}. Check your inbox — including spam folder.`
+                        : `Our AI agent is running forensic checks now. Your report will be emailed to ${caseData.email} within a few minutes. This page updates automatically.`}
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Case details */}
-            {(caseData.original_score || caseData.ivs_score) && (
-              <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-                {caseData.original_score && (
-                  <div style={{ flex: 1, textAlign: "center", padding: "12px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10 }}>
-                    <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>PHISHSCORE</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: "#f43f5e", fontFamily: "monospace" }}>{caseData.original_score}</div>
-                  </div>
-                )}
-                {caseData.ivs_score && (
-                  <div style={{ flex: 1, textAlign: "center", padding: "12px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10 }}>
-                    <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>INTEL VALUE</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: "#a78bfa", fontFamily: "monospace" }}>{caseData.ivs_score}</div>
+                {/* Copy link */}
+                {isReportReady && caseData.report_token && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #34d39930" }}>
+                    <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR REPORT LINK — SAVE THIS</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ flex: 1, background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 11, color: T.text3, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        phishscore.ai/report?token={caseData.report_token.slice(0, 16)}...
+                      </div>
+                      <button onClick={handleCopyLink} style={{ background: copied ? "#34d39918" : T.innerBg, border: `1px solid ${copied ? "#34d39960" : T.innerBorder}`, color: copied ? "#34d399" : T.text3, padding: "8px 14px", borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.2s" }}>
+                        {copied ? "COPIED ✓" : "COPY LINK"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Upgrade options — only show after report is ready and tier 1 */}
-            {isReportReady && tierPurchased === 1 && (
+            {/* ── TIER 2 STATUS ── */}
+            {tierPurchased === 2 && (
+              <div style={{ background: "#a78bfa12", border: "1px solid #a78bfa30", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 24 }}>🔍</div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>HUMAN REVIEW REQUESTED</div>
+                    <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
+                      A human expert has been notified and will review your AI forensic report. You will be contacted at <strong>{caseData.email}</strong> once the review is complete — typically within 24 hours.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #a78bfa30", fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>
+                  In the meantime, your AI Forensic Report has already been emailed to you. Questions? <a href={`mailto:contact@phishscore.ai?subject=Case ${caseData.id.slice(0,8).toUpperCase()} Human Review`} style={{ color: "#a78bfa", textDecoration: "none", fontWeight: 700 }}>contact@phishscore.ai</a>
+                </div>
+              </div>
+            )}
+
+            {/* ── TIER 3 STATUS ── */}
+            {tierPurchased === 3 && (
+              <div style={{ background: "#fbbf2412", border: "1px solid #fbbf2430", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 24 }}>🕵️</div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fbbf24", fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>EXPERT INVESTIGATION ASSIGNED</div>
+                    <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
+                      Your case has been assigned to an expert investigator who will conduct full OSINT research and source verification. You will be contacted at <strong>{caseData.email}</strong> with your complete investigation report and a 1-on-1 strategy session.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #fbbf2430", fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>
+                  Expected turnaround: 24-48 hours. Questions? <a href={`mailto:contact@phishscore.ai?subject=Case ${caseData.id.slice(0,8).toUpperCase()} Expert Investigation`} style={{ color: "#fbbf24", textDecoration: "none", fontWeight: 700 }}>contact@phishscore.ai</a>
+                </div>
+              </div>
+            )}
+
+            {/* Intel Value */}
+            {caseData.ivs_score && (
+              <div style={{ textAlign: "center", padding: "14px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, marginBottom: 20 }}>
+                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>INTEL VALUE</div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: "#a78bfa", fontFamily: "monospace" }}>{caseData.ivs_score}</div>
+              </div>
+            )}
+
+            {/* Upgrade options — T1 only, after report is ready */}
+            {tierPurchased === 1 && isReportReady && (
               <div>
                 <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12 }}>WANT TO GO DEEPER?</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -243,10 +278,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
                         </div>
                         <p style={{ color: T.text3, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5, margin: 0 }}>{u.desc}</p>
                       </div>
-                      <button
-                        onClick={() => handleUpgrade(u.tier)}
-                        disabled={upgradeLoading}
-                        style={{ background: `${u.color}18`, border: `1px solid ${u.color}60`, color: u.color, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}>
+                      <button onClick={() => handleUpgrade(u.tier)} disabled={upgradeLoading} style={{ background: `${u.color}18`, border: `1px solid ${u.color}60`, color: u.color, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}>
                         {upgradeLoading ? "..." : u.cta}
                       </button>
                     </div>
@@ -257,7 +289,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
 
             <div style={{ marginTop: 20, textAlign: "center" }}>
               <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Questions? </span>
-              <a href={`mailto:contact@phishscore.ai?subject=Deep Intel Case ${caseId.slice(0,8).toUpperCase()}`} style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
+              <a href={`mailto:contact@phishscore.ai?subject=Deep Intel Case ${caseData.id.slice(0,8).toUpperCase()}`} style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
             </div>
           </>
         )}
