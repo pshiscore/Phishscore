@@ -17,7 +17,12 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
         </div>
         {(hasMore || hasMoreMobile) && (
           <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace" }}>
-            {showAll ? `showing all ${catCounts.length}` : `showing top 3 of ${catCounts.length}`}
+            {showAll ? `showing all ${catCounts.length}` : (
+              <>
+                <span className="breakdown-mobile-count">showing top 3 of {catCounts.length}</span>
+                <span className="breakdown-desktop-count">showing top 5 of {catCounts.length}</span>
+              </>
+            )}
           </span>
         )}
       </div>
@@ -51,7 +56,13 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
         </button>
       )}
       <style>{`
-        @media (max-width: 767px) { .breakdown-desktop-only { display: none !important; } }
+        @media (max-width: 767px) {
+          .breakdown-desktop-only { display: none !important; }
+          .breakdown-desktop-count { display: none !important; }
+        }
+        @media (min-width: 768px) {
+          .breakdown-mobile-count { display: none !important; }
+        }
       `}</style>
     </div>
   );
