@@ -28,9 +28,7 @@ module.exports = async function handler(req, res) {
 
     // Trigger a background refresh if stale — fire and forget
     if (isStale) {
-      const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
+      const baseUrl = 'https://phishscore.ai';
 
       fetch(`${baseUrl}/api/generate-trends`, {
         method: "POST",
