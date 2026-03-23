@@ -21,8 +21,10 @@ export default function App() {
   const [showInvestigation, setShowInvestigation] = useState(false);
   const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("case") || null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("case") || null;
+    } catch { return null; }
   });
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
