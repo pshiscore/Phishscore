@@ -4,21 +4,18 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
 
-// Verify the webhook signature from Lemon Squeezy
-function verifySignature(payload, signature) {
+function verifySignature(rawBody, signature) {
   const hash = crypto
     .createHmac('sha256', WEBHOOK_SECRET)
-    .update(payload)
+    .update(rawBody)
     .digest('hex');
   return hash === signature;
 }
 
-// Generate a secure random token for report access
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-// Trigger the forensic analysis in the background
 async function triggerForensicAnalysis(caseId) {
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
@@ -37,36 +34,55 @@ async function triggerForensicAnalysis(caseId) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Get raw body for signature verification
-  const rawBody = JSON.stringify(req.body);
+  // Get raw body — Vercel provides it as a Buffer when bodyParser is disabled
+  let rawBody;
+  try {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => { data += chunk; });
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  } catch (err) {
+    console.error('Failed to read raw body:', err);
+    return res.status(400).json({ error: 'Failed to read body' });
+  }
+
   const signature = req.headers['x-signature'];
+  console.log('Webhook secret being used:', WEBHOOK_SECRET);
+  console.log('Signature received:', signature);
 
   if (!signature || !verifySignature(rawBody, signature)) {
-    console.error('Invalid webhook signature');
+    console.error('Signature mismatch');
+    console.error('Expected:', crypto.createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest('hex'));
+    console.error('Received:', signature);
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
   const eventName = req.headers['x-event-name'];
   console.log('Lemon Squeezy webhook:', eventName);
 
-  // Only process successful orders
   if (eventName !== 'order_created') {
     return res.status(200).json({ received: true });
   }
 
   try {
-    const order = req.body?.data;
+    const body = JSON.parse(rawBody);
+    const order = body?.data;
     const attributes = order?.attributes;
-    const customData = attributes?.first_order_item?.custom_data ||
-                       attributes?.custom_data || {};
+    const customData = attributes?.meta?.custom_data ||
+                       body?.meta?.custom_data ||
+                       attributes?.first_order_item?.custom_data || {};
 
     const caseId = customData?.case_id;
     const orderId = order?.id;
     const orderNumber = attributes?.order_number;
     const status = attributes?.status;
 
+    console.log('Order data:', { caseId, orderId, orderNumber, status });
+
     if (!caseId) {
-      console.error('No case_id in webhook custom data');
+      console.error('No case_id in webhook custom data:', JSON.stringify(body?.meta));
       return res.status(200).json({ received: true });
     }
 
@@ -75,10 +91,8 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ received: true });
     }
 
-    // Generate report access token
     const reportToken = generateToken();
 
-    // Update case as paid
     await fetch(`${SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}`, {
       method: 'PATCH',
       headers: {
@@ -96,14 +110,14 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    // Fire and forget — trigger the forensic analysis
     triggerForensicAnalysis(caseId);
 
     return res.status(200).json({ received: true });
 
   } catch (err) {
     console.error('Webhook processing error:', err);
-    // Always return 200 to Lemon Squeezy so it doesn't retry
     return res.status(200).json({ received: true });
   }
 };
+
+module.exports.config = { api: { bodyParser: false } };
