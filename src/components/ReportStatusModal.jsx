@@ -65,7 +65,12 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
       );
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0) {
-        setCaseData(rows[0]);
+        const data = rows[0];
+        setCaseData(data);
+        // If paid but report not started yet — trigger from frontend
+        if (data.payment_status === 'paid' && !data.report_generated_at) {
+          triggerAnalysis();
+        }
       } else {
         setError("Case not found.");
       }
@@ -73,6 +78,18 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
       setError("Unable to load case status.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const triggerAnalysis = async () => {
+    try {
+      await fetch('/api/deep-intel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseId })
+      });
+    } catch (err) {
+      console.error('Failed to trigger analysis:', err);
     }
   };
 
