@@ -26,6 +26,12 @@ export default function App() {
       return params.get("case") || null;
     } catch { return null; }
   });
+  const [reportToken, setReportToken] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("token") || null;
+    } catch { return null; }
+  });
   const [filterCat, setFilterCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVis, setFilterVis] = useState("all");
@@ -302,6 +308,7 @@ export default function App() {
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
+      {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
 
       <style>{`
