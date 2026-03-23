@@ -274,10 +274,6 @@ async function sendReportEmail(email, caseId, reportToken, report, urlscanData, 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   const { caseId } = req.body;
   if (!caseId) return res.status(400).json({ error: 'caseId required' });
 
@@ -292,6 +288,11 @@ module.exports = async function handler(req, res) {
 
     if (!caseRecord) throw new Error('Case not found');
     if (caseRecord.payment_status !== 'paid') throw new Error('Case not paid');
+    // Prevent duplicate report generation
+    if (caseRecord.report_generated_at) {
+      console.log(`Case ${caseId} already has a report, skipping`);
+      return res.status(200).json({ success: true, already_complete: true });
+    }
 
     // Extract URL from message for scanning
     const url = extractUrl(caseRecord.original_message);
