@@ -111,6 +111,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
       setTimeout(() => setCopied(false), 2500);
     });
   };
+  const isReportReady = caseData?.report_generated_at;
   const isPaid = caseData?.payment_status === "paid";
   const tierPurchased = caseData?.tier || 1;
 
