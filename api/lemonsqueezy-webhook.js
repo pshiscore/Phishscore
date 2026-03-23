@@ -17,9 +17,7 @@ function generateToken() {
 }
 
 async function triggerForensicAnalysis(caseId) {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  const baseUrl = 'https://phishscore.ai';
 
   fetch(`${baseUrl}/api/deep-intel`, {
     method: 'POST',
