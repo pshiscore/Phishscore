@@ -32,6 +32,7 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
   const [error, setError] = useState(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [pollCount, setPollCount] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!caseId) return;
@@ -102,8 +103,6 @@ export default function ReportStatusModal({ caseId, onClose, T = {} }) {
       setUpgradeLoading(false);
     }
   };
-
-  const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
     const link = `https://phishscore.ai/report?token=${caseData.report_token}`;
