@@ -1,21 +1,90 @@
+// ── In-memory rate limiter ────────────────────────────────────────────────────
+// Tracks request counts per IP. Resets automatically as windows expire.
+// For a multi-region Vercel deployment, swap this for Upstash Redis later.
+const ipWindows = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const MINUTE = 60 * 1000;
+  const HOUR = 60 * MINUTE;
+
+  if (!ipWindows.has(ip)) {
+    ipWindows.set(ip, { minuteCount: 0, minuteStart: now, hourCount: 0, hourStart: now });
+  }
+
+  const w = ipWindows.get(ip);
+
+  // Reset minute window if expired
+  if (now - w.minuteStart > MINUTE) {
+    w.minuteCount = 0;
+    w.minuteStart = now;
+  }
+  // Reset hour window if expired
+  if (now - w.hourStart > HOUR) {
+    w.hourCount = 0;
+    w.hourStart = now;
+  }
+
+  w.minuteCount++;
+  w.hourCount++;
+
+  // 5 per minute, 20 per hour — generous enough for testing from Cape Coral
+  if (w.minuteCount > 5 || w.hourCount > 20) return true;
+  return false;
+}
+
+// ── Claude API call with model fallback ───────────────────────────────────────
+async function callClaude(body, model) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({ ...body, model })
+  });
+  return response;
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  try {
-    // Run Claude analysis
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(req.body)
+  // Get real IP from Vercel's forwarded header
+  const ip = (req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown').split(',')[0].trim();
+
+  // Rate limit check
+  if (isRateLimited(ip)) {
+    return res.status(429).json({
+      error: 'rate_limited',
+      message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again."
     });
+  }
+
+  try {
+    // ── Step 1: Try primary model (Sonnet) ──────────────────────────────────
+    let response = await callClaude(req.body, 'claude-sonnet-4-6');
+
+    // ── Step 2: If Sonnet is overloaded or erroring, fall back to Haiku ────
+    if (response.status === 529 || response.status === 500 || response.status === 503) {
+      console.warn(`Sonnet returned ${response.status}, falling back to Haiku`);
+      response = await callClaude(req.body, 'claude-haiku-4-5-20251001');
+    }
+
+    // If Haiku also failed, surface the error cleanly
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      console.error('Both models failed:', response.status, errBody);
+      return res.status(502).json({
+        error: 'service_unavailable',
+        message: 'The AI analysis service is temporarily unavailable. Please try again in a few minutes.'
+      });
+    }
 
     const data = await response.json();
 
-    // Extract URLs from message content
+    // ── Step 3: Extract URLs for external threat checks ─────────────────────
     const content = JSON.stringify(req.body.messages || []);
     const urlMatches = content.match(/https?:\/\/[^\s"'\\]+/g) || [];
     const uniqueUrls = [...new Set(urlMatches)].slice(0, 5);
@@ -25,7 +94,7 @@ module.exports = async function handler(req, res) {
     let urlhausFlagged = false;
     const flaggedSources = [];
 
-    // Run all external checks in parallel
+    // ── Step 4: External threat checks in parallel ──────────────────────────
     await Promise.all([
 
       // Google Safe Browsing
@@ -57,7 +126,7 @@ module.exports = async function handler(req, res) {
         } catch (e) { console.error('GSB error:', e); }
       })(),
 
-      // Cloudflare Radar URL Scanner
+      // Cloudflare Radar
       (async () => {
         const cfKey = process.env.CLOUDFLARE_RADAR_KEY;
         if (!cfKey || uniqueUrls.length === 0) return;
@@ -67,17 +136,13 @@ module.exports = async function handler(req, res) {
               'https://api.cloudflare.com/client/v4/radar/url_scanner/scans',
               {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${cfKey}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfKey}` },
                 body: JSON.stringify({ url, screenshotsResolutions: [], visibility: "Public" })
               }
             );
             const d = await r.json();
             if (d.success && d.result) {
               const uuid = d.result.uuid;
-              // Poll for result
               await new Promise(resolve => setTimeout(resolve, 3000));
               const resultRes = await fetch(
                 `https://api.cloudflare.com/client/v4/radar/url_scanner/scans/${uuid}`,
@@ -115,7 +180,7 @@ module.exports = async function handler(req, res) {
 
     ]);
 
-    // Inject external check results into Claude response
+    // ── Step 5: Inject threat check results into Claude's response ──────────
     if ((gsbFlagged || radarFlagged || urlhausFlagged) && data.content) {
       try {
         const text = data.content.map(c => c.text || '').join('');
@@ -126,7 +191,6 @@ module.exports = async function handler(req, res) {
         if (urlhausFlagged) parsed.urlhausFlagged = true;
         parsed.flaggedSources = flaggedSources;
 
-        // Boost score and add red flags for each source
         const boost = flaggedSources.length * 8;
         parsed.score = Math.min((parsed.score || 0) + boost, 99);
         parsed.redFlags = parsed.redFlags || [];
@@ -140,8 +204,14 @@ module.exports = async function handler(req, res) {
     }
 
     res.status(200).json(data);
+
   } catch (err) {
     console.error('Analysis error:', err);
-    res.status(500).json({ error: 'Analysis failed' });
+    res.status(500).json({
+      error: 'service_unavailable',
+      message: 'The AI analysis service is temporarily unavailable. Please try again in a few minutes.'
+    });
   }
-}
+};
+
+module.exports.config = { api: { bodyParser: { sizeLimit: '10mb' } } };
