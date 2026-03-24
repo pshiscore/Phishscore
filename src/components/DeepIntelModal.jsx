@@ -308,46 +308,8 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
         {/* ── STEP: TIERS ── */}
         {step === "tiers" && (
           <>
-            <div style={{ fontSize: 11, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 20 }}>STEP 3 — CHOOSE INVESTIGATION TIER</div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-              {TIERS.map((tier, i) => {
-                const isMain = i === 0;
-                const isLocked = i > 0;
-                return (
-                  <div key={tier.tier} style={{ background: isMain ? `${tier.color}08` : T.innerBg, border: `1.5px solid ${isMain ? tier.color : T.innerBorder}`, borderRadius: 14, padding: "16px 18px", opacity: isLocked ? 0.6 : 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: isMain ? tier.color : T.text, fontFamily: "monospace", letterSpacing: 1 }}>{tier.name}</div>
-                        {tier.badge && <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 3, letterSpacing: 1 }}>{tier.badge}</div>}
-                      </div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: tier.color, fontFamily: "monospace" }}>{tier.price}</div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: isMain ? 14 : 0 }}>
-                      {tier.features.map((f, j) => (
-                        <div key={j} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                          <span style={{ color: tier.color, flexShrink: 0, fontSize: 11, marginTop: 1 }}>✓</span>
-                          <span style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.4 }}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {isMain && (
-                      <button
-                        onClick={() => handleCheckout(tier.tier)}
-                        disabled={checkoutLoading}
-                        style={{ width: "100%", background: checkoutLoading ? T.innerBg : `linear-gradient(135deg,${tier.color},#be123c)`, border: "none", color: checkoutLoading ? T.text4 : "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: checkoutLoading ? "default" : "pointer", fontFamily: "monospace", boxShadow: checkoutLoading ? "none" : `0 4px 20px ${tier.color}40` }}>
-                        {checkoutLoading ? "PREPARING CHECKOUT..." : tier.cta}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {error && <div style={{ fontSize: 12, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12, padding: "8px 12px", background: "#f43f5e10", border: "1px solid #f43f5e30", borderRadius: 8 }}>{error}</div>}
-
-            {/* Email collected here — only when user is ready to pay */}
-            <div style={{ marginBottom: 14 }}>
+            {/* Email at top */}
+            <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR EMAIL — REPORT DELIVERED HERE <span style={{ color: "#f43f5e" }}>*</span></div>
               <input
                 type="email"
@@ -358,13 +320,65 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
                 onFocus={e => e.target.style.borderColor = "#a78bfa55"}
                 onBlur={e => e.target.style.borderColor = T.inputBorder}
               />
-              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>No account needed. Report emailed within minutes of payment.</div>
             </div>
 
-            <div style={{ marginTop: 16, padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8 }}>
+            <div style={{ fontSize: 11, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 14 }}>STEP 3 — CHOOSE INVESTIGATION TIER</div>
+
+            {/* Tier 1 — full width primary */}
+            {(() => {
+              const tier = TIERS[0];
+              return (
+                <div style={{ background: `${tier.color}08`, border: `1.5px solid ${tier.color}`, borderRadius: 14, padding: "16px 18px", marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: tier.color, fontFamily: "monospace", letterSpacing: 1 }}>{tier.name}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: tier.color, fontFamily: "monospace" }}>{tier.price}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 }}>
+                    {tier.features.map((f, j) => (
+                      <div key={j} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <span style={{ color: tier.color, flexShrink: 0, fontSize: 11, marginTop: 1 }}>✓</span>
+                        <span style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.4 }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => handleCheckout(tier.tier)}
+                    disabled={checkoutLoading}
+                    style={{ width: "100%", background: checkoutLoading ? T.innerBg : `linear-gradient(135deg,${tier.color},#be123c)`, border: "none", color: checkoutLoading ? T.text4 : "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: checkoutLoading ? "default" : "pointer", fontFamily: "monospace", boxShadow: checkoutLoading ? "none" : `0 4px 20px ${tier.color}40` }}>
+                    {checkoutLoading ? "PREPARING CHECKOUT..." : tier.cta}
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Tier 2 + 3 — side by side, compact */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+              {TIERS.slice(1).map(tier => (
+                <div key={tier.tier} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "12px 14px", opacity: 0.7 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: tier.color, fontFamily: "monospace", marginBottom: 2 }}>{tier.name}</div>
+                  <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginBottom: 8, letterSpacing: 1 }}>{tier.badge}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: tier.color, fontFamily: "monospace", marginBottom: 8 }}>{tier.price}</div>
+                  {tier.features.slice(1).map((f, j) => (
+                    <div key={j} style={{ display: "flex", gap: 6, marginBottom: 3 }}>
+                      <span style={{ color: tier.color, flexShrink: 0, fontSize: 10 }}>✓</span>
+                      <span style={{ fontSize: 10, color: T.text4, fontFamily: "Georgia, serif", lineHeight: 1.4 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {error && <div style={{ fontSize: 12, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12, padding: "8px 12px", background: "#f43f5e10", border: "1px solid #f43f5e30", borderRadius: 8 }}>{error}</div>}
+
+            <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, marginBottom: 12 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", lineHeight: 1.6 }}>
-                Report delivered to <strong style={{ color: T.text3 }}>{email}</strong> within minutes of payment. Human and Expert tiers available as upgrades after your AI report is complete. Powered by Apple Pay / Google Pay via Lemon Squeezy.
+                Report delivered within minutes of payment. Human and Expert tiers available as upgrades after your AI report is complete. Powered by Apple Pay / Google Pay via Lemon Squeezy.
               </div>
+            </div>
+
+            <div style={{ textAlign: "center" }}>
+              <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Complex investigation? Contact us directly — </span>
+              <a href="mailto:contact@phishscore.ai?subject=Deep Investigation Request" style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
             </div>
           </>
         )}
