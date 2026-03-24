@@ -7,6 +7,7 @@ import SubmitModal from "./components/SubmitModal";
 import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import ComingSoon from "./components/ComingSoon";
+import LegalPage from "./components/LegalPage";
 import RadarModal from "./components/RadarModal";
 import DeepIntelModal from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
@@ -19,6 +20,8 @@ export default function App() {
   const [showTransparency, setShowTransparency] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
   const [showInvestigation, setShowInvestigation] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
+  const [legalTab, setLegalTab] = useState("terms");
   const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
     try {
@@ -295,6 +298,8 @@ export default function App() {
             <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
               <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
+              <button onClick={() => { setLegalTab("terms"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TERMS</button>
+              <button onClick={() => { setLegalTab("privacy"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>PRIVACY</button>
               <a href="mailto:contact@phishscore.ai" style={{ color: T.text4, fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1 }}>contact@phishscore.ai</a>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>2026 PhishScore.ai</div>
             </div>
@@ -306,6 +311,7 @@ export default function App() {
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
+      {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
