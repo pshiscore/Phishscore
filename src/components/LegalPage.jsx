@@ -4,7 +4,7 @@ import { PhishScoreLogo } from "./Primitives";
 const TERMS = [
   {
     title: "1. Acceptance of Terms",
-    body: "By accessing or using PhishScore.ai ("the Service"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the Service. These terms apply to all visitors, users, and others who access the Service."
+    body: "By accessing or using PhishScore.ai ('the Service'), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the Service. These terms apply to all visitors, users, and others who access the Service."
   },
   {
     title: "2. Description of Service",
