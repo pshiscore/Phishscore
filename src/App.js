@@ -115,8 +115,8 @@ export default function App() {
           <div style={{ background: theme === "dark" ? "linear-gradient(90deg, #1a0a1a, #0a0d1a, #1a0a1a)" : "#fff5f5", borderBottom: "1px solid #f43f5e33", padding: "10px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace", letterSpacing: 3, flexShrink: 0 }}>PHISHSCORE.AI</span>
-              <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "Georgia, serif" }}>Got a suspicious message? Paste it, screenshot it, get an instant AI scam score.</span>
-              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 11, fontFamily: "monospace", padding: 0, letterSpacing: 1, textDecoration: "underline" }}>How it works</button>
+              <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "Georgia, serif" }}>Got a suspicious message? Paste it, screenshot it, get an instant AI scam score. Live threat intelligence via <span style={{ color: "#f43f5e", fontFamily: "monospace", fontSize: 11 }}>RADAR</span>.</span>
+              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: 11, fontFamily: "monospace", padding: 0, letterSpacing: 1, textDecoration: "underline", flexShrink: 0 }}>How it works</button>
             </div>
             <button onClick={dismissBar} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 14, padding: "0 4px", flexShrink: 0 }}>x</button>
           </div>
