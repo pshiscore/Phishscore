@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishScore API Test Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; background: #f8f6f2; color: #111827; min-height: 100vh; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  h1 span { color: #f43f5e; }
+  .subtitle { font-size: 10px; letter-spacing: 3px; color: #6b7280; margin-bottom: 32px; }
+  .input-row { display: flex; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+  input { flex: 1; min-width: 280px; background: #ffffff; border: 1.5px solid #e8e4de; border-radius: 10px; color: #111827; padding: 12px 16px; font-size: 14px; font-family: monospace; outline: none; }
+  input:focus { border-color: #f43f5e55; }
+  button.run-all { background: linear-gradient(135deg, #f43f5e, #be123c); border: none; color: #fff; padding: 12px 28px; border-radius: 10px; font-size: 12px; font-weight: 700; letter-spacing: 2px; cursor: pointer; font-family: monospace; }
+  button.run-all:disabled { opacity: 0.5; cursor: default; }
+  button.run-one { background: #f3f0eb; border: 1px solid #e8e4de; color: #6b7280; padding: 6px 14px; border-radius: 8px; font-size: 10px; cursor: pointer; font-family: monospace; letter-spacing: 1px; }
+  button.run-one:hover { border-color: #f43f5e; color: #f43f5e; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .card { background: #ffffff; border: 1px solid #e8e4de; border-radius: 14px; padding: 20px; transition: border-color 0.2s; }
+  .card.pass { border-color: #34d39940; }
+  .card.fail { border-color: #f43f5e40; }
+  .card.running { border-color: #fbbf2440; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .api-name { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #e2e8f0; }
+  .badge { font-size: 9px; padding: 3px 8px; border-radius: 6px; font-weight: 700; letter-spacing: 1px; }
+  .badge.idle { background: #1a1d2e; color: #475569; }
+  .badge.running { background: #fbbf2420; color: #fbbf24; border: 1px solid #fbbf2440; }
+  .badge.pass { background: #34d39920; color: #34d399; border: 1px solid #34d39940; }
+  .badge.fail { background: #f43f5e20; color: #f43f5e; border: 1px solid #f43f5e40; }
+  .badge.skip { background: #1a1d2e; color: #64748b; border: 1px solid #2a2d3e; }
+  .api-desc { font-size: 10px; color: #9ca3af; margin-bottom: 12px; }
+  .result-box { background: #f3f0eb; border: 1px solid #e8e4de; border-radius: 8px; padding: 12px; min-height: 60px; font-size: 11px; color: #374151; line-height: 1.6; word-break: break-all; max-height: 180px; overflow-y: auto; }
+  .result-box.pass { color: #34d399; }
+  .result-box.fail { color: #f43f5e; }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+  .timing { font-size: 9px; color: #475569; }
+  .summary { background: #ffffff; border: 1px solid #e8e4de; border-radius: 14px; padding: 20px; margin-bottom: 24px; display: flex; gap: 32px; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; }
+  .stat-label { font-size: 9px; letter-spacing: 2px; color: #475569; margin-top: 2px; }
+  .note { font-size: 10px; color: #475569; margin-bottom: 24px; background: #f3f0eb; border: 1px solid #e8e4de; border-radius: 8px; padding: 12px 16px; line-height: 1.7; }
+  .note span { color: #f43f5e; }
+  .spinner { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #f3f0eb; }
+  ::-webkit-scrollbar-thumb { background: #c8c4bc; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h1><span>PHISH</span>SCORE.ai</h1>
+<div class="subtitle">API TEST DASHBOARD — INTERNAL USE ONLY</div>
+
+<div class="note">
+  <span>⚠ IMPORTANT:</span> This page calls your live Vercel API endpoints. Make sure phishscore.ai is deployed and running before testing.
+  URLScan takes 15-30 seconds — results will appear when ready. VirusTotal requires a confirmed API key.
+  Enter a domain or full URL below (e.g. <span>travel-deals-365.net</span> or <span>https://fake-bank.com/login</span>).
+</div>
+
+<div class="input-row">
+  <input type="text" id="target" placeholder="Enter domain or URL to test (e.g. travel-deals-365.net)" />
+  <button class="run-all" onclick="runAll()">▶ RUN ALL TESTS</button>
+</div>
+
+<div class="summary" id="summary" style="display:none;">
+  <div class="stat"><div class="stat-num" id="s-pass" style="color:#34d399">0</div><div class="stat-label">PASSED</div></div>
+  <div class="stat"><div class="stat-num" id="s-fail" style="color:#f43f5e">0</div><div class="stat-label">FAILED</div></div>
+  <div class="stat"><div class="stat-num" id="s-skip" style="color:#64748b">0</div><div class="stat-label">SKIPPED</div></div>
+  <div class="stat"><div class="stat-num" id="s-time" style="color:#94a3b8">—</div><div class="stat-label">TOTAL TIME</div></div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const BASE = 'https://www.phishscore.ai';
+
+const APIS = [
+  {
+    id: 'urlscan',
+    name: 'URLScan.io',
+    desc: 'Live screenshot, page analysis, and malicious verdict',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-urlscan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      return {
+        pass: true,
+        summary: [
+          `✓ UUID: ${d.uuid || 'N/A'}`,
+          `✓ Verdict: ${d.verdict || 'pending'}`,
+          `✓ Score: ${d.score ?? 'N/A'}`,
+          `✓ Country: ${d.country || 'N/A'}`,
+          `✓ IP: ${d.ip || 'N/A'}`,
+          d.screenshot ? `✓ Screenshot: ready` : `⚠ Screenshot: pending`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'abuseipdb',
+    name: 'AbuseIPDB',
+    desc: 'IP abuse confidence score and historical reports',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-abuseipdb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      return {
+        pass: true,
+        summary: [
+          `✓ IP: ${d.ip || 'N/A'}`,
+          `✓ Abuse Score: ${d.abuseScore ?? 'N/A'}%`,
+          `✓ Total Reports: ${d.totalReports ?? 'N/A'}`,
+          `✓ ISP: ${d.isp || 'N/A'}`,
+          `✓ Country: ${d.countryCode || 'N/A'}`,
+          `✓ Usage Type: ${d.usageType || 'N/A'}`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'whois',
+    name: 'WhoisXML',
+    desc: 'Domain age, registrar, and ownership details',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-whois`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      return {
+        pass: true,
+        summary: [
+          `✓ Domain Age: ${d.domainAge !== null ? d.domainAge + ' days' : 'N/A'}`,
+          `✓ Created: ${d.createdDate || 'N/A'}`,
+          `✓ Expires: ${d.expiresDate || 'N/A'}`,
+          `✓ Registrar: ${d.registrar || 'N/A'}`,
+          `✓ Registrant: ${d.registrant || 'N/A'}`,
+          `✓ Country: ${d.country || 'N/A'}`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'virustotal',
+    name: 'VirusTotal',
+    desc: '70+ security engine verdicts',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-virustotal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      if (d.skipped) return { pass: false, skip: true, summary: '⚠ API key not configured — add VIRUSTOTAL_API_KEY to Vercel' };
+      return {
+        pass: true,
+        summary: [
+          `✓ Malicious: ${d.malicious ?? 0} engines`,
+          `✓ Suspicious: ${d.suspicious ?? 0} engines`,
+          `✓ Clean: ${d.clean ?? 0} engines`,
+          `✓ Total: ${d.total ?? 0} engines checked`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'gsb',
+    name: 'Google Safe Browsing',
+    desc: 'Phishing, malware and social engineering detection',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-gsb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      return {
+        pass: true,
+        summary: [
+          `✓ Flagged: ${d.flagged ? 'YES ⚠' : 'No'}`,
+          `✓ Matches: ${d.matchCount ?? 0}`,
+          d.threats?.length ? `✓ Threats: ${d.threats.join(', ')}` : `✓ No threats detected`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'urlhaus',
+    name: 'URLhaus',
+    desc: 'Malware distribution and botnet URL database',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-urlhaus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      return {
+        pass: true,
+        summary: [
+          `✓ Listed: ${d.listed ? 'YES ⚠' : 'No'}`,
+          `✓ Status: ${d.status || 'not listed'}`,
+          `✓ Query Status: ${d.queryStatus || 'N/A'}`
+        ].join('\n')
+      };
+    }
+  },
+  {
+    id: 'claude',
+    name: 'Claude API (Sonnet)',
+    desc: 'AI analysis endpoint — full scan pipeline',
+    run: async (url) => {
+      const start = Date.now();
+      const res = await fetch(`${BASE}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 500,
+          messages: [{ role: 'user', content: `Test message containing URL: ${url}. This is a test ping from the API dashboard. Return valid JSON with score:50, tags:["test"], summary:"API test", verdict:"API test successful", analysis:"Test", redFlags:[], whatToDo:"No action needed", detectedSources:[], detectedCategory:null, categoryReclassified:false` }]
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error || d.message);
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      return {
+        pass: true,
+        summary: [
+          `✓ Status: OK`,
+          `✓ Response time: ${elapsed}s`,
+          `✓ Model: claude-sonnet-4-6`,
+          `✓ Content blocks: ${d.content?.length ?? 0}`
+        ].join('\n')
+      };
+    }
+  }
+];
+
+let cards = {};
+
+function renderCards() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  APIS.forEach(api => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${api.id}`;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="api-name">${api.name}</div>
+        <span class="badge idle" id="badge-${api.id}">IDLE</span>
+      </div>
+      <div class="api-desc">${api.desc}</div>
+      <div class="result-box" id="result-${api.id}">Waiting for test...</div>
+      <div class="card-footer">
+        <span class="timing" id="time-${api.id}"></span>
+        <button class="run-one" onclick="runOne('${api.id}')">RUN</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function setCardState(id, state, summary, timing) {
+  const card = document.getElementById(`card-${id}`);
+  const badge = document.getElementById(`badge-${id}`);
+  const result = document.getElementById(`result-${id}`);
+  const timeEl = document.getElementById(`time-${id}`);
+
+  card.className = `card ${state}`;
+  badge.className = `badge ${state}`;
+
+  const labels = { idle: 'IDLE', running: '⟳ RUNNING', pass: '✓ PASS', fail: '✗ FAIL', skip: '— SKIP' };
+  badge.textContent = labels[state] || state.toUpperCase();
+
+  if (summary) {
+    result.textContent = summary;
+    result.className = `result-box ${state === 'pass' ? 'pass' : state === 'fail' ? 'fail' : ''}`;
+  }
+  if (timing) timeEl.textContent = timing;
+}
+
+async function runOne(apiId) {
+  const url = document.getElementById('target').value.trim();
+  if (!url) { alert('Please enter a domain or URL first'); return; }
+
+  const api = APIS.find(a => a.id === apiId);
+  if (!api) return;
+
+  const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+  setCardState(apiId, 'running', '⟳ Running test...', '');
+
+  const start = Date.now();
+  try {
+    const result = await api.run(fullUrl);
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1) + 's';
+    if (result.skip) {
+      setCardState(apiId, 'skip', result.summary, elapsed);
+    } else {
+      setCardState(apiId, 'pass', result.summary, elapsed);
+    }
+  } catch (err) {
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1) + 's';
+    setCardState(apiId, 'fail', `✗ Error: ${err.message}`, elapsed);
+  }
+  updateSummary();
+}
+
+async function runAll() {
+  const url = document.getElementById('target').value.trim();
+  if (!url) { alert('Please enter a domain or URL first'); return; }
+
+  document.querySelector('.run-all').disabled = true;
+  document.getElementById('summary').style.display = 'flex';
+  renderCards();
+
+  const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+  const globalStart = Date.now();
+
+  await Promise.all(APIS.map(api => runOne(api.id)));
+
+  const totalElapsed = ((Date.now() - globalStart) / 1000).toFixed(1) + 's';
+  document.getElementById('s-time').textContent = totalElapsed;
+  document.querySelector('.run-all').disabled = false;
+}
+
+function updateSummary() {
+  let pass = 0, fail = 0, skip = 0;
+  APIS.forEach(api => {
+    const badge = document.getElementById(`badge-${api.id}`);
+    if (!badge) return;
+    if (badge.className.includes('pass')) pass++;
+    else if (badge.className.includes('fail')) fail++;
+    else if (badge.className.includes('skip')) skip++;
+  });
+  document.getElementById('s-pass').textContent = pass;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-skip').textContent = skip;
+}
+
+// Init
+renderCards();
+document.getElementById('target').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runAll();
+});
+</script>
+</body>
+</html>
