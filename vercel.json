@@ -1,1 +1,6 @@
-{}
+{
+  "rewrites": [
+    { "source": "/ps-internal-api-test-v1.html", "destination": "/ps-internal-api-test-v1.html" },
+    { "source": "/((?!api).*)", "destination": "/" }
+  ]
+}
