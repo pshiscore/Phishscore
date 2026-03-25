@@ -1,3 +1,175 @@
+const RESEND_KEY = process.env.RESEND_API_KEY;
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+const CATEGORY_NAMES = {
+  publishing: 'Publishing & Literary', delivery: 'Package & Delivery', retail: 'Retail & Shopping',
+  telecom: 'Phone & Telecom', traffic: 'Traffic & Tolls', social: 'Social Media',
+  finance: 'Banking & Finance', government: 'Government & IRS', prize: 'Prize & Lottery',
+  romance: 'Romance & Friendship', job: 'Job & Employment', tech: 'Tech Support',
+  political: 'Political Campaign', travel: 'Travel & Vacation', legal: 'Legal & Compliance',
+  other: 'Unknown / Other'
+};
+
+async function getStats() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/submissions?select=score,category&order=created_at.desc&limit=1000`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return null;
+    const total = rows.length;
+    const scams = rows.filter(r => r.score >= 75).length;
+    const suspicious = rows.filter(r => r.score >= 45 && r.score < 75).length;
+    const safe = rows.filter(r => r.score < 45).length;
+    // Top category
+    const catMap = {};
+    rows.forEach(r => { catMap[r.category] = (catMap[r.category] || 0) + 1; });
+    const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+    return { total, scams, suspicious, safe, topCat: topCat ? { id: topCat[0], count: topCat[1] } : null };
+  } catch { return null; }
+}
+
+async function sendSubmissionNotification(parsed, body) {
+  if (!RESEND_KEY) return;
+
+  const stats = await getStats();
+  const score = parsed.score || 0;
+  const scoreLabel = score >= 75 ? 'SCAM' : score >= 45 ? 'SUSPICIOUS' : 'LIKELY SAFE';
+  const scoreColor = score >= 75 ? '#dc2626' : score >= 45 ? '#d97706' : '#16a34a';
+  const category = CATEGORY_NAMES[parsed.detectedCategory || parsed.finalCategory] || 'Unknown';
+  const tags = (parsed.tags || []).join(', ') || 'None';
+  const redFlagCount = (parsed.redFlags || []).length;
+  const summary = parsed.summary || parsed.verdict || 'No summary available';
+  const flaggedBy = (parsed.flaggedSources || []).length > 0
+    ? `<div style="margin-top:8px;padding:6px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11px;color:#dc2626;font-family:monospace;">⚠ FLAGGED BY: ${parsed.flaggedSources.join(', ')}</div>` : '';
+
+  // Detect visibility from body messages
+  const msgContent = JSON.stringify(body.messages || '');
+  const isImage = msgContent.includes('"type":"image"');
+
+  const now = new Date();
+  const timeStr = now.toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' });
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'PhishScore.ai <reports@phishscore.ai>',
+      to: 'vkrasikov@gmail.com',
+      subject: `[${scoreLabel}] Score: ${score}/100 — ${category} — PhishScore Submission`,
+      html: `
+        <div style="font-family:Georgia,serif;max-width:640px;margin:0 auto;background:#f8f6f2;padding:0;">
+
+          <!-- Header -->
+          <div style="background:#ffffff;border-bottom:3px solid #f43f5e;padding:20px 28px;">
+            <div style="font-family:monospace;font-size:22px;font-weight:800;color:#111827;">
+              <span style="color:#dc2626;">PHISH</span>SCORE<span style="font-size:13px;color:#9ca3af;">.ai</span>
+            </div>
+            <div style="font-family:monospace;font-size:9px;letter-spacing:3px;color:#6b7280;margin-top:2px;">NEW SUBMISSION ALERT</div>
+          </div>
+
+          <!-- Score banner -->
+          <div style="background:${scoreColor};padding:16px 28px;display:flex;align-items:center;">
+            <div style="font-family:monospace;font-size:36px;font-weight:800;color:#ffffff;margin-right:16px;">${score}</div>
+            <div>
+              <div style="font-family:monospace;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:2px;">${scoreLabel}</div>
+              <div style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.8);margin-top:2px;">${timeStr} ET &nbsp;|&nbsp; ${isImage ? 'Screenshot submission' : 'Text submission'}</div>
+            </div>
+          </div>
+
+          <!-- Main content -->
+          <div style="background:#ffffff;padding:24px 28px;">
+
+            <!-- Key details -->
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+              <tr>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:10px;letter-spacing:1px;color:#9ca3af;width:140px;">SCAM TYPE</td>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:12px;font-weight:700;color:#111827;">${category}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:10px;letter-spacing:1px;color:#9ca3af;">TAGS</td>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:11px;color:#374151;">${tags}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:10px;letter-spacing:1px;color:#9ca3af;">RED FLAGS</td>
+                <td style="padding:8px 0;border-bottom:1px solid #f3f0eb;font-family:monospace;font-size:11px;color:${redFlagCount > 0 ? '#dc2626' : '#374151'};">${redFlagCount} detected</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-family:monospace;font-size:10px;letter-spacing:1px;color:#9ca3af;">SUBMISSION TYPE</td>
+                <td style="padding:8px 0;font-family:monospace;font-size:11px;color:#374151;">${isImage ? 'Screenshot' : 'Text paste'}</td>
+              </tr>
+            </table>
+
+            <!-- AI Summary -->
+            <div style="background:#f8f6f2;border-left:3px solid #f43f5e;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:20px;">
+              <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#9ca3af;margin-bottom:6px;">AI SUMMARY</div>
+              <p style="font-size:14px;color:#374151;line-height:1.7;margin:0;">${summary}</p>
+            </div>
+
+            ${flaggedBy}
+
+            <!-- Red flags list -->
+            ${redFlagCount > 0 ? `
+            <div style="margin-top:16px;">
+              <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#9ca3af;margin-bottom:8px;">RED FLAGS DETECTED</div>
+              ${(parsed.redFlags || []).map(f => `<div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px;color:#374151;line-height:1.5;"><span style="color:#dc2626;flex-shrink:0;">!</span><span>${f}</span></div>`).join('')}
+            </div>` : ''}
+
+            <!-- What to do -->
+            ${parsed.whatToDo ? `
+            <div style="margin-top:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;">
+              <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#16a34a;margin-bottom:6px;">WHAT TO DO</div>
+              <p style="font-size:13px;color:#15803d;line-height:1.6;margin:0;">${parsed.whatToDo}</p>
+            </div>` : ''}
+          </div>
+
+          <!-- Stats bar -->
+          ${stats ? `
+          <div style="background:#111827;padding:20px 28px;">
+            <div style="font-family:monospace;font-size:9px;letter-spacing:3px;color:#6b7280;margin-bottom:14px;">PLATFORM STATS — LAST ${stats.total} REPORTS</div>
+            <table style="width:100%;">
+              <tr>
+                <td style="text-align:center;padding:0 8px;">
+                  <div style="font-family:monospace;font-size:28px;font-weight:800;color:#5b6cf8;">${stats.total}</div>
+                  <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin-top:2px;">TOTAL</div>
+                </td>
+                <td style="text-align:center;padding:0 8px;">
+                  <div style="font-family:monospace;font-size:28px;font-weight:800;color:#dc2626;">${stats.scams}</div>
+                  <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin-top:2px;">SCAMS</div>
+                </td>
+                <td style="text-align:center;padding:0 8px;">
+                  <div style="font-family:monospace;font-size:28px;font-weight:800;color:#d97706;">${stats.suspicious}</div>
+                  <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin-top:2px;">SUSPICIOUS</div>
+                </td>
+                <td style="text-align:center;padding:0 8px;">
+                  <div style="font-family:monospace;font-size:28px;font-weight:800;color:#16a34a;">${stats.safe}</div>
+                  <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin-top:2px;">LIKELY SAFE</div>
+                </td>
+                <td style="text-align:center;padding:0 8px;">
+                  <div style="font-family:monospace;font-size:14px;font-weight:700;color:#f43f5e;">${Math.round(stats.scams / Math.max(stats.total, 1) * 100)}%</div>
+                  <div style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin-top:2px;">SCAM RATE</div>
+                </td>
+              </tr>
+            </table>
+            ${stats.topCat ? `<div style="margin-top:14px;font-family:monospace;font-size:10px;color:#6b7280;">TOP CATEGORY: <span style="color:#f43f5e;">${CATEGORY_NAMES[stats.topCat.id] || stats.topCat.id}</span> with ${stats.topCat.count} reports</div>` : ''}
+          </div>` : ''}
+
+          <!-- Footer -->
+          <div style="background:#f8f6f2;padding:16px 28px;border-top:1px solid #e8e4de;">
+            <div style="font-family:monospace;font-size:10px;color:#9ca3af;">
+              PhishScore.ai — Community Scam Intelligence &nbsp;|&nbsp;
+              <a href="https://www.phishscore.ai" style="color:#f43f5e;text-decoration:none;">phishscore.ai</a>
+            </div>
+          </div>
+
+        </div>
+      `
+    })
+  });
+}
+
 // ── In-memory rate limiter ────────────────────────────────────────────────────
 // Tracks request counts per IP. Resets automatically as windows expire.
 // For a multi-region Vercel deployment, swap this for Upstash Redis later.
@@ -204,6 +376,13 @@ module.exports = async function handler(req, res) {
     }
 
     res.status(200).json(data);
+
+    // ── Step 6: Fire notification email (fire and forget) ───────────────────
+    try {
+      const raw = data.content?.map(c => c.text || '').join('') || '';
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      sendSubmissionNotification(parsed, req.body).catch(e => console.error('Notification error:', e));
+    } catch (e) { /* don't block response */ }
 
   } catch (err) {
     console.error('Analysis error:', err);
