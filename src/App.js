@@ -8,6 +8,7 @@ import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import ComingSoon from "./components/ComingSoon";
 import LegalPage from "./components/LegalPage";
+import APITestDashboard from "./components/APITestDashboard";
 import RadarModal from "./components/RadarModal";
 import DeepIntelModal from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
@@ -22,6 +23,12 @@ export default function App() {
   const [showInvestigation, setShowInvestigation] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
   const [legalTab, setLegalTab] = useState("terms");
+  const [showDevTools, setShowDevTools] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("devmode") === "ps2026";
+    } catch { return false; }
+  });
   const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
     try {
@@ -312,6 +319,7 @@ export default function App() {
       {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
+      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
