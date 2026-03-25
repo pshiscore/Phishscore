@@ -33,7 +33,7 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
           const isDesktopOnly = i >= DEFAULT_MOBILE;
           return (
             <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)}
-              className={isDesktopOnly ? "breakdown-desktop-only" : ""}
+              className={!showAll && isDesktopOnly ? "breakdown-desktop-only" : ""}
               style={{ background: active ? `${cat.color}14` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
