@@ -71,6 +71,18 @@ const APIS = [
     }
   },
   {
+    id: 'cloudflare', name: 'Cloudflare Radar',
+    desc: 'URL scanner using Cloudflare global network intelligence',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-cloudflare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      if (d.skipped) return `SKIPPED: ${d.message}`;
+      return [`UUID: ${d.uuid || 'N/A'}`, `Malicious: ${d.malicious ? 'YES ⚠' : 'No'}`, `Phishing: ${d.phishing ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'N/A'}`].join('\n');
+    }
+  },
+  {
     id: 'claude-sonnet', name: 'Claude Sonnet 4.6',
     desc: 'Primary AI model — main analysis pipeline',
     run: async (url) => {
