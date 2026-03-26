@@ -342,11 +342,13 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
                     ))}
                   </div>
                   <button
-                    onClick={() => handleCheckout(tier.tier)}
-                    disabled={checkoutLoading}
-                    style={{ width: "100%", background: checkoutLoading ? T.innerBg : `linear-gradient(135deg,${tier.color},#be123c)`, border: "none", color: checkoutLoading ? T.text4 : "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: checkoutLoading ? "default" : "pointer", fontFamily: "monospace", boxShadow: checkoutLoading ? "none" : `0 4px 20px ${tier.color}40` }}>
-                    {checkoutLoading ? "PREPARING CHECKOUT..." : tier.cta}
+                    disabled={true}
+                    style={{ width: "100%", background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text4, padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: "default", fontFamily: "monospace", opacity: 0.5 }}>
+                    PAYMENTS COMING SOON
                   </button>
+                  <div style={{ textAlign: "center", fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>
+                    Payment processing temporarily unavailable — <a href="mailto:contact@phishscore.ai" style={{ color: "#a78bfa", textDecoration: "none" }}>contact us</a> to investigate manually
+                  </div>
                 </div>
               );
             })()}
@@ -372,7 +374,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
 
             <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, marginBottom: 12 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", lineHeight: 1.6 }}>
-                Report delivered within minutes of payment. Human and Expert tiers available as upgrades after your AI report is complete. Powered by Apple Pay / Google Pay via Lemon Squeezy.
+                Report delivered within minutes of payment. Human and Expert tiers available as upgrades after your AI report is complete.
               </div>
             </div>
 
