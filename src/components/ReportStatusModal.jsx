@@ -278,8 +278,8 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
                         </div>
                         <p style={{ color: T.text3, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5, margin: 0 }}>{u.desc}</p>
                       </div>
-                      <button onClick={() => handleUpgrade(u.tier)} disabled={upgradeLoading} style={{ background: `${u.color}18`, border: `1px solid ${u.color}60`, color: u.color, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        {upgradeLoading ? "..." : u.cta}
+                      <button onClick={() => {}} disabled={true} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text4, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "default", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0, opacity: 0.5 }}>
+                        COMING SOON
                       </button>
                     </div>
                   ))}
