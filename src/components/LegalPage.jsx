@@ -71,11 +71,11 @@ const PRIVACY = [
   },
   {
     title: "5. Data Storage and Security",
-    body: "Your data is stored in Supabase, a secure cloud database hosted in the United States. We implement row-level security policies to protect your data. Payment processing is handled entirely by Lemon Squeezy — we never receive or store your payment card details."
+    body: "Your data is stored in Supabase, a secure cloud database hosted in the United States. We implement row-level security policies to protect your data. Payment processing is handled by our payment provider — we never receive or store your payment card details."
   },
   {
     title: "6. Third-Party Services",
-    body: "PhishScore.ai uses: Anthropic Claude API for AI message analysis; Google Gemini API for anonymized trend analysis; Lemon Squeezy for payment processing; Resend for email delivery; Vercel for hosting; and URLScan.io, AbuseIPDB, WhoisXML, and VirusTotal for URL threat intelligence in Deep Intel investigations."
+    body: "PhishScore.ai uses: Anthropic Claude API for AI message analysis; Google Gemini API for anonymized trend analysis; Resend for email delivery; Vercel for hosting; and URLScan.io, AbuseIPDB, WhoisXML, and VirusTotal for URL threat intelligence in Deep Intel investigations."
   },
   {
     title: "7. Data Retention",
