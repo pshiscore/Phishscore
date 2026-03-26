@@ -152,7 +152,7 @@ Write EXACTLY 3 sentences:
 Rules: No URLs. No bullet points. Plain English. 3 flowing sentences only.`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -189,7 +189,7 @@ Write 2-3 sentences that:
 Rules: Be specific — name the scam types and tactics. Do not say generic things like "stay vigilant" or "be careful." No URLs. No bullet points. Plain flowing sentences.`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
