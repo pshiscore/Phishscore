@@ -19,6 +19,8 @@ function isRateLimited(ip) {
 
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
+  // Strip fields that are not valid Claude API params
+  const { trainAI, ...claudeBody } = body;
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -26,7 +28,7 @@ async function callClaude(body, model) {
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     },
-    body: JSON.stringify({ ...body, model })
+    body: JSON.stringify({ ...claudeBody, model })
   });
   return response;
 }
