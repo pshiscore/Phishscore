@@ -163,8 +163,14 @@ Rules: No URLs. No bullet points. Plain English. 3 flowing sentences only.`;
     }
   );
   const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-    "Multiple scam types are currently active. Be especially cautious this month with government and financial impersonation messages. Verify any unexpected request directly with the official organization before responding.";
+  console.log('Gemini threat warning response status:', res.status);
+  if (!res.ok || data.error) {
+    console.error('Gemini threat warning error:', JSON.stringify(data));
+    return null; // return null so we know it failed
+  }
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  console.log('Gemini threat warning result:', text?.slice(0, 80));
+  return text || null;
 }
 
 // Gemini prompt 2: Intelligence summary — specific insights from recent scam content
@@ -200,8 +206,14 @@ Rules: Be specific — name the scam types and tactics. Do not say generic thing
     }
   );
   const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-    "Scam activity is concentrated in financial and publishing categories. Urgency manipulation and brand impersonation are the most common tactics appearing across recent reports.";
+  console.log('Gemini intelligence summary response status:', res.status);
+  if (!res.ok || data.error) {
+    console.error('Gemini intelligence summary error:', JSON.stringify(data));
+    return null;
+  }
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  console.log('Gemini intelligence summary result:', text?.slice(0, 80));
+  return text || null;
 }
 
 async function storeTrend(payload) {
@@ -246,10 +258,12 @@ module.exports = async function handler(req, res) {
       callGeminiIntelligenceSummary(currentAgg, recentSummaries, month),
     ]);
 
+    console.log('Gemini results — threatWarning:', !!threatWarning, 'intelligenceSummary:', !!intelligenceSummary);
+
     const snapshot = {
       threat_level: threatLevel,
-      threat_warning: threatWarning,
-      ai_warning: intelligenceSummary,
+      threat_warning: threatWarning || `Threat level ${threatLevel} detected. Multiple scam types are active — exercise caution with unexpected messages, especially from financial institutions and government agencies.`,
+      ai_warning: intelligenceSummary || `Scam activity is currently elevated across ${currentAgg.slice(0,3).map(c=>c.category).join(', ')} categories. Be cautious of urgency-based messages requesting personal information or payment.`,
       sector_warnings: sectorWarnings,
       aggregation_snapshot: currentAgg,
       total_reports: currentRaw.length,

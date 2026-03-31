@@ -83,6 +83,28 @@ const FAQS = [
     q: "How do I access Deep Intel?",
     a: "After any scan that returns a score above 75, you will see an Uncover This Scam — PhishScore Deep Intel button above the Report to FTC button on your results screen. You can also access it from the magnifying glass icon in the navigation bar. The service is currently in beta and coming soon — clicking either entry point will show you a preview of what is coming and how to get early access."
   },
+
+  // ── PhishScore Mini ───────────────────────────────────────────────────────────
+  {
+    q: "What is PhishScore Mini?",
+    a: "PhishScore Mini is our in-development lightweight AI model trained exclusively on community-submitted scam data. Unlike general-purpose AI models, PhishScore Mini will be trained specifically to detect scams — making it faster, cheaper to run, and more accurate for this exact task. It is being built from the ground up using real scam submissions from the PhishScore community."
+  },
+  {
+    q: "Why are you training your own model?",
+    a: "Today PhishScore uses large general-purpose AI models like Claude to analyze submissions. These are powerful but expensive and slower than a specialized model. By training PhishScore Mini on thousands of real scam examples, we can eventually run faster initial scoring without relying entirely on large external models — reducing costs, improving speed, and making PhishScore more resilient. The goal is a hybrid system: PhishScore Mini handles fast initial scoring, and Claude handles deep analysis when needed."
+  },
+  {
+    q: "What is the Train PhishScore AI checkbox?",
+    a: "When you check Train PhishScore AI before submitting, you are consenting to have the anonymized features of your submission used to help train PhishScore Mini. This is entirely optional and your submission is analyzed exactly the same way whether you check it or not. Checking it simply tells us you are happy for your contribution to help improve the platform for everyone."
+  },
+  {
+    q: "What data is actually collected for training?",
+    a: "We never store your raw message text or images for training purposes. What we extract and store is anonymized: the detected scam category, the AI-generated score, the identified red flag patterns, the tag labels, whether external threat databases flagged it, and the structural characteristics of the message such as urgency language, impersonation signals, and request type. The original content is discarded immediately after these features are extracted. No personal information, no message content, no sender details are retained."
+  },
+  {
+    q: "Can I opt out or request deletion of my training contribution?",
+    a: "Yes. Because we only store anonymized feature vectors and not your original message, we cannot link a training record back to a specific submission once the raw content is discarded. However if you contact us at contact@phishscore.ai with the approximate date and category of your submission, we will remove any matching training records. You can also choose not to participate by simply leaving the checkbox unchecked — it is always opt-in, never opt-out."
+  },
 ];
 
 function FAQItem({ q, a, T }) {

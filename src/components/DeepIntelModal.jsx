@@ -60,6 +60,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
   const [step, setStep] = useState("intake");
   const [message, setMessage] = useState(prefill.message || "");
   const [story, setStory] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
   const [email, setEmail] = useState("");
   const [images, setImages] = useState([]);
   const [ivs, setIvs] = useState(null);
@@ -92,6 +93,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
         body: JSON.stringify({
           message: message.trim(),
           story: story.trim(),
+          contactInfo: contactInfo.trim(),
           originalScore,
           originalCategory,
         })
@@ -122,6 +124,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
           email,
           message: message.trim(),
           story: story.trim(),
+          contactInfo: contactInfo.trim(),
           originalScore,
           originalCategory,
           ivsScore: ivs?.ivs,
@@ -223,6 +226,21 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
                 onFocus={e => e.target.style.borderColor = "#a78bfa55"}
                 onBlur={e => e.target.style.borderColor = T.inputBorder}
               />
+            </div>
+
+            {/* Contact info box */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>SCAMMER'S PHONE NUMBER OR EMAIL <span style={{ color: T.text4, fontWeight: 400 }}>(optional)</span></div>
+              <input
+                type="text"
+                value={contactInfo}
+                onChange={e => setContactInfo(e.target.value)}
+                placeholder="e.g. +1 (555) 123-4567 or scammer@fakeemail.com"
+                style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#a78bfa55"}
+                onBlur={e => e.target.style.borderColor = T.inputBorder}
+              />
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>Helps our investigators trace the source and identify linked scam operations.</div>
             </div>
 
             {/* Image upload */}

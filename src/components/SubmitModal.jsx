@@ -158,6 +158,8 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
   const [result, setResult] = useState(null);
   const [duplicate, setDuplicate] = useState(null);
   const [errorState, setErrorState] = useState(null);
+  const [trainAI, setTrainAI] = useState(false);
+  const [showTrainInfo, setShowTrainInfo] = useState(false);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -213,7 +215,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
       } else {
         messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}\n\nMessage:\n${text}` }];
       }
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {
@@ -367,6 +369,41 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
                 <button onClick={() => setDuplicate(null)} style={{ background: "none", border: "none", color: "#fbbf24", cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: 0 }}>Analyze anyway</button>
               </div>
             )}
+            {/* Train PhishScore AI checkbox */}
+            <div style={{ marginBottom: 14, padding: "12px 14px", background: trainAI ? "#5b6cf808" : T.innerBg, border: `1px solid ${trainAI ? "#5b6cf840" : T.innerBorder}`, borderRadius: 10, transition: "all 0.2s" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div onClick={() => setTrainAI(v => !v)} style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${trainAI ? "#5b6cf8" : T.text4}`, background: trainAI ? "#5b6cf8" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, marginTop: 1, transition: "all 0.15s" }}>
+                  {trainAI && <span style={{ color: "#fff", fontSize: 11, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <span onClick={() => setTrainAI(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: trainAI ? "#5b6cf8" : T.text3, fontFamily: "monospace", cursor: "pointer", letterSpacing: 1 }}>TRAIN PHISHSCORE AI</span>
+                    <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "#5b6cf820", color: "#5b6cf8", fontFamily: "monospace", fontWeight: 700, letterSpacing: 1 }}>MINI</span>
+                    <button onClick={() => setShowTrainInfo(v => !v)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: 0, textDecoration: "underline" }}>
+                      {showTrainInfo ? "less" : "what is this?"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>Help train our lightweight scam detection model. Always optional.</div>
+                  {showTrainInfo && (
+                    <div style={{ marginTop: 10, padding: "10px 12px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>WHAT WE COLLECT</div>
+                      <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: "0 0 8px" }}>
+                        We extract anonymized patterns only — scam category, score, red flag types, tag labels, and structural signals like urgency language. Your original message is <strong>never stored</strong> for training and is discarded immediately.
+                      </p>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>WHY WE'RE DOING THIS</div>
+                      <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: "0 0 8px" }}>
+                        We're building PhishScore Mini — a lightweight AI model trained specifically on scam data. This will make analysis faster, reduce reliance on large external AI models, and improve accuracy for scam detection over time.
+                      </p>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR RIGHTS</div>
+                      <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>
+                        This is always opt-in. Your submission is analyzed identically whether you check this or not. To request removal of your training contribution, contact <a href="mailto:contact@phishscore.ai" style={{ color: "#5b6cf8" }}>contact@phishscore.ai</a>.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between" }}>
               <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
               <button onClick={e => { e.preventDefault(); analyze(); }} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>

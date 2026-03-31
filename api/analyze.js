@@ -170,6 +170,33 @@ async function sendSubmissionNotification(parsed, body) {
   });
 }
 
+async function storeTrainingData(parsed) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  const record = {
+    score: parsed.score || 0,
+    category: parsed.detectedCategory || null,
+    tags: parsed.tags || [],
+    red_flag_count: (parsed.redFlags || []).length,
+    red_flag_types: (parsed.redFlags || []).map(f => f.slice(0, 80)),
+    gsb_flagged: parsed.safeBrowsingFlagged === true,
+    radar_flagged: parsed.radarFlagged === true,
+    urlhaus_flagged: parsed.urlhausFlagged === true,
+    has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
+    has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
+    score_label: parsed.score >= 75 ? 'scam' : parsed.score >= 45 ? 'suspicious' : 'safe',
+  };
+  await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify(record)
+  });
+}
+
 // ── In-memory rate limiter ────────────────────────────────────────────────────
 // Tracks request counts per IP. Resets automatically as windows expire.
 // For a multi-region Vercel deployment, swap this for Upstash Redis later.
@@ -382,6 +409,11 @@ module.exports = async function handler(req, res) {
       const raw = data.content?.map(c => c.text || '').join('') || '';
       const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
       sendSubmissionNotification(parsed, req.body).catch(e => console.error('Notification error:', e));
+
+      // ── Step 7: Store anonymized training data if user opted in ─────────
+      if (req.body.trainAI === true) {
+        storeTrainingData(parsed).catch(e => console.error('Training data error:', e));
+      }
     } catch (e) { /* don't block response */ }
 
   } catch (err) {

@@ -118,6 +118,17 @@ const APIS = [
       return [`Status: OK`, `Response time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-opus-4-6`, `Content blocks: ${d.content?.length ?? 0}`].join('\n');
     }
   },
+  {
+    id: 'gemini', name: 'Google Gemini (Radar AI)',
+    desc: 'Gemini 2.0 Flash — powers Radar threat intelligence',
+    run: async (url) => {
+      const res = await fetch(`${BASE}/api/test-gemini`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error || d.message);
+      return [`Status: OK`, `Model: gemini-2.0-flash`, `Response: ${d.response?.slice(0, 120)}...`].join('\n');
+    }
+  },
 ];
 
 function APICard({ api, url, autoRun, T }) {
