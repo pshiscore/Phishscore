@@ -1,3 +1,37 @@
+// ── Store anonymized training data ────────────────────────────────────────────
+async function storeTrainingData(parsed) {
+  const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    const record = {
+      score: parsed.score || 0,
+      score_label: parsed.score >= 75 ? 'scam' : parsed.score >= 45 ? 'suspicious' : 'safe',
+      category: parsed.detectedCategory || null,
+      tags: parsed.tags || [],
+      red_flag_count: (parsed.redFlags || []).length,
+      red_flag_types: (parsed.redFlags || []).map(f => f.slice(0, 80)),
+      gsb_flagged: parsed.safeBrowsingFlagged === true,
+      radar_flagged: parsed.radarFlagged === true,
+      urlhaus_flagged: parsed.urlhausFlagged === true,
+      has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
+      has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
+    };
+    await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(record)
+    });
+  } catch (e) {
+    console.error('Training data storage error:', e);
+  }
+}
+
 // ── In-memory rate limiter ────────────────────────────────────────────────────
 const ipWindows = new Map();
 
@@ -171,6 +205,15 @@ module.exports = async function handler(req, res) {
 
         data.content = [{ type: 'text', text: JSON.stringify(parsed) }];
       } catch (e) { console.error('Response injection error:', e); }
+    }
+
+    // ── Store training data if opted in (fire and forget) ───────────────────
+    if (req.body.trainAI === true) {
+      try {
+        const raw = data.content?.map(c => c.text || '').join('') || '';
+        const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        storeTrainingData(parsed).catch(e => console.error('Training store error:', e));
+      } catch (e) { /* silent */ }
     }
 
     return res.status(200).json(data);
