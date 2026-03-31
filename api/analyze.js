@@ -34,7 +34,9 @@ async function getStats() {
 async function sendSubmissionNotification(parsed, body) {
   if (!RESEND_KEY) return;
 
-  const stats = await getStats();
+  // Run stats fetch in parallel with email build — don't block
+  const statsPromise = getStats();
+
   const score = parsed.score || 0;
   const scoreLabel = score >= 75 ? 'SCAM' : score >= 45 ? 'SUSPICIOUS' : 'LIKELY SAFE';
   const scoreColor = score >= 75 ? '#dc2626' : score >= 45 ? '#d97706' : '#16a34a';
@@ -45,12 +47,13 @@ async function sendSubmissionNotification(parsed, body) {
   const flaggedBy = (parsed.flaggedSources || []).length > 0
     ? `<div style="margin-top:8px;padding:6px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11px;color:#dc2626;font-family:monospace;">⚠ FLAGGED BY: ${parsed.flaggedSources.join(', ')}</div>` : '';
 
-  // Detect visibility from body messages
   const msgContent = JSON.stringify(body.messages || '');
   const isImage = msgContent.includes('"type":"image"');
-
   const now = new Date();
   const timeStr = now.toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' });
+
+  // Wait for stats now that we need them for the email
+  const stats = await statsPromise;
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -167,6 +170,33 @@ async function sendSubmissionNotification(parsed, body) {
         </div>
       `
     })
+  });
+}
+
+async function storeTrainingData(parsed) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  const record = {
+    score: parsed.score || 0,
+    category: parsed.detectedCategory || null,
+    tags: parsed.tags || [],
+    red_flag_count: (parsed.redFlags || []).length,
+    red_flag_types: (parsed.redFlags || []).map(f => f.slice(0, 80)),
+    gsb_flagged: parsed.safeBrowsingFlagged === true,
+    radar_flagged: parsed.radarFlagged === true,
+    urlhaus_flagged: parsed.urlhausFlagged === true,
+    has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
+    has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
+    score_label: parsed.score >= 75 ? 'scam' : parsed.score >= 45 ? 'suspicious' : 'safe',
+  };
+  await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify(record)
   });
 }
 
@@ -377,12 +407,8 @@ module.exports = async function handler(req, res) {
 
     res.status(200).json(data);
 
-    // ── Step 6: Fire notification email (fire and forget) ───────────────────
-    try {
-      const raw = data.content?.map(c => c.text || '').join('') || '';
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      sendSubmissionNotification(parsed, req.body).catch(e => console.error('Notification error:', e));
-    } catch (e) { /* don't block response */ }
+    // ── Step 6: Notification email — disabled until Resend domain verified ──
+    // TODO: re-enable once reports@phishscore.ai is verified in Resend
 
   } catch (err) {
     console.error('Analysis error:', err);
