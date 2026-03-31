@@ -1,6 +1,7 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const { analyzeRadarBatch } = require('./lib/cnl-analyzer');
 
 const SECTOR_MAP = {
   publishing: "Authors & Writers",
@@ -252,13 +253,23 @@ module.exports = async function handler(req, res) {
     const sectorWarnings = buildSectorWarnings(currentAgg, previousAgg);
     const recentSummaries = buildRecentSummaries(currentRaw);
 
-    // Run both Gemini calls in parallel
-    const [threatWarning, intelligenceSummary] = await Promise.all([
+    // Run Gemini calls + CNL batch analysis in parallel
+    const summaryTexts = currentRaw
+      .filter(s => s.summary)
+      .map(s => s.summary);
+
+    const [threatWarning, intelligenceSummary, cnlInsights] = await Promise.all([
       callGeminiThreatWarning(threatLevel, currentAgg, sectorWarnings, month),
       callGeminiIntelligenceSummary(currentAgg, recentSummaries, month),
+      summaryTexts.length >= 5 ? analyzeRadarBatch(summaryTexts) : Promise.resolve(null),
     ]);
 
     console.log('Gemini results — threatWarning:', !!threatWarning, 'intelligenceSummary:', !!intelligenceSummary);
+    if (cnlInsights) console.log('CNL insights:', JSON.stringify(cnlInsights.categories));
+
+    // Build CNL-enriched context for snapshot
+    const cnlTopCategories = cnlInsights?.categories?.map(c => c.name).join(', ') || null;
+    const cnlSentimentLevel = cnlInsights?.sentiment?.urgencyLevel || null;
 
     const snapshot = {
       threat_level: threatLevel,
@@ -268,6 +279,8 @@ module.exports = async function handler(req, res) {
       aggregation_snapshot: currentAgg,
       total_reports: currentRaw.length,
       previous_total: previousRaw?.length || 0,
+      cnl_top_categories: cnlTopCategories,
+      cnl_sentiment_level: cnlSentimentLevel,
     };
 
     await storeTrend(snapshot);

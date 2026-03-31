@@ -21,8 +21,18 @@ export default function App() {
   const [showTransparency, setShowTransparency] = useState(false);
   const [showTrends, setShowTrends] = useState(false);
   const [showInvestigation, setShowInvestigation] = useState(false);
-  const [showLegal, setShowLegal] = useState(false);
-  const [legalTab, setLegalTab] = useState("terms");
+  const [showLegal, setShowLegal] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("legal") === "terms" || params.get("legal") === "privacy";
+    } catch { return false; }
+  });
+  const [legalTab, setLegalTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("legal") === "privacy" ? "privacy" : "terms";
+    } catch { return "terms"; }
+  });
   const [showDevTools, setShowDevTools] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);

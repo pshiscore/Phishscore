@@ -215,7 +215,23 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
       } else {
         messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}\n\nMessage:\n${text}` }];
       }
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI }) });
+      // Get reCAPTCHA v3 token before submitting
+      let recaptchaToken = null;
+      try {
+        if (window.grecaptcha && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+          recaptchaToken = await new Promise((resolve) => {
+            window.grecaptcha.ready(async () => {
+              const token = await window.grecaptcha.execute(
+                process.env.REACT_APP_RECAPTCHA_SITE_KEY,
+                { action: 'submit' }
+              );
+              resolve(token);
+            });
+          });
+        }
+      } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
+
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {

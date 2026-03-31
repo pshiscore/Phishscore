@@ -2,155 +2,242 @@ import { useState, useRef, useEffect } from "react";
 
 const BASE = '';
 
-const APIS = [
+// ── API Definitions ────────────────────────────────────────────────────────────
+const API_GROUPS = [
   {
-    id: 'urlscan', name: 'URLScan.io',
-    desc: 'Live screenshot, page analysis, malicious verdict',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-urlscan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      return [`UUID: ${d.uuid || 'N/A'}`, `Verdict: ${d.verdict || 'pending'}`, `Score: ${d.score ?? 'N/A'}`, `Country: ${d.country || 'N/A'}`, `IP: ${d.ip || 'N/A'}`, d.screenshot ? `Screenshot: ready` : `Screenshot: pending`].join('\n');
-    }
+    id: 'url',
+    label: 'URL & DOMAIN INTELLIGENCE',
+    color: '#f43f5e',
+    apis: [
+      {
+        id: 'webrisk', name: 'Google Web Risk',
+        desc: 'Malware, phishing, unwanted software detection (replaces GSB)',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-webrisk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          if (d.skipped) return `SKIPPED: ${d.message}`;
+          return [`Flagged: ${d.flagged ? 'YES ⚠' : 'No'}`, `Threat Type: ${d.threatType || 'none'}`, `Clean: ${d.clean ? 'Yes' : 'No'}`].join('\n');
+        }
+      },
+      {
+        id: 'urlscan', name: 'URLScan.io',
+        desc: 'Live screenshot, page analysis, malicious verdict',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-urlscan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          return [`UUID: ${d.uuid || 'N/A'}`, `Verdict: ${d.verdict || 'pending'}`, `Score: ${d.score ?? 'N/A'}`, `Country: ${d.country || 'N/A'}`, `IP: ${d.ip || 'N/A'}`].join('\n');
+        }
+      },
+      {
+        id: 'virustotal', name: 'VirusTotal',
+        desc: '70+ security engine verdicts',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-virustotal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          if (d.skipped) return `SKIPPED: ${d.message}`;
+          return [`Malicious: ${d.malicious ?? 0} engines`, `Suspicious: ${d.suspicious ?? 0} engines`, `Clean: ${d.clean ?? 0} engines`, `Total: ${d.total ?? 0}`].join('\n');
+        }
+      },
+      {
+        id: 'urlhaus', name: 'URLhaus',
+        desc: 'Malware distribution and botnet URL database',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-urlhaus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          return [`Listed: ${d.listed ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'not listed'}`, `Query: ${d.queryStatus || 'N/A'}`].join('\n');
+        }
+      },
+      {
+        id: 'abuseipdb', name: 'AbuseIPDB',
+        desc: 'IP abuse confidence score and reports',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-abuseipdb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          return [`IP: ${d.ip || 'N/A'}`, `Abuse Score: ${d.abuseScore ?? 'N/A'}%`, `Reports: ${d.totalReports ?? 'N/A'}`, `ISP: ${d.isp || 'N/A'}`].join('\n');
+        }
+      },
+      {
+        id: 'whois', name: 'WhoisXML',
+        desc: 'Domain age, registrar, ownership details',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-whois`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          return [`Domain Age: ${d.domainAge !== null ? d.domainAge + ' days' : 'N/A'}`, `Created: ${d.createdDate || 'N/A'}`, `Registrar: ${d.registrar || 'N/A'}`, `Registrant: ${d.registrant || 'N/A'}`].join('\n');
+        }
+      },
+      {
+        id: 'cloudflare', name: 'Cloudflare Radar',
+        desc: 'URL scanning via Cloudflare global network',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-cloudflare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          if (d.skipped) return `SKIPPED: ${d.message}`;
+          return [`UUID: ${d.uuid || 'N/A'}`, `Malicious: ${d.malicious ? 'YES ⚠' : 'No'}`, `Phishing: ${d.phishing ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'N/A'}`].join('\n');
+        }
+      },
+    ]
   },
   {
-    id: 'abuseipdb', name: 'AbuseIPDB',
-    desc: 'IP abuse confidence score and historical reports',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-abuseipdb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      return [`IP: ${d.ip || 'N/A'}`, `Abuse Score: ${d.abuseScore ?? 'N/A'}%`, `Total Reports: ${d.totalReports ?? 'N/A'}`, `ISP: ${d.isp || 'N/A'}`, `Country: ${d.countryCode || 'N/A'}`, `Usage Type: ${d.usageType || 'N/A'}`].join('\n');
-    }
+    id: 'ai',
+    label: 'AI MODELS',
+    color: '#a78bfa',
+    apis: [
+      {
+        id: 'claude-sonnet', name: 'Claude Sonnet 4.6',
+        desc: 'Primary AI model — main analysis pipeline',
+        run: async (url) => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. URL: ${url}. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error || d.message);
+          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-sonnet-4-6`, `Blocks: ${d.content?.length ?? 0}`].join('\n');
+        }
+      },
+      {
+        id: 'claude-haiku', name: 'Claude Haiku 4.5 (Fallback)',
+        desc: 'Backup AI model — fires when Sonnet unavailable',
+        run: async (url) => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error || d.message);
+          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-haiku-4-5-20251001`].join('\n');
+        }
+      },
+      {
+        id: 'claude-opus', name: 'Claude Opus 4.6 (Deep Intel)',
+        desc: 'Premium AI model — forensic reports',
+        run: async (url) => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/test-opus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error || d.message);
+          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-opus-4-6`].join('\n');
+        }
+      },
+      {
+        id: 'gemini', name: 'Google Gemini (Radar AI)',
+        desc: 'Gemini 2.5 Flash — powers Radar threat intelligence',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-gemini`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          return [`Status: OK`, `Model: gemini-2.5-flash`, `Response: ${(d.response || '').slice(0, 100)}`].join('\n');
+        }
+      },
+      {
+        id: 'cnl', name: 'Cloud Natural Language',
+        desc: 'Entity extraction + sentiment analysis for Deep Intel',
+        run: async (url) => {
+          const r = await fetch(`${BASE}/api/test-cnl`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          const orgs = d.entities?.organizations?.map(o => o.name).join(', ') || 'None';
+          return [`Status: OK`, `Organizations: ${orgs}`, `Urgency: ${d.sentiment?.urgencyLevel || 'N/A'}`, `Sentiment: ${d.sentiment?.score ?? 'N/A'}`].join('\n');
+        }
+      },
+    ]
   },
   {
-    id: 'whois', name: 'WhoisXML',
-    desc: 'Domain age, registrar, and ownership details',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-whois`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      return [`Domain Age: ${d.domainAge !== null ? d.domainAge + ' days' : 'N/A'}`, `Created: ${d.createdDate || 'N/A'}`, `Expires: ${d.expiresDate || 'N/A'}`, `Registrar: ${d.registrar || 'N/A'}`, `Registrant: ${d.registrant || 'N/A'}`, `Country: ${d.country || 'N/A'}`].join('\n');
-    }
+    id: 'vision',
+    label: 'VISION API (IMAGE ANALYSIS)',
+    color: '#34d399',
+    apis: [
+      {
+        id: 'vision', name: 'Cloud Vision API',
+        desc: 'OCR text extraction, logo detection, safe search — upload an image to test',
+        requiresImage: true,
+        run: async (url, imageBase64) => {
+          if (!imageBase64) throw new Error('No image provided — use the upload button');
+          const r = await fetch(`${BASE}/api/test-vision`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64 }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          const logos = d.logos?.map(l => `${l.description} (${l.score}%)`).join(', ') || 'None';
+          return [
+            `OCR: ${d.ocr?.charCount || 0} chars extracted`,
+            `Text preview: ${(d.ocr?.text || '').slice(0, 120)}`,
+            `Logos: ${logos}`,
+            `Safe Search: adult=${d.safeSearch?.adult || 'N/A'}, violence=${d.safeSearch?.violence || 'N/A'}`
+          ].join('\n');
+        }
+      },
+    ]
   },
   {
-    id: 'virustotal', name: 'VirusTotal',
-    desc: '70+ security engine verdicts',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-virustotal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      if (d.skipped) return `SKIPPED: ${d.message}`;
-      return [`Malicious: ${d.malicious ?? 0} engines`, `Suspicious: ${d.suspicious ?? 0} engines`, `Clean: ${d.clean ?? 0} engines`, `Total: ${d.total ?? 0} engines checked`].join('\n');
-    }
-  },
-  {
-    id: 'gsb', name: 'Google Safe Browsing',
-    desc: 'Phishing, malware and social engineering',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-gsb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      return [`Flagged: ${d.flagged ? 'YES ⚠' : 'No'}`, `Matches: ${d.matchCount ?? 0}`, d.threats?.length ? `Threats: ${d.threats.join(', ')}` : `No threats detected`].join('\n');
-    }
-  },
-  {
-    id: 'urlhaus', name: 'URLhaus',
-    desc: 'Malware distribution and botnet URL database',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-urlhaus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      return [`Listed: ${d.listed ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'not listed'}`, `Query Status: ${d.queryStatus || 'N/A'}`].join('\n');
-    }
-  },
-  {
-    id: 'cloudflare', name: 'Cloudflare Radar',
-    desc: 'URL scanner using Cloudflare global network intelligence',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-cloudflare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
-      if (d.skipped) return `SKIPPED: ${d.message}`;
-      return [`UUID: ${d.uuid || 'N/A'}`, `Malicious: ${d.malicious ? 'YES ⚠' : 'No'}`, `Phishing: ${d.phishing ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'N/A'}`].join('\n');
-    }
-  },
-  {
-    id: 'claude-sonnet', name: 'Claude Sonnet 4.6',
-    desc: 'Primary AI model — main analysis pipeline',
-    run: async (url) => {
-      const start = Date.now();
-      const res = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. URL: ${url}. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error || d.message);
-      return [`Status: OK`, `Response time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-sonnet-4-6`, `Content blocks: ${d.content?.length ?? 0}`].join('\n');
-    }
-  },
-  {
-    id: 'claude-haiku', name: 'Claude Haiku 4.5 (Fallback)',
-    desc: 'Backup AI model — fires when Sonnet is unavailable',
-    run: async (url) => {
-      const start = Date.now();
-      const res = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. URL: ${url}. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error || d.message);
-      return [`Status: OK`, `Response time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-haiku-4-5-20251001`, `Content blocks: ${d.content?.length ?? 0}`].join('\n');
-    }
-  },
-  {
-    id: 'claude-opus', name: 'Claude Opus 4.6 (Deep Intel)',
-    desc: 'Premium AI model — used for forensic reports',
-    run: async (url) => {
-      const start = Date.now();
-      const res = await fetch(`${BASE}/api/test-opus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error || d.message);
-      return [`Status: OK`, `Response time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-opus-4-6`, `Content blocks: ${d.content?.length ?? 0}`].join('\n');
-    }
-  },
-  {
-    id: 'gemini', name: 'Google Gemini (Radar AI)',
-    desc: 'Gemini 2.0 Flash — powers Radar threat intelligence',
-    run: async (url) => {
-      const res = await fetch(`${BASE}/api/test-gemini`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      if (d.error) throw new Error(d.error || d.message);
-      return [`Status: OK`, `Model: gemini-2.0-flash`, `Response: ${d.response?.slice(0, 120)}...`].join('\n');
-    }
+    id: 'services',
+    label: 'SERVICES',
+    color: '#fbbf24',
+    apis: [
+      {
+        id: 'resend', name: 'Resend Email',
+        desc: 'Transactional email delivery — checks domain verification status',
+        run: async () => {
+          const r = await fetch(`${BASE}/api/test-resend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          if (d.skipped) return `SKIPPED: ${d.message}`;
+          return [`Status: OK`, `Domains: ${d.totalDomains}`, `Verified: ${d.verifiedDomains.join(', ') || 'None ⚠'}`, `Ready: ${d.ready ? 'Yes ✓' : 'No — verify domain first'}`].join('\n');
+        }
+      },
+      {
+        id: 'recaptcha', name: 'reCAPTCHA v3',
+        desc: 'Bot detection — verifies secret key is valid',
+        run: async () => {
+          const r = await fetch(`${BASE}/api/test-recaptcha`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          if (d.skipped) return `SKIPPED: ${d.message}`;
+          return [`Key Valid: ${d.keyValid ? 'Yes ✓' : 'No ✗'}`, `Status: ${d.status}`, `Errors: ${d.errorCodes.join(', ') || 'none'}`].join('\n');
+        }
+      },
+    ]
   },
 ];
 
-function APICard({ api, url, autoRun, T }) {
+// ── API Card Component ─────────────────────────────────────────────────────────
+function APICard({ api, url, imageBase64, autoRun, T }) {
   const [status, setStatus] = useState('idle');
   const [result, setResult] = useState('');
   const [timing, setTiming] = useState('');
   const hasRun = useRef(false);
+  const fileRef = useRef();
 
   useEffect(() => {
-    if (autoRun && !hasRun.current && url) {
+    if (autoRun && !hasRun.current) {
+      if (api.requiresImage) return; // skip auto-run for vision
       hasRun.current = true;
       run();
     }
   }, [autoRun]);
 
-  const run = async () => {
-    if (!url) return;
-    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+  const run = async (imgBase64) => {
+    const fullUrl = url ? (url.startsWith('http') ? url : `https://${url}`) : 'https://example.com';
     setStatus('running'); setResult('Running...'); setTiming('');
     const start = Date.now();
     try {
-      const summary = await api.run(fullUrl);
+      const summary = await api.run(fullUrl, imgBase64 || imageBase64);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1) + 's';
       setTiming(elapsed);
       if (summary.startsWith('SKIPPED')) { setStatus('skip'); setResult(summary); }
@@ -159,6 +246,17 @@ function APICard({ api, url, autoRun, T }) {
       setTiming(((Date.now() - start) / 1000).toFixed(1) + 's');
       setStatus('fail'); setResult(`Error: ${err.message}`);
     }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(',')[1];
+      run(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   const colors = {
@@ -183,25 +281,45 @@ function APICard({ api, url, autoRun, T }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
         <span style={{ fontSize: 9, color: T.text4, fontFamily: 'monospace' }}>{timing}</span>
-        <button onClick={run} disabled={status === 'running'} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: '5px 14px', borderRadius: 6, fontSize: 10, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1 }}>RUN</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {api.requiresImage && (
+            <>
+              <input type="file" accept="image/*" ref={fileRef} onChange={handleImageUpload} style={{ display: 'none' }} />
+              <button onClick={() => fileRef.current.click()} disabled={status === 'running'} style={{ background: '#34d39918', border: '1px solid #34d39940', color: '#34d399', padding: '5px 12px', borderRadius: 6, fontSize: 10, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1 }}>
+                UPLOAD IMAGE
+              </button>
+            </>
+          )}
+          {!api.requiresImage && (
+            <button onClick={() => run()} disabled={status === 'running'} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: '5px 14px', borderRadius: 6, fontSize: 10, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1 }}>RUN</button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+// ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function APITestDashboard({ onClose, T = {} }) {
   const [url, setUrl] = useState('');
   const [runAllId, setRunAllId] = useState(null);
+  const [activeGroup, setActiveGroup] = useState('all');
 
   const runAll = () => {
     if (!url.trim()) return;
-    setRunAllId(Date.now()); // new ID triggers all cards
+    setRunAllId(Date.now());
   };
 
+  const visibleGroups = activeGroup === 'all'
+    ? API_GROUPS
+    : API_GROUPS.filter(g => g.id === activeGroup);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: T.pageBg, zIndex: 9999, overflowY: 'auto', padding: 28 }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+    <div style={{ position: 'fixed', inset: 0, background: T.pageBg, zIndex: 9999, overflowY: 'auto', padding: 24 }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: T.text, marginBottom: 2 }}>
               <span style={{ color: '#f43f5e' }}>PHISH</span>SCORE API TEST DASHBOARD
@@ -211,9 +329,10 @@ export default function APITestDashboard({ onClose, T = {} }) {
           <button onClick={onClose} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 }}>✕ CLOSE</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+        {/* URL Input + Run All */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <input type="text" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && runAll()}
-            placeholder="Enter domain or URL (e.g. travel-deals-365.net)"
+            placeholder="Enter domain or URL for URL/Domain tests (e.g. travel-deals-365.net)"
             style={{ flex: 1, minWidth: 280, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: '12px 16px', fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }} />
           <button onClick={runAll} disabled={!url.trim()}
             style={{ background: url.trim() ? 'linear-gradient(135deg,#f43f5e,#be123c)' : T.innerBg, border: 'none', color: url.trim() ? '#fff' : T.text4, padding: '12px 28px', borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: url.trim() ? 'pointer' : 'default', fontFamily: 'monospace' }}>
@@ -221,15 +340,37 @@ export default function APITestDashboard({ onClose, T = {} }) {
           </button>
         </div>
 
-        <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, padding: '10px 16px', marginBottom: 24, fontSize: 10, color: T.text4, fontFamily: 'monospace', lineHeight: 1.7 }}>
-          URLScan takes 15-30 seconds. Opus has a separate test endpoint. Press RUN ALL or test individually.
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
-          {APIS.map(api => (
-            <APICard key={`${api.id}-${runAllId}`} api={api} url={url} autoRun={runAllId !== null} T={T} />
+        {/* Group filter tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {[{ id: 'all', label: 'ALL', color: T.text3 }, ...API_GROUPS.map(g => ({ id: g.id, label: g.label.split(' ')[0], color: g.color }))].map(tab => (
+            <button key={tab.id} onClick={() => setActiveGroup(tab.id)}
+              style={{ padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${activeGroup === tab.id ? tab.color : T.innerBorder}`, background: activeGroup === tab.id ? `${tab.color}18` : T.innerBg, color: activeGroup === tab.id ? tab.color : T.text4, fontFamily: 'monospace', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: 1 }}>
+              {tab.label}
+            </button>
           ))}
         </div>
+
+        {/* Notes */}
+        <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 10, color: T.text4, fontFamily: 'monospace', lineHeight: 1.7 }}>
+          URLScan takes 15-30s. Vision API requires image upload — click UPLOAD IMAGE. Services just verify key/config status. RUN ALL skips Vision.
+        </div>
+
+        {/* Groups */}
+        {visibleGroups.map(group => (
+          <div key={group.id} style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 3, height: 16, background: group.color, borderRadius: 2 }} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: group.color, fontFamily: 'monospace', letterSpacing: 2 }}>{group.label}</div>
+              <div style={{ flex: 1, height: 1, background: T.cardBorder }} />
+              <div style={{ fontSize: 9, color: T.text4, fontFamily: 'monospace' }}>{group.apis.length} APIs</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+              {group.apis.map(api => (
+                <APICard key={`${api.id}-${runAllId}`} api={api} url={url} autoRun={runAllId !== null} T={T} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

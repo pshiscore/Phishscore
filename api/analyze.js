@@ -51,10 +51,29 @@ function isRateLimited(ip) {
   return false;
 }
 
+// ── reCAPTCHA v3 verification ─────────────────────────────────────────────────
+async function verifyRecaptcha(token, minScore = 0.5) {
+  if (!token || !process.env.RECAPTCHA_SECRET_KEY) return true; // skip if not configured
+  try {
+    const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+    });
+    const data = await res.json();
+    console.log('reCAPTCHA score:', data.score, 'action:', data.action);
+    if (!data.success) return false;
+    return data.score >= minScore;
+  } catch (e) {
+    console.error('reCAPTCHA verification error:', e);
+    return true; // fail open — don't block if verification itself fails
+  }
+}
+
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
   // Strip fields that are not valid Claude API params
-  const { trainAI, ...claudeBody } = body;
+  const { trainAI, recaptchaToken, ...claudeBody } = body;
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -77,6 +96,16 @@ module.exports = async function handler(req, res) {
     return res.status(429).json({
       error: 'rate_limited',
       message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again."
+    });
+  }
+
+  // reCAPTCHA v3 verification
+  const recaptchaToken = req.body.recaptchaToken;
+  const recaptchaPassed = await verifyRecaptcha(recaptchaToken, 0.5);
+  if (!recaptchaPassed) {
+    return res.status(429).json({
+      error: 'bot_detected',
+      message: "Submission could not be verified. Please try again."
     });
   }
 
@@ -114,33 +143,23 @@ module.exports = async function handler(req, res) {
     // ── Step 4: External threat checks in parallel ──────────────────────────
     await Promise.all([
 
-      // Google Safe Browsing
+      // Google Web Risk (replaces Safe Browsing — broader threat types, 100k free/month)
       (async () => {
-        const gsbKey = process.env.GOOGLE_SAFE_BROWSING_KEY;
-        if (!gsbKey || uniqueUrls.length === 0) return;
+        const wrKey = process.env.GOOGLE_WEB_RISK_KEY;
+        if (!wrKey || uniqueUrls.length === 0) return;
         try {
-          const r = await fetch(
-            `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${gsbKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                client: { clientId: "phishscore", clientVersion: "1.0" },
-                threatInfo: {
-                  threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
-                  platformTypes: ["ANY_PLATFORM"],
-                  threatEntryTypes: ["URL"],
-                  threatEntries: uniqueUrls.map(url => ({ url }))
-                }
-              })
+          for (const url of uniqueUrls.slice(0, 3)) {
+            const encoded = encodeURIComponent(url);
+            const r = await fetch(
+              `https://webrisk.googleapis.com/v1/uris:search?key=${wrKey}&threatTypes=MALWARE&threatTypes=SOCIAL_ENGINEERING&threatTypes=UNWANTED_SOFTWARE&uri=${encoded}`
+            );
+            const d = await r.json();
+            if (d.threat) {
+              gsbFlagged = true; // reuse existing flag for backwards compat
+              if (!flaggedSources.includes("Google Web Risk")) flaggedSources.push("Google Web Risk");
             }
-          );
-          const d = await r.json();
-          if (d.matches && d.matches.length > 0) {
-            gsbFlagged = true;
-            if (!flaggedSources.includes("Google Safe Browsing")) flaggedSources.push("Google Safe Browsing");
           }
-        } catch (e) { console.error('GSB error:', e); }
+        } catch (e) { console.error('Web Risk error:', e); }
       })(),
 
       // Cloudflare Radar
