@@ -32,8 +32,9 @@ module.exports = async function handler(req, res) {
     });
 
     if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      return res.status(200).json({ error: `Vision API error ${r.status}: ${JSON.stringify(err)}` });
+      const errBody = await r.json().catch(() => ({}));
+      console.error(`Vision API error ${r.status}:`, JSON.stringify(errBody));
+      return res.status(200).json({ error: `Vision API error ${r.status}: ${errBody?.error?.message || JSON.stringify(errBody)}` });
     }
 
     const data = await r.json();
