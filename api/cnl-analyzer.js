@@ -1,42 +1,50 @@
 // ── Cloud Natural Language API Analyzer ──────────────────────────────────────
-// Extracts entities, sentiment, and content categories from text
-// Used by Deep Intel (pre-processor) and Radar (batch analysis)
-
-const { getAccessToken } = require('./google-auth');
+// Uses API key directly (simpler than OAuth for server-side calls)
+// Fixes: v1 endpoint, UTF8 encodingType at root level, clean JSON structure
 
 const NL_BASE = 'https://language.googleapis.com/v1';
 
+function getApiKey() {
+  return process.env.GOOGLE_NL_API_KEY || process.env.GEMINI_API_KEY;
+}
+
 async function nlRequest(endpoint, body) {
-  const token = await getAccessToken();
-  const res = await fetch(`${NL_BASE}${endpoint}`, {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('No Google NL API key configured (GOOGLE_NL_API_KEY)');
+
+  const url = `${NL_BASE}${endpoint}?key=${apiKey}`;
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body)
   });
+
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
     console.error(`NL API error ${res.status} on ${endpoint}:`, JSON.stringify(errBody));
-    throw new Error(`NL API error ${res.status}: ${errBody?.error?.message || JSON.stringify(errBody)}`);
+    throw new Error(`NL API ${res.status}: ${errBody?.error?.message || JSON.stringify(errBody)}`);
   }
+
   return res.json();
 }
 
 // ── Entity Extraction ─────────────────────────────────────────────────────────
-// Returns organizations, money amounts, locations, phone numbers, URLs
 async function analyzeEntities(text) {
   if (!text || text.trim().length < 20) return null;
   try {
     const data = await nlRequest('/documents:analyzeEntities', {
-      document: { type: 'PLAIN_TEXT', content: text },
+      document: {
+        type: 'PLAIN_TEXT',
+        content: text
+      },
       encodingType: 'UTF8'
     });
 
     const entities = data.entities || [];
 
-    // Group by type — focus on scam-relevant types
     const organizations = entities
       .filter(e => e.type === 'ORGANIZATION' && e.salience > 0.05)
       .map(e => ({ name: e.name, salience: Math.round(e.salience * 100) }))
@@ -66,20 +74,20 @@ async function analyzeEntities(text) {
 }
 
 // ── Sentiment Analysis ────────────────────────────────────────────────────────
-// Returns score (-1 to +1) and magnitude (0 to infinity)
-// High magnitude + negative score = high pressure/threatening language
 async function analyzeSentiment(text) {
   if (!text || text.trim().length < 20) return null;
   try {
     const data = await nlRequest('/documents:analyzeSentiment', {
-      document: { type: 'PLAIN_TEXT', content: text },
+      document: {
+        type: 'PLAIN_TEXT',
+        content: text
+      },
       encodingType: 'UTF8'
     });
 
     const score = data.documentSentiment?.score || 0;
     const magnitude = data.documentSentiment?.magnitude || 0;
 
-    // Classify urgency level
     let urgencyLevel = 'LOW';
     if (magnitude > 3 && score < -0.2) urgencyLevel = 'HIGH';
     else if (magnitude > 1.5) urgencyLevel = 'MEDIUM';
@@ -101,12 +109,14 @@ async function analyzeSentiment(text) {
 }
 
 // ── Content Classification ────────────────────────────────────────────────────
-// Returns top content categories (requires text > 20 words)
 async function classifyText(text) {
   if (!text || text.trim().split(/\s+/).length < 20) return null;
   try {
     const data = await nlRequest('/documents:classifyText', {
-      document: { type: 'PLAIN_TEXT', content: text }
+      document: {
+        type: 'PLAIN_TEXT',
+        content: text
+      }
     });
 
     const categories = (data.categories || [])
@@ -122,7 +132,6 @@ async function classifyText(text) {
 }
 
 // ── Full Deep Intel Pre-Analysis ──────────────────────────────────────────────
-// Runs entities + sentiment in parallel, returns structured context for Opus
 async function analyzeForDeepIntel(text) {
   if (!text || text.trim().length < 20) return null;
   try {
@@ -130,7 +139,6 @@ async function analyzeForDeepIntel(text) {
       analyzeEntities(text),
       analyzeSentiment(text),
     ]);
-
     return { entities, sentiment };
   } catch (err) {
     console.error('CNL deep intel error:', err.message);
@@ -139,10 +147,9 @@ async function analyzeForDeepIntel(text) {
 }
 
 // ── Batch Radar Analysis ──────────────────────────────────────────────────────
-// Classifies concatenated summaries for Radar trend detection
 async function analyzeRadarBatch(summaries) {
   if (!summaries || summaries.length === 0) return null;
-  const combined = summaries.slice(0, 50).join(' ').slice(0, 5000); // Stay within limits
+  const combined = summaries.slice(0, 50).join(' ').slice(0, 5000);
   try {
     const [categories, sentiment] = await Promise.all([
       classifyText(combined),
