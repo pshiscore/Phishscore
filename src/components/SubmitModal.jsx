@@ -165,6 +165,13 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
   const isSubmitting = useRef(false);
   const cat = getCat(category);
 
+  const resetForm = () => {
+    setStep(1); setResult(null); setText(""); setSource("");
+    setCategory("other"); setVisibility("private"); setImage(null);
+    setImagePreview(null); setErrorState(null); setDuplicate(null);
+    setTrainAI(false); setInputMode("text");
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
@@ -500,7 +507,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
               <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                 <AccuracyFeedback compact />
-                <button onClick={() => { setStep(1); setResult(null); setText(""); setSource(""); setCategory("other"); setVisibility("private"); setImage(null); setImagePreview(null); setErrorState(null); }} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={resetForm} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
                 <button onClick={onClose} style={{ flex: 1, minWidth: 120, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>

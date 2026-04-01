@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const result = await analyzeForDeepIntel(testText);
-    if (!result) return res.status(200).json({ error: 'CNL returned no results — check GOOGLE_NL_API_KEY in Vercel' });
+    if (!result) return res.status(200).json({ error: 'CNL returned no results — check GOOGLE_SERVICE_ACCOUNT_JSON in Vercel environment variables' });
 
     return res.status(200).json({
       ok: true,

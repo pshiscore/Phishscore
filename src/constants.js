@@ -1,5 +1,6 @@
 export const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 export const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+export const SUPPORT_EMAIL = 'contact@phishscore.ai';
 
 export const SCAM_CATEGORIES = [
   { id: "publishing", label: "Publishing & Literary", icon: "book", color: "#a78bfa", description: "Fake agents, vanity presses, contest mills" },

@@ -15,7 +15,7 @@ export default function TransparencyPage({ onClose, submissions, T = {} }) {
   const catBreakdown = SCAM_CATEGORIES.filter(c => c.id !== "other")
     .map(cat => ({ ...cat, count: submissions.filter(s => s.category === cat.id).length }))
     .filter(c => c.count > 0).sort((a, b) => b.count - a.count);
-  const month = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  const month = new Date().toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "America/New_York" });
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(14px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 300, padding: 16, overflowY: "auto" }}>

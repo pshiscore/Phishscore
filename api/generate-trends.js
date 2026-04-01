@@ -169,7 +169,8 @@ Rules: No URLs. No bullet points. Plain English. 3 flowing sentences only.`;
     console.error('Gemini threat warning error:', JSON.stringify(data));
     return null; // return null so we know it failed
   }
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = raw.replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
   console.log('Gemini threat warning result:', text?.slice(0, 80));
   return text || null;
 }
@@ -212,7 +213,8 @@ Rules: Be specific — name the scam types and tactics. Do not say generic thing
     console.error('Gemini intelligence summary error:', JSON.stringify(data));
     return null;
   }
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = raw.replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
   console.log('Gemini intelligence summary result:', text?.slice(0, 80));
   return text || null;
 }

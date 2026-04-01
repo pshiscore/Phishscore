@@ -87,7 +87,7 @@ export default function App() {
       source: isAnon ? null : (source || "user-submitted"),
       // CHANGE: store AI summary instead of raw text slice; fall back to short preview if no summary
       summary: isAnon ? null : (summary || null),
-      preview: isAnon ? null : (text.slice(0, 80) + (text.length > 80 ? "..." : "")),
+      preview: isAnon ? null : ((text || "").slice(0, 80) + ((text || "").length > 80 ? "..." : "")),
       score: result.score,
       tags: result.tags || [],
       visibility: visibility || "public",

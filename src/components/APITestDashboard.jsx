@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from "react";
 
 const BASE = '';
 
+async function safeJson(r) {
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error(`Invalid JSON response: ${text.slice(0, 100)}`); }
+}
+
 // ── API Definitions ────────────────────────────────────────────────────────────
 const API_GROUPS = [
   {
@@ -15,7 +21,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-webrisk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           if (d.skipped) return `SKIPPED: ${d.message}`;
           return [`Flagged: ${d.flagged ? 'YES ⚠' : 'No'}`, `Threat Type: ${d.threatType || 'none'}`, `Clean: ${d.clean ? 'Yes' : 'No'}`].join('\n');
@@ -27,7 +33,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-urlscan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           return [`UUID: ${d.uuid || 'N/A'}`, `Verdict: ${d.verdict || 'pending'}`, `Score: ${d.score ?? 'N/A'}`, `Country: ${d.country || 'N/A'}`, `IP: ${d.ip || 'N/A'}`].join('\n');
         }
@@ -38,7 +44,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-virustotal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           if (d.skipped) return `SKIPPED: ${d.message}`;
           return [`Malicious: ${d.malicious ?? 0} engines`, `Suspicious: ${d.suspicious ?? 0} engines`, `Clean: ${d.clean ?? 0} engines`, `Total: ${d.total ?? 0}`].join('\n');
@@ -50,7 +56,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-urlhaus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           return [`Listed: ${d.listed ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'not listed'}`, `Query: ${d.queryStatus || 'N/A'}`].join('\n');
         }
@@ -61,7 +67,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-abuseipdb`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           return [`IP: ${d.ip || 'N/A'}`, `Abuse Score: ${d.abuseScore ?? 'N/A'}%`, `Reports: ${d.totalReports ?? 'N/A'}`, `ISP: ${d.isp || 'N/A'}`].join('\n');
         }
@@ -72,7 +78,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-whois`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           return [`Domain Age: ${d.domainAge !== null ? d.domainAge + ' days' : 'N/A'}`, `Created: ${d.createdDate || 'N/A'}`, `Registrar: ${d.registrar || 'N/A'}`, `Registrant: ${d.registrant || 'N/A'}`].join('\n');
         }
@@ -83,7 +89,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-cloudflare`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           if (d.skipped) return `SKIPPED: ${d.message}`;
           return [`UUID: ${d.uuid || 'N/A'}`, `Malicious: ${d.malicious ? 'YES ⚠' : 'No'}`, `Phishing: ${d.phishing ? 'YES ⚠' : 'No'}`, `Status: ${d.status || 'N/A'}`].join('\n');
@@ -103,7 +109,7 @@ const API_GROUPS = [
           const start = Date.now();
           const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. URL: ${url}. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error || d.message);
           return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-sonnet-4-6`, `Blocks: ${d.content?.length ?? 0}`].join('\n');
         }
@@ -115,7 +121,7 @@ const API_GROUPS = [
           const start = Date.now();
           const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error || d.message);
           return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-haiku-4-5-20251001`].join('\n');
         }
@@ -127,7 +133,7 @@ const API_GROUPS = [
           const start = Date.now();
           const r = await fetch(`${BASE}/api/test-opus`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error || d.message);
           return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-opus-4-6`].join('\n');
         }
@@ -138,7 +144,7 @@ const API_GROUPS = [
         run: async (url) => {
           const r = await fetch(`${BASE}/api/test-gemini`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           return [`Status: OK`, `Model: gemini-2.5-flash`, `Response: ${(d.response || '').slice(0, 100)}`].join('\n');
         }
@@ -151,7 +157,7 @@ const API_GROUPS = [
           const testText = 'URGENT: Your Chase Bank account has been compromised and suspended. A suspicious transaction of $2,500 was detected from an unknown device. Please call our fraud department immediately at 1-800-555-0123 to verify your identity and restore access. Failure to respond within 24 hours will result in permanent account closure and legal action.';
           const r = await fetch(`${BASE}/api/test-cnl`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: testText }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           const orgs = d.entities?.organizations?.map(o => o.name).join(', ') || 'None';
           return [`Status: OK`, `Organizations: ${orgs}`, `Urgency: ${d.sentiment?.urgencyLevel || 'N/A'}`, `Sentiment: ${d.sentiment?.score ?? 'N/A'}`].join('\n');
@@ -172,7 +178,7 @@ const API_GROUPS = [
           if (!imageBase64) throw new Error('No image provided — use the upload button');
           const r = await fetch(`${BASE}/api/test-vision`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64 }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           const logos = d.logos?.map(l => `${l.description} (${l.score}%)`).join(', ') || 'None';
           return [
@@ -196,7 +202,7 @@ const API_GROUPS = [
         run: async () => {
           const r = await fetch(`${BASE}/api/test-resend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           if (d.skipped) return `SKIPPED: ${d.message}`;
           return [`Status: OK`, `Domains: ${d.totalDomains}`, `Verified: ${d.verifiedDomains.join(', ') || 'None ⚠'}`, `Ready: ${d.ready ? 'Yes ✓' : 'No — verify domain first'}`].join('\n');
@@ -208,7 +214,7 @@ const API_GROUPS = [
         run: async () => {
           const r = await fetch(`${BASE}/api/test-recaptcha`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await r.json();
+          const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
           if (d.skipped) return `SKIPPED: ${d.message}`;
           return [`Key Valid: ${d.keyValid ? 'Yes ✓' : 'No ✗'}`, `Status: ${d.status}`, `Errors: ${d.errorCodes.join(', ') || 'none'}`].join('\n');

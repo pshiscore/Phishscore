@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { PhishScoreLogo, ScoreRing } from "./Primitives";
+import { SUPPORT_EMAIL } from "../constants";
 
 const TIERS = [
   {
@@ -163,7 +164,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
             <span style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 800, color: T.text, letterSpacing: 1 }}>DEEP INTEL</span>
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
             <span style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>—</span>
-            <a href="mailto:contact@phishscore.ai?subject=Deep Intel Beta Tester Request" style={{ fontSize: 10, color: "#a78bfa", fontFamily: "monospace", textDecoration: "none", fontWeight: 700 }}>contact us</a>
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=Deep Intel Beta Tester Request`} style={{ fontSize: 10, color: "#a78bfa", fontFamily: "monospace", textDecoration: "none", fontWeight: 700 }}>contact us</a>
             <span style={{ fontSize: 10, color: T.text4, fontFamily: "Georgia, serif", fontStyle: "italic" }}>before using</span>
           </div>
           <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>FORENSIC SCAM INVESTIGATION</div>
@@ -272,7 +273,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
             {/* Contact footer */}
             <div style={{ marginTop: 16, textAlign: "center" }}>
               <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Complex investigation? Contact us directly — </span>
-              <a href="mailto:contact@phishscore.ai?subject=Deep Investigation Request" style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
+              <a href={`mailto:${SUPPORT_EMAIL}?subject=Deep Investigation Request`} style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>{SUPPORT_EMAIL}</a>
             </div>
           </>
         )}
@@ -365,7 +366,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
                     PAYMENTS COMING SOON
                   </button>
                   <div style={{ textAlign: "center", fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>
-                    Payment processing temporarily unavailable — <a href="mailto:contact@phishscore.ai" style={{ color: "#a78bfa", textDecoration: "none" }}>contact us</a> to investigate manually
+                    Payment processing temporarily unavailable — <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#a78bfa", textDecoration: "none" }}>contact us</a> to investigate manually
                   </div>
                 </div>
               );
@@ -398,7 +399,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
 
             <div style={{ textAlign: "center" }}>
               <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Complex investigation? Contact us directly — </span>
-              <a href="mailto:contact@phishscore.ai?subject=Deep Investigation Request" style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
+              <a href={`mailto:${SUPPORT_EMAIL}?subject=Deep Investigation Request`} style={{ fontSize: 11, color: "#a78bfa", fontFamily: "monospace", fontWeight: 700, textDecoration: "none" }}>{SUPPORT_EMAIL}</a>
             </div>
           </>
         )}

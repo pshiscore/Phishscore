@@ -16,8 +16,9 @@ export function PhishScoreLogo({ T = {}, size = 20, dotSize = 13 }) {
 
 // ── Score ring ─────────────────────────────────────────────────────────────────
 export function ScoreRing({ score, size = 64, trackColor = "#1a1d2e" }) {
-  const color = getScoreColor(score);
-  const r = size * 0.37, circ = 2 * Math.PI * r, dash = (score / 100) * circ;
+  const safeScore = Number(score) || 0;
+  const color = getScoreColor(safeScore);
+  const r = size * 0.37, circ = 2 * Math.PI * r, dash = (safeScore / 100) * circ;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={size * 0.1} />
@@ -26,7 +27,7 @@ export function ScoreRing({ score, size = 64, trackColor = "#1a1d2e" }) {
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
         style={{ transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)", filter: `drop-shadow(0 0 ${size * 0.06}px ${color}88)` }} />
       <text x={size / 2} y={size / 2 + size * 0.06} textAnchor="middle" fill={color}
-        fontSize={size * 0.21} fontWeight="700" fontFamily="monospace">{score}</text>
+        fontSize={size * 0.21} fontWeight="700" fontFamily="monospace">{safeScore}</text>
     </svg>
   );
 }
