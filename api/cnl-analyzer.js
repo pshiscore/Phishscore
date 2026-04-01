@@ -1,8 +1,4 @@
 // ── Cloud Natural Language API Analyzer ──────────────────────────────────────
-// Uses API key directly (simpler than OAuth for server-side calls)
-// Fixes: v1 endpoint, UTF8 encodingType at root level, clean JSON structure
-
-const NL_BASE = 'https://language.googleapis.com/v1';
 
 function getApiKey() {
   return process.env.GOOGLE_NL_API_KEY || process.env.GEMINI_API_KEY;
@@ -10,22 +6,21 @@ function getApiKey() {
 
 async function nlRequest(endpoint, body) {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No Google NL API key configured (GOOGLE_NL_API_KEY)');
+  if (!apiKey) throw new Error('No API key configured (GOOGLE_NL_API_KEY)');
 
-  const url = `${NL_BASE}${endpoint}?key=${apiKey}`;
+  // Fixed URL: base includes /documents, endpoint is just the method
+  const url = `https://language.googleapis.com/v1/documents${endpoint}?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
 
   if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}));
-    console.error(`NL API error ${res.status} on ${endpoint}:`, JSON.stringify(errBody));
-    throw new Error(`NL API ${res.status}: ${errBody?.error?.message || JSON.stringify(errBody)}`);
+    const errText = await res.text();
+    console.error(`!!! GOOGLE NL REJECTED (${res.status}) on ${endpoint}:`, errText);
+    throw new Error(`Status ${res.status}: ${errText}`);
   }
 
   return res.json();
@@ -35,36 +30,26 @@ async function nlRequest(endpoint, body) {
 async function analyzeEntities(text) {
   if (!text || text.trim().length < 20) return null;
   try {
-    const data = await nlRequest('/documents:analyzeEntities', {
-      document: {
-        type: 'PLAIN_TEXT',
-        content: text
-      },
+    const data = await nlRequest(':analyzeEntities', {
+      document: { type: 'PLAIN_TEXT', content: text },
       encodingType: 'UTF8'
     });
 
     const entities = data.entities || [];
-
     const organizations = entities
       .filter(e => e.type === 'ORGANIZATION' && e.salience > 0.05)
       .map(e => ({ name: e.name, salience: Math.round(e.salience * 100) }))
       .slice(0, 5);
-
     const money = entities
       .filter(e => e.type === 'PRICE' || e.type === 'NUMBER')
       .filter(e => e.mentions?.some(m => m.text?.content?.match(/\$|£|€|USD|GBP|\d+,\d{3}/)))
-      .map(e => e.name)
-      .slice(0, 3);
-
+      .map(e => e.name).slice(0, 3);
     const locations = entities
       .filter(e => e.type === 'LOCATION' && e.salience > 0.05)
-      .map(e => e.name)
-      .slice(0, 3);
-
+      .map(e => e.name).slice(0, 3);
     const phones = entities
       .filter(e => e.type === 'PHONE_NUMBER')
-      .map(e => e.name)
-      .slice(0, 3);
+      .map(e => e.name).slice(0, 3);
 
     return { organizations, money, locations, phones, totalEntities: entities.length };
   } catch (err) {
@@ -77,17 +62,13 @@ async function analyzeEntities(text) {
 async function analyzeSentiment(text) {
   if (!text || text.trim().length < 20) return null;
   try {
-    const data = await nlRequest('/documents:analyzeSentiment', {
-      document: {
-        type: 'PLAIN_TEXT',
-        content: text
-      },
+    const data = await nlRequest(':analyzeSentiment', {
+      document: { type: 'PLAIN_TEXT', content: text },
       encodingType: 'UTF8'
     });
 
     const score = data.documentSentiment?.score || 0;
     const magnitude = data.documentSentiment?.magnitude || 0;
-
     let urgencyLevel = 'LOW';
     if (magnitude > 3 && score < -0.2) urgencyLevel = 'HIGH';
     else if (magnitude > 1.5) urgencyLevel = 'MEDIUM';
@@ -109,22 +90,23 @@ async function analyzeSentiment(text) {
 }
 
 // ── Content Classification ────────────────────────────────────────────────────
+// Requires minimum 20 words — returns null silently if too short
 async function classifyText(text) {
-  if (!text || text.trim().split(/\s+/).length < 20) return null;
+  if (!text) return null;
+  const wordCount = text.trim().split(/\s+/).length;
+  if (wordCount < 20) {
+    console.log(`CNL classifyText skipped — only ${wordCount} words (minimum 20)`);
+    return null;
+  }
   try {
-    const data = await nlRequest('/documents:classifyText', {
-      document: {
-        type: 'PLAIN_TEXT',
-        content: text
-      }
+    const data = await nlRequest(':classifyText', {
+      document: { type: 'PLAIN_TEXT', content: text }
     });
 
-    const categories = (data.categories || [])
+    return (data.categories || [])
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 3)
       .map(c => ({ name: c.name, confidence: Math.round(c.confidence * 100) }));
-
-    return categories;
   } catch (err) {
     console.error('CNL classify error:', err.message);
     return null;
