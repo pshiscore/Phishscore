@@ -145,9 +145,11 @@ const API_GROUPS = [
       },
       {
         id: 'cnl', name: 'Cloud Natural Language',
-        desc: 'Entity extraction + sentiment analysis for Deep Intel',
-        run: async (url) => {
-          const r = await fetch(`${BASE}/api/test-cnl`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+        desc: 'Entity extraction + sentiment analysis — tests with a scam paragraph (requires 20+ words)',
+        run: async () => {
+          // CNL needs 20+ words — always send a fixed scam test paragraph, ignore URL input
+          const testText = 'URGENT: Your Chase Bank account has been compromised and suspended. A suspicious transaction of $2,500 was detected from an unknown device. Please call our fraud department immediately at 1-800-555-0123 to verify your identity and restore access. Failure to respond within 24 hours will result in permanent account closure and legal action.';
+          const r = await fetch(`${BASE}/api/test-cnl`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: testText }) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const d = await r.json();
           if (d.error) throw new Error(d.error);
