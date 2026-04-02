@@ -5,7 +5,60 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
+const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
+
+async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData) {
+  if (!RESEND_KEY) return;
+  const verdict = urlscanData?.verdict || 'N/A';
+  const abuseScore = abuseData?.abuseScore ?? 'N/A';
+  const verdictColor = verdict === 'malicious' ? '#dc2626' : verdict === 'clean' ? '#059669' : '#d97706';
+  const summary = (forensicReport || '').slice(0, 400).replace(/\n/g, ' ');
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'PhishScore Alerts <reports@phishscore.ai>',
+        to: ADMIN_EMAIL,
+        subject: `[PhishScore] Deep Intel Complete — Case #${caseId.slice(0, 8).toUpperCase()}`,
+        html: `
+          <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;background:#fff;padding:32px;">
+            <div style="margin-bottom:20px;">
+              <span style="font-family:monospace;font-size:18px;font-weight:800;">PHISH</span><span style="font-family:monospace;font-size:18px;font-weight:800;color:#dc2626;">SCORE</span><span style="font-family:monospace;font-size:11px;color:#9ca3af;">.ai</span>
+              <p style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#6b7280;margin:4px 0 0;">DEEP INTEL ANALYSIS COMPLETE</p>
+            </div>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#9ca3af;margin:0 0 4px;">CASE ID</p>
+              <p style="font-family:monospace;font-size:14px;font-weight:700;color:#111;margin:0;">#${caseId.slice(0, 8).toUpperCase()}</p>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 6px;">URL ANALYZED</p>
+              <p style="font-family:monospace;font-size:12px;color:#111;margin:0;word-break:break-all;">${url || 'No URL extracted'}</p>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;border-top:3px solid ${verdictColor};">
+                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">URLSCAN VERDICT</p>
+                <p style="font-family:monospace;font-size:14px;font-weight:700;color:${verdictColor};margin:0;text-transform:uppercase;">${verdict}</p>
+              </div>
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;">
+                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">IP ABUSE SCORE</p>
+                <p style="font-family:monospace;font-size:14px;font-weight:700;color:#374151;margin:0;">${abuseScore}${typeof abuseScore === 'number' ? '%' : ''}</p>
+              </div>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">KEY FINDINGS SUMMARY</p>
+              <p style="font-family:Georgia,serif;font-size:13px;color:#374151;line-height:1.7;margin:0;">${summary}${forensicReport && forensicReport.length > 400 ? '…' : ''}</p>
+            </div>
+            <p style="font-family:monospace;font-size:10px;color:#9ca3af;margin:0;">Timestamp: ${new Date().toISOString()}</p>
+          </div>
+        `,
+      }),
+    });
+  } catch (e) {
+    console.error('Admin deep intel alert error:', e);
+  }
+}
 
 // ── External API helpers ──────────────────────────────────────────────────────
 
@@ -357,6 +410,9 @@ module.exports = async function handler(req, res) {
         updated_at: new Date().toISOString()
       })
     });
+
+    // Admin notification (fire and forget)
+    sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData).catch(e => console.error('Admin deep intel alert error:', e));
 
     // Send email
     await sendReportEmail(
