@@ -152,10 +152,11 @@ export default function RadarModal({ onClose, T = {} }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                 <button
                   onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
-                  title="Share radar report by email"
-                  style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 28, height: 28, borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  title="Export radar report by email"
+                  style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, borderRadius: 9999, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0, fontSize: 11, fontFamily: "monospace", fontWeight: 600, letterSpacing: 0.5 }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  Export Report
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
                   </svg>
                 </button>
@@ -186,14 +187,13 @@ export default function RadarModal({ onClose, T = {} }) {
                         {emailStatus === "error" && (
                           <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>
                         )}
+                        <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center", marginTop: 12 }}>
+                          Subscription reports coming soon.
+                        </div>
                       </>
                     )}
                   </div>
                 )}
-                {/* Coming soon teaser */}
-                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
-                  📬 Weekly reports — <span style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, padding: "1px 5px", borderRadius: 4 }}>COMING SOON</span>
-                </div>
               </div>
               {/* Last updated block */}
               <div style={{ textAlign: "right" }}>
