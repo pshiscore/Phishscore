@@ -1,4 +1,4 @@
-const { analyzeForDeepIntel } = require('./lib/cnl-analyzer');
+const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
 
 const FALLBACK_TEXT = 'URGENT: Your Chase Bank account has been compromised and suspended. A suspicious transaction of $2,500 was detected from an unknown device. Please call our fraud department immediately at 1-800-555-0123 to verify your identity and restore access. Failure to respond within 24 hours will result in permanent account closure and legal action.';
 

@@ -5,7 +5,7 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
-const { analyzeForDeepIntel } = require('./lib/cnl-analyzer');
+const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
 
 // ── External API helpers ──────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const { analyzeRadarBatch } = require('./lib/cnl-analyzer');
+const { analyzeRadarBatch } = require('../lib/cnl-analyzer');
 
 const SECTOR_MAP = {
   publishing: "Authors & Writers",
