@@ -260,7 +260,7 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || '',
+          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || 'phiscore-radara-2026',
         },
         body: JSON.stringify({}),
       });
