@@ -117,7 +117,8 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
       return;
     }
     try {
-      const res = await fetch("/api/create-checkout", {
+      setCheckoutLoading(true);
+      const res = await fetch("/api/polar-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -361,13 +362,11 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
                     ))}
                   </div>
                   <button
-                    disabled={true}
-                    style={{ width: "100%", background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text4, padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: "default", fontFamily: "monospace", opacity: 0.5 }}>
-                    PAYMENTS COMING SOON
+                    onClick={() => handleCheckout(tier.tier)}
+                    disabled={checkoutLoading}
+                    style={{ width: "100%", background: checkoutLoading ? T.innerBg : `linear-gradient(135deg,${tier.color},${tier.color}cc)`, border: "none", color: checkoutLoading ? T.text4 : "#fff", padding: "12px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: checkoutLoading ? "default" : "pointer", fontFamily: "monospace", boxShadow: checkoutLoading ? "none" : `0 4px 20px ${tier.color}40` }}>
+                    {checkoutLoading ? "CREATING CHECKOUT..." : tier.cta}
                   </button>
-                  <div style={{ textAlign: "center", fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>
-                    Payment processing temporarily unavailable — <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#a78bfa", textDecoration: "none" }}>contact us</a> to investigate manually
-                  </div>
                 </div>
               );
             })()}
