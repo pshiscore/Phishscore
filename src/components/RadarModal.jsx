@@ -72,6 +72,9 @@ export default function RadarModal({ onClose, T = {} }) {
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailValue, setEmailValue] = useState("");
+  const [emailStatus, setEmailStatus] = useState(null); // null | "sending" | "success" | "error"
 
   useEffect(() => {
     loadTrends();
@@ -94,6 +97,30 @@ export default function RadarModal({ onClose, T = {} }) {
   };
 
   const threat = data ? THREAT_CONFIG[(data.threat_level || 1) - 1] : null;
+
+  const handleSendReport = async () => {
+    if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+      setEmailStatus("error");
+      return;
+    }
+    setEmailStatus("sending");
+    try {
+      const res = await fetch("/api/send-radar-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailValue, radarData: data }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setEmailStatus("success");
+      setTimeout(() => {
+        setEmailOpen(false);
+        setEmailValue("");
+        setEmailStatus(null);
+      }, 4000);
+    } catch {
+      setEmailStatus("error");
+    }
+  };
 
   const formatLastUpdated = (iso) => {
     if (!iso) return "Never";
@@ -120,12 +147,62 @@ export default function RadarModal({ onClose, T = {} }) {
               </h2>
               <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>COMMUNITY THREAT INTELLIGENCE</div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
-              <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>
-                {refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              {/* Email share button */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                <button
+                  onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
+                  title="Share radar report by email"
+                  style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 28, height: 28, borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
+                  </svg>
+                </button>
+                {emailOpen && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", animation: "slideIn 0.15s ease" }}>
+                    {emailStatus === "success" ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#34d399", fontFamily: "monospace" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Report sent!
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="email"
+                          value={emailValue}
+                          onChange={e => setEmailValue(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && handleSendReport()}
+                          placeholder="your@email.com"
+                          style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: 160, outline: "none" }}
+                        />
+                        <button
+                          onClick={handleSendReport}
+                          disabled={emailStatus === "sending"}
+                          style={{ fontSize: 9, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 6, cursor: emailStatus === "sending" ? "default" : "pointer", opacity: emailStatus === "sending" ? 0.7 : 1 }}
+                        >
+                          {emailStatus === "sending" ? "SENDING..." : "SEND REPORT"}
+                        </button>
+                        {emailStatus === "error" && (
+                          <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                {/* Coming soon teaser */}
+                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
+                  📬 Weekly reports — <span style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, padding: "1px 5px", borderRadius: 4 }}>COMING SOON</span>
+                </div>
               </div>
-              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates every 48h</div>
+              {/* Last updated block */}
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
+                <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>
+                  {refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}
+                </div>
+                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates every 48h</div>
+              </div>
             </div>
           </div>
         </div>
@@ -234,6 +311,10 @@ export default function RadarModal({ onClose, T = {} }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

@@ -1,7 +1,7 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
-const REFRESH_HOURS = 24;
+const REFRESH_HOURS = 48;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
