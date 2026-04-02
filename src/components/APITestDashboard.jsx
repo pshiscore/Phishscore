@@ -224,6 +224,90 @@ const API_GROUPS = [
   },
 ];
 
+// ── Radar Refresh Panel ────────────────────────────────────────────────────────
+function RadarRefreshPanel({ onOpenRadar, T }) {
+  const [status, setStatus] = useState('idle'); // idle | running | done | failed
+  const [preview, setPreview] = useState('');
+  const [error, setError] = useState('');
+
+  const handleRefresh = async () => {
+    setStatus('running');
+    setPreview('');
+    setError('');
+
+    // Step 1: delete the latest trends row so a truly fresh one is generated
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const latestRes = await fetch(
+        `${supabaseUrl}/rest/v1/trends?select=id&order=created_at.desc&limit=1`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      );
+      const rows = await latestRes.json();
+      if (Array.isArray(rows) && rows[0]?.id) {
+        await fetch(`${supabaseUrl}/rest/v1/trends?id=eq.${rows[0].id}`, {
+          method: 'DELETE',
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Prefer: 'return=minimal' },
+        });
+      }
+    } catch {
+      // Non-blocking — proceed even if delete fails
+    }
+
+    // Step 2: trigger fresh generation
+    try {
+      const r = await fetch(`${BASE}/api/generate-trends`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || '',
+        },
+        body: JSON.stringify({}),
+      });
+      const d = await safeJson(r);
+      if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+      setPreview(d.data?.threat_warning || 'Generated — no preview available.');
+      setStatus('done');
+    } catch (err) {
+      setError(err.message);
+      setStatus('failed');
+    }
+  };
+
+  return (
+    <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', fontFamily: 'monospace', letterSpacing: 2, marginBottom: 2 }}>RADAR INTELLIGENCE</div>
+          <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Clears cache + runs CNL → Gemini pipeline to generate fresh threat intel</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {status === 'done' && (
+            <button onClick={onOpenRadar}
+              style={{ background: '#34d39918', border: '1px solid #34d39940', color: '#34d399', padding: '8px 14px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+              ✓ DONE — OPEN RADAR
+            </button>
+          )}
+          <button onClick={handleRefresh} disabled={status === 'running'}
+            style={{ background: status === 'running' ? T.cardBg : status === 'failed' ? '#f43f5e18' : 'linear-gradient(135deg,#a78bfa,#7c3aed)', border: status === 'failed' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'failed' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            {status === 'running' ? 'REFRESHING...' : status === 'failed' ? '✗ FAILED — RETRY' : 'REFRESH RADAR'}
+          </button>
+        </div>
+      </div>
+      {preview && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.cardBorder}`, fontSize: 11, color: '#34d399', fontFamily: 'monospace', lineHeight: 1.6 }}>
+          <span style={{ color: T.text4, fontSize: 9, letterSpacing: 2 }}>THREAT WARNING PREVIEW: </span>{preview}
+        </div>
+      )}
+      {error && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid #f43f5e30`, fontSize: 11, color: '#f43f5e', fontFamily: 'monospace', lineHeight: 1.6 }}>
+          <span style={{ fontSize: 9, letterSpacing: 2 }}>ERROR: </span>{error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── API Card Component ─────────────────────────────────────────────────────────
 function APICard({ api, url, imageBase64, autoRun, T }) {
   const [status, setStatus] = useState('idle');
@@ -308,7 +392,7 @@ function APICard({ api, url, imageBase64, autoRun, T }) {
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
-export default function APITestDashboard({ onClose, T = {} }) {
+export default function APITestDashboard({ onClose, onOpenRadar, T = {} }) {
   const [url, setUrl] = useState('');
   const [runAllId, setRunAllId] = useState(null);
   const [activeGroup, setActiveGroup] = useState('all');
@@ -357,6 +441,9 @@ export default function APITestDashboard({ onClose, T = {} }) {
             </button>
           ))}
         </div>
+
+        {/* Radar Refresh Panel */}
+        <RadarRefreshPanel onOpenRadar={() => { onClose(); onOpenRadar && onOpenRadar(); }} T={T} />
 
         {/* Notes */}
         <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 10, color: T.text4, fontFamily: 'monospace', lineHeight: 1.7 }}>
