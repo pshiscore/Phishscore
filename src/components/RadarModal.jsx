@@ -170,6 +170,21 @@ export default function RadarModal({ onClose, T = {} }) {
               <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{data.ai_warning}</p>
             </div>
 
+            {/* Recommended Action */}
+            {data.recommended_action && (
+              <div style={{ background: "#34d39912", border: "1px solid #34d39940", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ flexShrink: 0, marginTop: 1 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 6 }}>WHAT TO DO NOW</div>
+                  <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>{data.recommended_action}</p>
+                </div>
+              </div>
+            )}
+
             {/* Sector Warnings — top 3 */}
             {Array.isArray(data.sector_warnings) && data.sector_warnings.length > 0 && (
               <div style={{ marginBottom: 20 }}>

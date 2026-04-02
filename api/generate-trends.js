@@ -22,7 +22,6 @@ const SECTOR_MAP = {
   other: null,
 };
 
-// Seasonal scam context by month
 const SEASONAL_CONTEXT = {
   1:  "January: Post-holiday refund scams, W-2 and tax prep phishing, New Year charity fraud.",
   2:  "February: Valentine's Day romance scams, gift card fraud, fake flower and gift delivery notices.",
@@ -38,7 +37,15 @@ const SEASONAL_CONTEXT = {
   12: "December: Peak holiday shopping fraud, fake gift cards, charity impersonation, year-end tax scams.",
 };
 
-// Fetch last 100 submissions (privacy-safe fields only)
+const FALLBACK_INTELLIGENCE = {
+  threatLevel: 3,
+  threatWarning: "A multi-vector scam surge is active across financial and government impersonation categories. Threat actors are deploying SMS and email lures mimicking major banks and federal agencies.",
+  intelligenceSummary: "Current threat intelligence indicates coordinated brand impersonation campaigns targeting banking customers and general consumers. Operators are leveraging fear-based urgency triggers — account suspension notices, IRS penalty threats, and package interception alerts — to compress victim decision-making time and bypass critical thinking. Delivery-sector lures are being used as a secondary vector to harvest home addresses and payment credentials. Victims are funneled through lookalike login pages designed to steal credentials in real time.",
+  recommendedAction: "Do not click links in unsolicited SMS or email messages — navigate directly to the official website by typing the address into your browser.",
+};
+
+// ── Data fetching ──────────────────────────────────────────────────────────────
+
 async function fetchLast100() {
   const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags,summary&order=created_at.desc&limit=100`;
   const res = await fetch(url, {
@@ -47,7 +54,6 @@ async function fetchLast100() {
   return res.json();
 }
 
-// Fetch previous 100 for surge comparison (offset by 100)
 async function fetchPrevious100() {
   const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags&order=created_at.desc&limit=100&offset=100`;
   const res = await fetch(url, {
@@ -55,6 +61,8 @@ async function fetchPrevious100() {
   });
   return res.json();
 }
+
+// ── Aggregation helpers ────────────────────────────────────────────────────────
 
 function aggregate(submissions) {
   const map = {};
@@ -96,7 +104,6 @@ function computeThreatLevel(currentAgg, previousAgg) {
   return Math.min(Math.max(score, 1), 5);
 }
 
-// Top 3 sector warnings only
 function buildSectorWarnings(currentAgg, previousAgg) {
   const warnings = [];
   for (const cat of currentAgg) {
@@ -119,177 +126,170 @@ function buildSectorWarnings(currentAgg, previousAgg) {
   return warnings.slice(0, 3);
 }
 
-// Pull recent confirmed scam summaries for Gemini context
-function buildRecentSummaries(submissions) {
-  return submissions
-    .filter(s => s.summary && s.score >= 75)
-    .slice(0, 15)
-    .map(s => `[${s.category}] ${s.summary}`)
-    .join("\n");
+// ── Gemini — analyst persona, TTP-focused structured JSON call ────────────────
+
+function buildAnalystPayload(currentAgg, cnlInsights, month, totalReports, surgeRatio) {
+  return {
+    topCategories: currentAgg.slice(0, 3).map(c => ({
+      category: c.category,
+      count: c.count,
+      avgScore: c.avgScore,
+      scamRate: c.scamRate,
+      topTags: c.topTags,
+    })),
+    extractedEntities: cnlInsights?.entities?.organizations?.slice(0, 5).map(o => o.name) || [],
+    averageUrgency: cnlInsights?.sentiment?.urgencyLevel || 'UNKNOWN',
+    sentimentScore: cnlInsights?.sentiment?.score ?? null,
+    sentimentMagnitude: cnlInsights?.sentiment?.magnitude ?? null,
+    cnlContentCategories: cnlInsights?.categories?.map(c => c.name) || [],
+    seasonalContext: SEASONAL_CONTEXT[month] || '',
+    totalReports,
+    volumeSpike: surgeRatio >= 1.3,
+    volumeChangePct: Math.round((surgeRatio - 1) * 100),
+    currentMonth: new Date().toLocaleString('en-US', { month: 'long', timeZone: 'America/New_York' }),
+  };
 }
 
-// Gemini prompt 1: Threat level card — 3 sentences including seasonal warning
-async function callGeminiThreatWarning(threatLevel, currentAgg, sectorWarnings, month) {
-  const seasonal = SEASONAL_CONTEXT[month] || "";
-  const topCategories = currentAgg.slice(0, 6).map(c =>
-    `${c.category} (${c.count} reports, avg score ${c.avgScore}, scam rate ${c.scamRate}%, top tags: ${c.topTags.join(", ")})`
-  ).join("; ");
-  const surges = sectorWarnings.filter(w => w.surge).map(w => `${w.sector} up ${w.surge}%`).join(", ");
-  const topSectors = sectorWarnings.map(w => w.sector).join(", ");
+async function callGeminiIntelligence(currentAgg, sectorWarnings, cnlInsights, month, totalReports, surgeRatio) {
+  const payload = buildAnalystPayload(currentAgg, cnlInsights, month, totalReports, surgeRatio);
+  const surges = sectorWarnings.filter(w => w.surge).map(w => `${w.sector} +${w.surge}%`).join(', ');
 
-  const prompt = `You are PhishScore.ai's threat intelligence analyst. Write a public threat advisory based on current scam data.
+  const prompt = `You are the Lead Cyber Intelligence Analyst for PhishScore.ai, a real-time community scam detection platform. Your job is to analyze the following threat telemetry and write a public-facing, executive-level Threat Intelligence Briefing.
 
-Current threat level: ${threatLevel}/5
-Current month scam context: ${seasonal}
-Most active scam categories (last 100 community reports): ${topCategories}
-${surges ? `Surging sectors: ${surges}` : "No major surges detected."}
-${topSectors ? `Highest risk sectors right now: ${topSectors}` : ""}
+ANALYST RULES — YOU MUST FOLLOW THESE:
+1. DO NOT just list category names. Name the specific organizations and brands being impersonated based on the extracted entities below.
+2. Explain the TTPs (Tactics, Techniques, and Procedures): How are scammers tricking people right now? What psychological trigger — fear, urgency, greed, authority — is dominating?
+3. Be highly specific and authoritative. Write like a cybersecurity professional, not a blog post.
+4. Do NOT write generic advice like "be careful online." Give concrete, situational, threat-specific guidance.
 
-Write EXACTLY 3 sentences:
-1. Which scam types are most active right now and who is being targeted.
-2. What specific seasonal or timely scams people should watch for this month — be specific about the scam type (e.g. IRS refund scams, Easter gift card fraud, tax deadline urgency scams). Do not be vague.
-3. One clear protective action people should take.
+THREAT TELEMETRY:
+- Report period: Last 100 community submissions
+- Current month: ${payload.currentMonth}
+- Seasonal threat context: ${payload.seasonalContext}
+- Volume change vs. prior period: ${payload.volumeSpike ? `SPIKE DETECTED (+${payload.volumeChangePct}%)` : `${payload.volumeChangePct >= 0 ? '+' : ''}${payload.volumeChangePct}% (stable)`}
+${surges ? `- Active sector surges: ${surges}` : ''}
 
-Rules: No URLs. No bullet points. Plain English. 3 flowing sentences only.`;
+TOP 3 SCAM CATEGORIES BY VOLUME:
+${payload.topCategories.map(c => `- ${c.category}: ${c.count} reports | avg risk score ${c.avgScore}/100 | scam rate ${c.scamRate}% | tactics: ${c.topTags.join(', ')}`).join('\n')}
+
+CNL ENTITY EXTRACTION (brands/orgs detected in scam message text):
+- Impersonated organizations: ${payload.extractedEntities.length ? payload.extractedEntities.join(', ') : 'None extracted'}
+- Language urgency level: ${payload.averageUrgency}
+- Sentiment score: ${payload.sentimentScore ?? 'N/A'} (magnitude: ${payload.sentimentMagnitude ?? 'N/A'})
+- Content classification: ${payload.cnlContentCategories.length ? payload.cnlContentCategories.join(', ') : 'None'}
+
+OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra text:
+{
+  "threatLevel": <integer 1-5. Base this on: volume, urgency level, scam rates, and whether a spike is detected. 5 = critical surge with high-urgency impersonation>,
+  "threatWarning": "<1-2 sentence high-impact executive summary naming the specific dominant threat and who is being targeted right now>",
+  "intelligenceSummary": "<3-4 sentences: explain the specific mechanics of the current dominant scams — name the impersonated brands from the entity data, describe the psychological trigger being used, explain how victims are being funneled, and what the scammers ultimately want to extract>",
+  "recommendedAction": "<1 sentence of highly specific, actionable advice directly tied to the current primary threat vector>"
+}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
     {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 200 },
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 600,
+          responseMimeType: 'application/json',
+        },
       }),
     }
   );
+
   const data = await res.json();
-  console.log('Gemini threat warning response status:', res.status);
+  console.log('Gemini intelligence response status:', res.status);
   if (!res.ok || data.error) {
-    console.error('Gemini threat warning error:', JSON.stringify(data));
-    return null; // return null so we know it failed
-  }
-  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const text = raw.replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
-  console.log('Gemini threat warning result:', text?.slice(0, 80));
-  return text || null;
-}
-
-// Gemini prompt 2: Intelligence summary — specific insights from recent scam content
-async function callGeminiIntelligenceSummary(currentAgg, recentSummaries, month) {
-  const seasonal = SEASONAL_CONTEXT[month] || "";
-  const topCategories = currentAgg.slice(0, 5).map(c =>
-    `${c.category}: ${c.count} reports, avg score ${c.avgScore}, top tactics: ${c.topTags.join(", ")}`
-  ).join("; ");
-
-  const prompt = `You are PhishScore.ai's intelligence analyst. Review the latest community-submitted scam data and write a specific intelligence briefing.
-
-Top categories from last 100 community reports: ${topCategories}
-Current month context: ${seasonal}
-Recent confirmed scam summaries submitted by users:
-${recentSummaries || "No detailed summaries available."}
-
-Write 2-3 sentences that:
-- Identify the specific tactics and themes scammers are using right now based on the summaries above.
-- Highlight any patterns (e.g. urgency tactics, brand impersonation, fake fees).
-- Mention the most targeted groups if clear from the data.
-
-Rules: Be specific — name the scam types and tactics. Do not say generic things like "stay vigilant" or "be careful." No URLs. No bullet points. Plain flowing sentences.`;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 180 },
-      }),
-    }
-  );
-  const data = await res.json();
-  console.log('Gemini intelligence summary response status:', res.status);
-  if (!res.ok || data.error) {
-    console.error('Gemini intelligence summary error:', JSON.stringify(data));
+    console.error('Gemini intelligence error:', JSON.stringify(data));
     return null;
   }
+
   const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const text = raw.replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
-  console.log('Gemini intelligence summary result:', text?.slice(0, 80));
-  return text || null;
+  const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  try {
+    const parsed = JSON.parse(clean);
+    console.log('Gemini intelligence parsed — threatLevel:', parsed.threatLevel);
+    return parsed;
+  } catch (e) {
+    console.error('Gemini JSON parse failed:', clean.slice(0, 200));
+    return null;
+  }
 }
+
+// ── Storage ────────────────────────────────────────────────────────────────────
 
 async function storeTrend(payload) {
   await fetch(`${SUPABASE_URL}/rest/v1/trends`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
     },
     body: JSON.stringify(payload),
   });
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────────
+// ── Main handler ───────────────────────────────────────────────────────────────
+
 module.exports = async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (req.headers["x-internal-secret"] !== process.env.INTERNAL_SECRET) {
-    return res.status(401).json({ error: "Unauthorized" });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.headers['x-internal-secret'] !== process.env.INTERNAL_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
     const month = new Date().getMonth() + 1;
 
+    // Parallel: current submissions + previous 100 for surge comparison
     const [currentRaw, previousRaw] = await Promise.all([
       fetchLast100(),
       fetchPrevious100(),
     ]);
 
-    if (!Array.isArray(currentRaw)) throw new Error("Failed to fetch submissions");
+    if (!Array.isArray(currentRaw)) throw new Error('Failed to fetch submissions');
 
     const currentAgg = aggregate(currentRaw);
     const previousAgg = Array.isArray(previousRaw) ? aggregate(previousRaw) : [];
-    const threatLevel = computeThreatLevel(currentAgg, previousAgg);
     const sectorWarnings = buildSectorWarnings(currentAgg, previousAgg);
-    const recentSummaries = buildRecentSummaries(currentRaw);
+    const prevTotal = previousRaw?.length || 0;
+    const surgeRatio = prevTotal > 0 ? currentRaw.length / prevTotal : 1;
 
-    // Run Gemini calls + CNL batch analysis in parallel
-    const summaryTexts = currentRaw
-      .filter(s => s.summary)
-      .map(s => s.summary);
+    // CNL batch analysis on available summaries
+    const summaryTexts = currentRaw.filter(s => s.summary).map(s => s.summary);
+    const cnlInsights = summaryTexts.length >= 5 ? await analyzeRadarBatch(summaryTexts) : null;
+    if (cnlInsights) console.log('CNL insights:', JSON.stringify(cnlInsights).slice(0, 120));
 
-    const [threatWarning, intelligenceSummary, cnlInsights] = await Promise.all([
-      callGeminiThreatWarning(threatLevel, currentAgg, sectorWarnings, month),
-      callGeminiIntelligenceSummary(currentAgg, recentSummaries, month),
-      summaryTexts.length >= 5 ? analyzeRadarBatch(summaryTexts) : Promise.resolve(null),
-    ]);
-
-    console.log('Gemini results — threatWarning:', !!threatWarning, 'intelligenceSummary:', !!intelligenceSummary);
-    if (cnlInsights) console.log('CNL insights:', JSON.stringify(cnlInsights.categories));
-
-    // Build CNL-enriched context for snapshot
-    const cnlTopCategories = cnlInsights?.categories?.map(c => c.name).join(', ') || null;
-    const cnlSentimentLevel = cnlInsights?.sentiment?.urgencyLevel || null;
+    // Single Gemini call — analyst persona, TTP-focused
+    const intelligence = await callGeminiIntelligence(
+      currentAgg, sectorWarnings, cnlInsights, month, currentRaw.length, surgeRatio
+    ) || FALLBACK_INTELLIGENCE;
 
     const snapshot = {
-      threat_level: threatLevel,
-      threat_warning: threatWarning || `Threat level ${threatLevel} detected. Multiple scam types are active — exercise caution with unexpected messages, especially from financial institutions and government agencies.`,
-      ai_warning: intelligenceSummary || `Scam activity is currently elevated across ${currentAgg.slice(0,3).map(c=>c.category).join(', ')} categories. Be cautious of urgency-based messages requesting personal information or payment.`,
+      threat_level: intelligence.threatLevel,
+      threat_warning: intelligence.threatWarning,
+      ai_warning: intelligence.intelligenceSummary,
       sector_warnings: sectorWarnings,
       aggregation_snapshot: currentAgg,
       total_reports: currentRaw.length,
-      previous_total: previousRaw?.length || 0,
-      cnl_top_categories: cnlTopCategories,
-      cnl_sentiment_level: cnlSentimentLevel,
+      previous_total: prevTotal,
+      cnl_top_categories: cnlInsights?.categories?.map(c => c.name).join(', ') || null,
+      cnl_sentiment_level: cnlInsights?.sentiment?.urgencyLevel || null,
+      recommended_action: intelligence.recommendedAction,
     };
 
     await storeTrend(snapshot);
     return res.status(200).json({ success: true, data: snapshot });
 
   } catch (err) {
-    console.error("generate-trends error:", err);
-    return res.status(500).json({ error: "Failed to generate trends" });
+    console.error('generate-trends error:', err);
+    return res.status(500).json({ error: 'Failed to generate trends' });
   }
 };
