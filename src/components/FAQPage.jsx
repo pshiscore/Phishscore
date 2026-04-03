@@ -102,11 +102,8 @@ const FAQS = [
         <ul style={{ margin: "0 0 10px", paddingLeft: 18, lineHeight: 1.8 }}>
           <li>The full AI analysis and reasoning (score rationale, detected red flags, category inference)</li>
           <li>Whether the submission was an image or pasted text</li>
-          <li>The state of external threat databases at time of submission (Google Safe Browsing, Cloudflare Radar, URLhaus)</li>
-          <li>Community reflag counts, updated periodically</li>
         </ul>
-        <p style={{ margin: "0 0 8px" }}>We do not store your original message for training purposes. Anonymous submissions are flagged with reduced training weight and never linked to any identity.</p>
-        <p style={{ margin: 0, fontSize: "0.85em" }}>Note: Delivery channel (email, SMS, social, etc.) is collected on every submission as part of the scam record itself — not specific to training consent.</p>
+        <p style={{ margin: 0 }}>We do not store your original message for training purposes. Anonymous submissions are flagged with reduced training weight and never linked to any identity.</p>
       </div>
     )
   },
