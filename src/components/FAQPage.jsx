@@ -95,11 +95,36 @@ const FAQS = [
   },
   {
     q: "What is the Train PhishScore AI checkbox?",
-    a: "When you check Train PhishScore AI before submitting, you are consenting to have the anonymized features of your submission used to help train PhishScore Mini. This is entirely optional and your submission is analyzed exactly the same way whether you check it or not. Checking it simply tells us you are happy for your contribution to help improve the platform for everyone."
+    a: (
+      <div>
+        <p style={{ margin: "0 0 10px" }}>When you check Train PhishScore AI before submitting, you consent to having enriched data from your submission used to improve PhishScore Mini. This is entirely optional — your submission is analyzed identically either way.</p>
+        <p style={{ margin: "0 0 8px" }}>If you opt in, we collect:</p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18, lineHeight: 1.8 }}>
+          <li>The full AI analysis and reasoning (score rationale, detected red flags, category inference)</li>
+          <li>Whether the submission was an image or pasted text, and how it was delivered (email, SMS, social, etc.)</li>
+          <li>The state of external threat databases at the time of submission (Google Safe Browsing, Cloudflare Radar, URLhaus)</li>
+          <li>Community reflag counts, updated periodically as the community weighs in</li>
+        </ul>
+        <p style={{ margin: 0 }}>We do not store your original message for training purposes. Anonymous submissions are flagged with reduced training weight and are never linked to any identity.</p>
+      </div>
+    )
   },
   {
     q: "What data is actually collected for training?",
-    a: "We never store your raw message text or images for training purposes. What we extract and store is anonymized: the detected scam category, the AI-generated score, the identified red flag patterns, the tag labels, whether external threat databases flagged it, and the structural characteristics of the message such as urgency language, impersonation signals, and request type. The original content is discarded immediately after these features are extracted. No personal information, no message content, no sender details are retained."
+    a: (
+      <div>
+        {[
+          { label: "When training consent is given:", text: "Full AI analysis, submission modality, delivery channel, threat database signals, and community reflag counts. Anonymous submissions are accepted but weighted separately." },
+          { label: "Always:", text: "Score, category, red flag types, and tags — anonymized." },
+          { label: "Never:", text: "Your original message text or images stored for training. No identity linkage." },
+        ].map((row, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < 2 ? 10 : 0 }}>
+            <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: i === 2 ? "#f43f5e" : "#06b6d4", whiteSpace: "nowrap", marginTop: 2 }}>{row.label}</span>
+            <span>{row.text}</span>
+          </div>
+        ))}
+      </div>
+    )
   },
   {
     q: "Can I opt out or request deletion of my training contribution?",

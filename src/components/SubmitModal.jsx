@@ -160,6 +160,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
   const [errorState, setErrorState] = useState(null);
   const [trainAI, setTrainAI] = useState(false);
   const [showTrainInfo, setShowTrainInfo] = useState(false);
+  const [deliveryChannel, setDeliveryChannel] = useState("other");
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -169,7 +170,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
     setStep(1); setResult(null); setText(""); setSource("");
     setCategory("other"); setVisibility("private"); setImage(null);
     setImagePreview(null); setErrorState(null); setDuplicate(null);
-    setTrainAI(false); setInputMode("text");
+    setTrainAI(false); setInputMode("text"); setDeliveryChannel("other");
   };
 
   const handleImageUpload = (e) => {
@@ -238,7 +239,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
         }
       } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
 
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous" }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {
@@ -371,6 +372,27 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
                 )}
               </div>
             )}
+            {/* Delivery channel picker */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>HOW WAS THIS DELIVERED TO YOU?</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { id: "email",  label: "📧 Email" },
+                  { id: "sms",    label: "💬 Text / SMS" },
+                  { id: "social", label: "📱 Social Media" },
+                  { id: "other",  label: "🔗 Other" },
+                ].map(opt => {
+                  const active = deliveryChannel === opt.id;
+                  return (
+                    <button key={opt.id} onClick={() => setDeliveryChannel(opt.id)}
+                      style={{ padding: "5px 12px", borderRadius: 9999, border: `1.5px solid ${active ? "#06b6d4" : T.innerBorder}`, background: active ? "#06b6d418" : T.innerBg, color: active ? "#06b6d4" : T.text4, fontFamily: "monospace", fontSize: 10, fontWeight: active ? 700 : 400, cursor: "pointer", transition: "all 0.15s" }}>
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {visibility !== "anonymous" && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
@@ -411,14 +433,21 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
                   {showTrainInfo ? "less" : "what is this?"}
                 </button>
               </div>
-              {showTrainInfo && (
-                <div style={{ marginTop: 10, padding: "10px 12px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>WHAT WE COLLECT</div>
-                  <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: "0 0 8px" }}>Anonymized patterns only — score, category, red flag types, tags. Your original message is <strong>never stored</strong> for training.</p>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>WHY</div>
-                  <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: "0 0 8px" }}>We're building PhishScore Mini — a lightweight model trained specifically on scam data to make analysis faster and reduce reliance on large external AI.</p>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#5b6cf8", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR RIGHTS</div>
-                  <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>Always opt-in. Contact <a href="mailto:contact@phishscore.ai" style={{ color: "#5b6cf8" }}>contact@phishscore.ai</a> to request removal.</p>
+              {(trainAI || showTrainInfo) && (
+                <div style={{ marginTop: 10, padding: "10px 14px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderLeft: "3px solid #06b6d4", borderRadius: 8, animation: "slideIn 0.15s ease" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>WHAT WE'LL COLLECT FROM THIS SUBMISSION</div>
+                  {[
+                    { ok: true,  text: "Full AI analysis & reasoning" },
+                    { ok: true,  text: "Submission type (image or text) and delivery channel" },
+                    { ok: true,  text: "Threat database signals at time of submission (GSB, Radar, URLhaus)" },
+                    { ok: true,  text: "Community reflag count (updated over time)" },
+                    { ok: false, text: "Your original message is never stored for training if submitted anonymously" },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < 4 ? 5 : 0 }}>
+                      <span style={{ fontSize: 10, color: item.ok ? "#06b6d4" : "#f43f5e", fontFamily: "monospace", flexShrink: 0, marginTop: 1 }}>{item.ok ? "✓" : "✗"}</span>
+                      <span style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{item.text}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

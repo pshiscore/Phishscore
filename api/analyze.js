@@ -53,7 +53,7 @@ async function sendAdminSubmissionAlert(urls, parsed, flaggedSources) {
 }
 
 // ── Store anonymized training data ────────────────────────────────────────────
-async function storeTrainingData(parsed) {
+async function storeTrainingData(parsed, context = {}) {
   const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
@@ -70,6 +70,18 @@ async function storeTrainingData(parsed) {
       urlhaus_flagged: parsed.urlhausFlagged === true,
       has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
       has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
+      // Enriched training fields (only written when trainAI === true)
+      training_analysis: parsed,
+      training_modality: context.modality || 'text',
+      training_delivery: context.deliveryChannel || 'other',
+      training_gsb_state: context.gsbFlagged || false,
+      training_radar_state: context.radarFlagged || false,
+      training_urlhaus_state: context.urlhausFlagged || false,
+      training_is_anonymous: context.isAnonymous || false,
+      training_consent_version: 'v1',
+      // TODO: training reflag enrichment — a future background job should periodically
+      // update training_reflag_snapshot on opted-in submissions after N days using the
+      // reflag_count column to capture community signal over time.
     };
     await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
       method: 'POST',
@@ -285,7 +297,17 @@ module.exports = async function handler(req, res) {
       try {
         const raw = data.content?.map(c => c.text || '').join('') || '';
         const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-        storeTrainingData(parsed).catch(e => console.error('Training store error:', e));
+        const modality = (req.body.messages || []).some(m =>
+          Array.isArray(m.content) && m.content.some(c => c.type === 'image')
+        ) ? 'image' : 'text';
+        storeTrainingData(parsed, {
+          modality,
+          deliveryChannel: req.body.deliveryChannel || 'other',
+          gsbFlagged,
+          radarFlagged,
+          urlhausFlagged,
+          isAnonymous: req.body.isAnonymous === true,
+        }).catch(e => console.error('Training store error:', e));
       } catch (e) { /* silent */ }
     }
 
