@@ -73,15 +73,15 @@ async function storeTrainingData(parsed, context = {}) {
       // Enriched training fields (only written when trainAI === true)
       training_analysis: parsed,
       training_modality: context.modality || 'text',
-      training_delivery: context.deliveryChannel || 'other',
+      // delivery_channel is a first-class submission field — not stored here
       training_gsb_state: context.gsbFlagged || false,
       training_radar_state: context.radarFlagged || false,
       training_urlhaus_state: context.urlhausFlagged || false,
       training_is_anonymous: context.isAnonymous || false,
       training_consent_version: 'v1',
-      // TODO: training reflag enrichment — a future background job should periodically
-      // update training_reflag_snapshot on opted-in submissions after N days using the
-      // reflag_count column to capture community signal over time.
+      // TODO: training reflag enrichment — future background job should
+      // periodically update training_reflag_snapshot on opted-in submissions
+      // after N days using the reflag_count column
     };
     await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
       method: 'POST',
@@ -139,7 +139,7 @@ async function verifyRecaptcha(token, minScore = 0.5) {
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
   // Strip fields that are not valid Claude API params
-  const { trainAI, recaptchaToken, ...claudeBody } = body;
+  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, ...claudeBody } = body;
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -302,7 +302,6 @@ module.exports = async function handler(req, res) {
         ) ? 'image' : 'text';
         storeTrainingData(parsed, {
           modality,
-          deliveryChannel: req.body.deliveryChannel || 'other',
           gsbFlagged,
           radarFlagged,
           urlhausFlagged,

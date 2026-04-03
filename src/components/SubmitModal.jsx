@@ -280,7 +280,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
         });
       }
       const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
-      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null });
+      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel });
       setStep(3);
     } catch {
       setErrorState({ type: "unavailable", message: "Something went wrong during analysis. Please try again." });
@@ -438,10 +438,11 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
                   <div style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>WHAT WE'LL COLLECT FROM THIS SUBMISSION</div>
                   {[
                     { ok: true,  text: "Full AI analysis & reasoning" },
-                    { ok: true,  text: "Submission type (image or text) and delivery channel" },
+                    { ok: true,  text: "Submission type (image or text)" },
+                    { ok: true,  text: "Delivery channel (already captured above)" },
                     { ok: true,  text: "Threat database signals at time of submission (GSB, Radar, URLhaus)" },
                     { ok: true,  text: "Community reflag count (updated over time)" },
-                    { ok: false, text: "Your original message is never stored for training if submitted anonymously" },
+                    { ok: false, text: "Your original message is never stored for training" },
                   ].map((item, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < 4 ? 5 : 0 }}>
                       <span style={{ fontSize: 10, color: item.ok ? "#06b6d4" : "#f43f5e", fontFamily: "monospace", flexShrink: 0, marginTop: 1 }}>{item.ok ? "✓" : "✗"}</span>
