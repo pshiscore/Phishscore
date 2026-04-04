@@ -105,6 +105,7 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          caseId: caseData.id,
           tier,
           email: caseData.email,
           message: "",
@@ -117,7 +118,7 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
         })
       });
       const data = await res.json();
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      if (data.url) window.location.href = data.url;
     } catch {
       alert("Failed to create upgrade checkout. Please try again.");
     } finally {

@@ -48,6 +48,10 @@ module.exports = async function handler(req, res) {
     }
 
     const data = await response.json();
+    if (!data.url) {
+      console.error("Polar response missing URL:", data);
+      throw new Error("Polar API did not return a checkout URL");
+    }
     return res.status(200).json({ url: data.url });
 
   } catch (err) {
