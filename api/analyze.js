@@ -136,10 +136,45 @@ async function verifyRecaptcha(token, minScore = 0.5) {
   }
 }
 
+const PII_SCRUBBING_BLOCK = `
+
+PUBLIC PRIVACY PROTOCOL — This summary will be displayed on a public community feed. You MUST redact ALL personally identifying information from the summary:
+- Usernames (e.g., "vlad_k", "john82") → replace with "[User]"
+- Real human names → replace with "[Recipient]" or "[Sender]" as appropriate
+- Email addresses → replace with "[Email Redacted]"
+- Phone numbers → replace with "[Phone Redacted]"
+- Physical addresses → replace with "[Address Redacted]"
+- Account numbers, order IDs, or tracking numbers → replace with "[ID Redacted]"
+Never include any of this information in the summary, even if it appears in the original message. The scam pattern and tactics should be described, not the victim's identity.`;
+
+// ── Inject PII scrubbing block into messages for public submissions ────────────
+function injectPiiScrubbing(messages) {
+  return messages.map(msg => {
+    if (typeof msg.content === 'string') {
+      return { ...msg, content: msg.content + PII_SCRUBBING_BLOCK };
+    }
+    if (Array.isArray(msg.content)) {
+      const updated = msg.content.map(part => {
+        if (part.type === 'text') {
+          return { ...part, text: part.text + PII_SCRUBBING_BLOCK };
+        }
+        return part;
+      });
+      return { ...msg, content: updated };
+    }
+    return msg;
+  });
+}
+
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
   // Strip fields that are not valid Claude API params
-  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, ...claudeBody } = body;
+  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ...claudeBody } = body;
+
+  if (visibility === 'public' && Array.isArray(claudeBody.messages)) {
+    claudeBody.messages = injectPiiScrubbing(claudeBody.messages);
+  }
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {

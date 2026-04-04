@@ -239,7 +239,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
         }
       } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
 
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous" }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {
