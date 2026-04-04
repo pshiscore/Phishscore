@@ -6,7 +6,7 @@ const TIERS = [
   {
     tier: 1,
     name: "AI Forensic Report",
-    price: "$2.99",
+    price: "$4.99",
     color: "#f43f5e",
     features: [
       "Live website screenshot & analysis",
@@ -22,7 +22,7 @@ const TIERS = [
   {
     tier: 2,
     name: "Verified Human Check",
-    price: "$9.99",
+    price: "$14.99",
     color: "#a78bfa",
     features: [
       "Everything in AI Forensic Report",
@@ -36,7 +36,7 @@ const TIERS = [
   {
     tier: 3,
     name: "Expert Investigation",
-    price: "$29.99",
+    price: "$49.99",
     color: "#fbbf24",
     features: [
       "Everything in Human Check",
