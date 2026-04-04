@@ -8,12 +8,74 @@ const RESEND_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
 
-async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData) {
+// ── Telemetry wrapper ─────────────────────────────────────────────────────────
+
+async function fetchWithTelemetry(serviceName, url, options = {}, telemetryLog) {
+  const started_at = new Date().toISOString();
+  const startMs = Date.now();
+  const entry = {
+    service: serviceName,
+    started_at,
+    finished_at: null,
+    latency_ms: null,
+    status: null,
+    success: false,
+    error: null,
+    raw_response: null,
+  };
+  try {
+    const res = await fetch(url, options);
+    entry.finished_at = new Date().toISOString();
+    entry.latency_ms = Date.now() - startMs;
+    entry.status = res.status;
+
+    // Read body once to avoid stream double-consumption
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = text; }
+
+    // Trim VirusTotal bulk attribute to prevent memory bloat
+    if (serviceName === 'VirusTotal' && res.ok && data?.data?.attributes?.last_analysis_results) {
+      delete data.data.attributes.last_analysis_results;
+    }
+
+    entry.raw_response = data;
+    entry.success = res.ok;
+    telemetryLog.push(entry);
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    entry.finished_at = new Date().toISOString();
+    entry.latency_ms = Date.now() - startMs;
+    entry.success = false;
+    entry.error = err.message;
+    telemetryLog.push(entry);
+    return { ok: false, status: null, data: null };
+  }
+}
+
+// ── Admin email alert ─────────────────────────────────────────────────────────
+
+async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog = []) {
   if (!RESEND_KEY) return;
   const verdict = urlscanData?.verdict || 'N/A';
   const abuseScore = abuseData?.abuseScore ?? 'N/A';
   const verdictColor = verdict === 'malicious' ? '#dc2626' : verdict === 'clean' ? '#059669' : '#d97706';
   const summary = (forensicReport || '').slice(0, 400).replace(/\n/g, ' ');
+
+  const telemetryRows = telemetryLog.map(entry => `
+    <tr>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;">
+        ${entry.success ? '✅' : '❌'} ${entry.service}
+      </td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#6b7280;border-bottom:1px solid #f3f4f6;">
+        ${entry.latency_ms != null ? entry.latency_ms + 'ms' : '—'}
+      </td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:${entry.success ? '#059669' : '#dc2626'};border-bottom:1px solid #f3f4f6;">
+        ${entry.error || (entry.success ? 'OK' : `HTTP ${entry.status}`)}
+      </td>
+    </tr>
+  `).join('');
+
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -36,6 +98,22 @@ async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData,
               <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 6px;">URL ANALYZED</p>
               <p style="font-family:monospace;font-size:12px;color:#111;margin:0;word-break:break-all;">${url || 'No URL extracted'}</p>
             </div>
+
+            <!-- API Telemetry Health Check -->
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 10px;">API TELEMETRY HEALTH CHECK</p>
+              <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                  <tr>
+                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">SERVICE</th>
+                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">LATENCY</th>
+                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>${telemetryRows}</tbody>
+              </table>
+            </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
               <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;border-top:3px solid ${verdictColor};">
                 <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">URLSCAN VERDICT</p>
@@ -62,38 +140,60 @@ async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData,
 
 // ── External API helpers ──────────────────────────────────────────────────────
 
-async function runURLScan(url) {
+async function runURLScan(url, telemetryLog) {
   try {
-    const submit = await fetch('https://urlscan.io/api/v1/scan/', {
+    const submitResult = await fetchWithTelemetry('URLScan_Submit', 'https://urlscan.io/api/v1/scan/', {
       method: 'POST',
-      headers: {
-        'API-Key': process.env.URLSCAN_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ url, visibility: 'private' })
-    });
-    const submitData = await submit.json();
-    const uuid = submitData?.uuid;
+      headers: { 'API-Key': process.env.URLSCAN_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, visibility: 'private' }),
+    }, telemetryLog);
+
+    const uuid = submitResult.data?.uuid;
     if (!uuid) return null;
 
-    // Wait for scan to complete (up to 30s)
+    // Poll for result — track as a single telemetry entry spanning the full wait
+    const pollStarted = new Date().toISOString();
+    const pollStartMs = Date.now();
+    let pollData = null;
+    let pollSuccess = false;
+
     for (let i = 0; i < 6; i++) {
       await new Promise(r => setTimeout(r, 5000));
-      const result = await fetch(`https://urlscan.io/api/v1/result/${uuid}/`);
-      if (result.status === 200) {
-        const data = await result.json();
-        return {
-          uuid,
-          screenshot: `https://urlscan.io/screenshots/${uuid}.png`,
-          verdict: data?.verdicts?.overall?.malicious ? 'malicious' : 'clean',
-          score: data?.verdicts?.overall?.score || 0,
-          tags: data?.verdicts?.overall?.tags || [],
-          country: data?.page?.country || null,
-          server: data?.page?.server || null,
-          ip: data?.page?.ip || null,
-          domain: data?.page?.domain || null,
-        };
-      }
+      try {
+        const r = await fetch(`https://urlscan.io/api/v1/result/${uuid}/`);
+        if (r.status === 200) {
+          pollData = await r.json();
+          pollSuccess = true;
+          break;
+        }
+      } catch (e) { /* continue polling */ }
+    }
+
+    telemetryLog.push({
+      service: 'URLScan_Result',
+      started_at: pollStarted,
+      finished_at: new Date().toISOString(),
+      latency_ms: Date.now() - pollStartMs,
+      status: pollSuccess ? 200 : 404,
+      success: pollSuccess,
+      error: pollSuccess ? null : 'Scan timed out — result not ready after 30s',
+      raw_response: pollData
+        ? { verdict: pollData?.verdicts?.overall?.malicious ? 'malicious' : 'clean', score: pollData?.verdicts?.overall?.score }
+        : null,
+    });
+
+    if (pollSuccess && pollData) {
+      return {
+        uuid,
+        screenshot: `https://urlscan.io/screenshots/${uuid}.png`,
+        verdict: pollData?.verdicts?.overall?.malicious ? 'malicious' : 'clean',
+        score: pollData?.verdicts?.overall?.score || 0,
+        tags: pollData?.verdicts?.overall?.tags || [],
+        country: pollData?.page?.country || null,
+        server: pollData?.page?.server || null,
+        ip: pollData?.page?.ip || null,
+        domain: pollData?.page?.domain || null,
+      };
     }
     // Return partial if scan not ready
     return { uuid, screenshot: `https://urlscan.io/screenshots/${uuid}.png`, verdict: 'pending' };
@@ -103,14 +203,17 @@ async function runURLScan(url) {
   }
 }
 
-async function checkAbuseIPDB(ip) {
+async function checkAbuseIPDB(ip, telemetryLog) {
   if (!ip) return null;
   try {
-    const res = await fetch(
+    const result = await fetchWithTelemetry(
+      'AbuseIPDB',
       `https://api.abuseipdb.com/api/v2/check?ipAddress=${ip}&maxAgeInDays=90&verbose`,
-      { headers: { Key: process.env.ABUSEIPDB_API_KEY, Accept: 'application/json' } }
+      { headers: { Key: process.env.ABUSEIPDB_API_KEY, Accept: 'application/json' } },
+      telemetryLog
     );
-    const data = await res.json();
+    if (!result.ok || !result.data) return null;
+    const data = result.data;
     return {
       abuseScore: data?.data?.abuseConfidenceScore || 0,
       totalReports: data?.data?.totalReports || 0,
@@ -125,14 +228,17 @@ async function checkAbuseIPDB(ip) {
   }
 }
 
-async function checkWhois(domain) {
+async function checkWhois(domain, telemetryLog) {
   if (!domain) return null;
   try {
-    const res = await fetch(
-      `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${process.env.WHOISXML_API_KEY}&domainName=${domain}&outputFormat=JSON`
+    const result = await fetchWithTelemetry(
+      'WhoisXML',
+      `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${process.env.WHOISXML_API_KEY}&domainName=${domain}&outputFormat=JSON`,
+      {},
+      telemetryLog
     );
-    const data = await res.json();
-    const record = data?.WhoisRecord;
+    if (!result.data) return null;
+    const record = result.data?.WhoisRecord;
     return {
       createdDate: record?.createdDate || null,
       expiresDate: record?.expiresDate || null,
@@ -147,16 +253,18 @@ async function checkWhois(domain) {
   }
 }
 
-async function checkVirusTotal(url) {
+async function checkVirusTotal(url, telemetryLog) {
   if (!process.env.VIRUSTOTAL_API_KEY) return null;
   try {
     const encoded = Buffer.from(url).toString('base64').replace(/=/g, '');
-    const res = await fetch(`https://www.virustotal.com/api/v3/urls/${encoded}`, {
-      headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY }
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const stats = data?.data?.attributes?.last_analysis_stats || {};
+    const result = await fetchWithTelemetry(
+      'VirusTotal',
+      `https://www.virustotal.com/api/v3/urls/${encoded}`,
+      { headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY } },
+      telemetryLog
+    );
+    if (!result.ok || !result.data) return null;
+    const stats = result.data?.data?.attributes?.last_analysis_stats || {};
     return {
       malicious: stats.malicious || 0,
       suspicious: stats.suspicious || 0,
@@ -184,7 +292,7 @@ function extractDomain(url) {
 
 // ── Claude Opus report generation ────────────────────────────────────────────
 
-async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData) {
+async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, telemetryLog) {
   const domainAge = whoisData?.domainAge;
   const ageWarning = domainAge && domainAge < 30
     ? `CRITICAL: Domain is only ${domainAge} days old — extremely common with scam infrastructure.`
@@ -237,7 +345,7 @@ Write a forensic case file with these exact sections:
 VERDICT
 One sentence stating clearly whether this is a confirmed scam and how dangerous it is.
 
-EVIDENCE SUMMARY  
+EVIDENCE SUMMARY
 3-4 sentences describing what the forensic data reveals about this scam's infrastructure — domain age, hosting, abuse history, how it operates.
 
 WHAT HAPPENED TO YOU
@@ -250,6 +358,9 @@ WHAT THIS SCAM IS
 One paragraph explaining what criminal operation this appears to be part of, how it targets victims, and what the scammers are ultimately trying to achieve.
 
 Rules: No URLs in the report. Plain English. Be direct and specific. This person needs actionable help, not reassurance.`;
+
+  const claudeStarted = new Date().toISOString();
+  const claudeStartMs = Date.now();
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -266,6 +377,23 @@ Rules: No URLs in the report. Plain English. Be direct and specific. This person
   });
 
   const data = await response.json();
+
+  // Claude telemetry — track billing metadata and stop reason
+  telemetryLog.push({
+    service: 'Claude_Opus',
+    started_at: claudeStarted,
+    finished_at: new Date().toISOString(),
+    latency_ms: Date.now() - claudeStartMs,
+    status: response.status,
+    success: response.ok,
+    error: response.ok ? null : `HTTP ${response.status}`,
+    raw_response: {
+      input_tokens: data?.usage?.input_tokens ?? null,
+      output_tokens: data?.usage?.output_tokens ?? null,
+      stop_reason: data?.stop_reason ?? null,
+    },
+  });
+
   return data?.content?.map(c => c.text || '').join('') || 'Report generation failed.';
 }
 
@@ -373,20 +501,23 @@ module.exports = async function handler(req, res) {
 
     console.log(`Deep Intel case ${caseId}: URL=${url}, domain=${domain}`);
 
+    // Initialise telemetry log — tracks every external API call in execution order
+    const telemetryLog = [];
+
     // Run all external checks in parallel — CNL runs alongside URL checks
     const [urlscanData, whoisData, vtData, cnlData] = await Promise.all([
-      url ? runURLScan(url) : Promise.resolve(null),
-      domain ? checkWhois(domain) : Promise.resolve(null),
-      url ? checkVirusTotal(url) : Promise.resolve(null),
+      url ? runURLScan(url, telemetryLog) : Promise.resolve(null),
+      domain ? checkWhois(domain, telemetryLog) : Promise.resolve(null),
+      url ? checkVirusTotal(url, telemetryLog) : Promise.resolve(null),
       messageText ? analyzeForDeepIntel(messageText) : Promise.resolve(null),
     ]);
 
     // Check IP from URLScan result
-    const abuseData = urlscanData?.ip ? await checkAbuseIPDB(urlscanData.ip) : null;
+    const abuseData = urlscanData?.ip ? await checkAbuseIPDB(urlscanData.ip, telemetryLog) : null;
 
-    // Generate forensic report with Opus — now includes CNL ground truth
+    // Generate forensic report with Opus — now includes CNL ground truth and telemetry
     const forensicReport = await generateForensicReport(
-      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData
+      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, telemetryLog
     );
 
     // Save all results to Supabase
@@ -411,8 +542,9 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    // Admin notification (fire and forget)
-    sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData).catch(e => console.error('Admin deep intel alert error:', e));
+    // Admin notification (fire and forget) — includes full telemetry log
+    sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog)
+      .catch(e => console.error('Admin deep intel alert error:', e));
 
     // Send email
     await sendReportEmail(
