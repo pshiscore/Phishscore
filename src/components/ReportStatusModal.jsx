@@ -11,7 +11,7 @@ const TIER_UPGRADE = [
   {
     tier: 2,
     name: "Verified Human Check",
-    price: "$9.99",
+    price: "$14.99",
     color: "#a78bfa",
     desc: "A human expert reviews your AI report to catch anything subtle that was missed.",
     cta: "ADD HUMAN REVIEW",
@@ -19,7 +19,7 @@ const TIER_UPGRADE = [
   {
     tier: 3,
     name: "Expert Investigation",
-    price: "$29.99",
+    price: "$49.99",
     color: "#fbbf24",
     desc: "Full manual OSINT research, source verification, and a 1-on-1 custom recovery strategy.",
     cta: "REQUEST EXPERT INVESTIGATION",
@@ -278,8 +278,8 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
                         </div>
                         <p style={{ color: T.text3, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5, margin: 0 }}>{u.desc}</p>
                       </div>
-                      <button onClick={() => {}} disabled={true} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text4, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "default", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0, opacity: 0.5 }}>
-                        COMING SOON
+                      <button onClick={() => handleUpgrade(u.tier)} disabled={upgradeLoading} style={{ background: `${u.color}18`, border: `1px solid ${u.color}60`, color: u.color, padding: "8px 14px", borderRadius: 8, fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: upgradeLoading ? "default" : "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0, opacity: upgradeLoading ? 0.6 : 1 }}>
+                        {u.cta}
                       </button>
                     </div>
                   ))}
