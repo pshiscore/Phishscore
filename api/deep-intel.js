@@ -537,6 +537,7 @@ module.exports = async function handler(req, res) {
         whois_data: whoisData || null,
         virustotal_data: vtData || null,
         forensic_report: forensicReport,
+        api_telemetry: telemetryLog,
         report_generated_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
