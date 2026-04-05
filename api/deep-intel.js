@@ -306,6 +306,12 @@ async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisD
     ? `IP abuse score: ${abuseData?.abuseScore || 0}% (${abuseData?.totalReports || 0} reports).`
     : 'IP data: Not available.';
 
+  const vtWarning = vtData?.malicious > 0
+    ? `CRITICAL: VirusTotal flagged by ${vtData.malicious} engine(s) out of ${vtData.total || '?'} (${vtData.malicious} malicious).`
+    : vtData
+    ? `VirusTotal: ${vtData.malicious || 0} malicious detections out of ${vtData.total || '?'} engines.`
+    : 'VirusTotal: Not scanned.';
+
   // Build CNL context block if available
   let cnlBlock = '';
   if (cnlData) {
