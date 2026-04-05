@@ -85,6 +85,7 @@ module.exports = async function handler(req, res) {
     },
     body: JSON.stringify({
       payment_status: 'paid',
+      tier: Number(tier),
       report_token: reportToken,
       updated_at: new Date().toISOString(),
     }),
