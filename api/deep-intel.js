@@ -549,9 +549,13 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    // Admin notification (fire and forget) — includes full telemetry log
-    sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog)
-      .catch(e => console.error('Admin deep intel alert error:', e));
+    // Admin notification
+    try {
+      await sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog);
+      console.log("Admin telemetry alert sent.");
+    } catch (e) {
+      console.error('Admin deep intel alert error:', e);
+    }
 
     // Send email
     await sendReportEmail(
