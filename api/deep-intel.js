@@ -357,6 +357,9 @@ EVIDENCE SUMMARY
 WHAT HAPPENED TO YOU
 Based on the victim's story, explain specifically what data or access the scammer may now have. Be specific and honest. If they clicked a link, what risk does that create. If they entered credentials, what should they assume is compromised.
 
+CNL & PSYCHOLOGICAL TACTICS
+Break down the specific Cognitive Neurological Linguistics and psychological manipulation techniques used in this attack. Identify and name each tactic explicitly — for example: urgency and artificial time pressure, authority impersonation, fear-based compliance, social proof exploitation, reciprocity traps, scarcity triggers, or identity anchoring. For each tactic, explain how it was deployed in this specific message and why it is effective at bypassing rational decision-making. This section helps the victim understand they were targeted by deliberate psychological engineering, not personal gullibility.
+
 RECOVERY CHECKLIST
 A numbered list of specific actions this person should take NOW, in order of priority. Be specific — name the type of account, the type of call, the specific action. Do not give generic advice. Tailor this entirely to what they told you happened.
 
@@ -409,7 +412,10 @@ async function sendReportEmail(email, caseId, reportToken, report, urlscanData, 
   const reportUrl = `https://phishscore.ai/report?token=${reportToken}`;
   const screenshotSection = urlscanData?.screenshot
     ? `<p><strong>Evidence Screenshot:</strong><br><img src="${urlscanData.screenshot}" style="max-width:100%;border-radius:8px;margin-top:8px;" alt="URLScan screenshot"/></p>`
-    : '';
+    : `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin-bottom:24px;">
+        <p style="font-family:monospace;font-size:10px;letter-spacing:2px;color:#9ca3af;margin:0 0 4px;">VISUAL EVIDENCE</p>
+        <p style="font-family:monospace;font-size:12px;color:#6b7280;margin:0;">Vision API Analysis: N/A — No visual evidence provided</p>
+       </div>`;
 
   // Format report as HTML
   const reportHtml = report
