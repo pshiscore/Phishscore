@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         product_id: productId,
         customer_email: email,
-        success_url: `https://www.phishscore.ai/report/${caseId}?payment=success`,
+        success_url: `https://www.phishscore.ai/report?case=${caseId}&payment=success`,
         metadata: { caseId, tier },
       }),
     });
