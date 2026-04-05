@@ -70,17 +70,23 @@ module.exports = async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        product_price_id: productId,
+        product_id: productId,
         customer_email: email,
         success_url: `https://www.phishscore.ai/report?case=${caseId}`,
         metadata: { caseId, tier: tierNum },
       }),
     });
 
-    const polarData = await polarRes.json();
     if (!polarRes.ok) {
-      console.error('Polar checkout error:', JSON.stringify(polarData));
-      throw new Error(polarData.detail || `Polar API error ${polarRes.status}`);
+      const errText = await polarRes.text();
+      console.error('Polar checkout error:', polarRes.status, errText);
+      throw new Error(`Polar API returned ${polarRes.status}: ${errText}`);
+    }
+
+    const polarData = await polarRes.json();
+    if (!polarData.url) {
+      console.error('Polar response missing URL:', JSON.stringify(polarData));
+      throw new Error('Polar API did not return a checkout URL');
     }
 
     return res.status(200).json({ checkoutUrl: polarData.url });
