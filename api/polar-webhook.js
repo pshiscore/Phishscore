@@ -27,20 +27,24 @@ function verifySignature(rawBody, headers) {
   const secretBytes = Buffer.from(secret, 'base64');
   const computed = crypto.createHmac('sha256', secretBytes).update(signingInput).digest('base64');
 
-  // Signature header may contain multiple space-separated "v1,<sig>" entries
-  return msgSignature.split(' ').some(s => s.replace(/^v1,/, '') === computed);
+  // Extract all passed signatures (stripping the 'v1,' prefix)
+  const passedSignatures = msgSignature.split(' ').map(sig => sig.split(',')[1]);
+
+  // Check if our computed signature matches ANY of the passed signatures
+  return passedSignatures.includes(computed);
 }
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Read raw body for signature verification
-  const rawBody = await new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', chunk => { data += chunk; });
-    req.on('end', () => resolve(data));
+  // Read raw body as Buffers to preserve byte-perfect encoding for HMAC
+  const rawBodyBuffer = await new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+  const rawBody = rawBodyBuffer.toString('utf8');
 
   if (!verifySignature(rawBody, req.headers)) {
     console.error('polar-webhook: invalid signature');
