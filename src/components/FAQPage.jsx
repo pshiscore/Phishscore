@@ -117,7 +117,7 @@ const FAQS = [
           { label: "Never:", text: "Your original message text or images stored for training. No identity linkage.", color: "#f43f5e" },
         ].map((row, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < 2 ? 10 : 0 }}>
-            <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: row.color, whiteSpace: "nowrap", marginTop: 2 }}>{row.label}</span>
+            <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: row.color, flexShrink: 0, marginTop: 2 }}>{row.label}</span>
             <span>{row.text}</span>
           </div>
         ))}
@@ -181,8 +181,8 @@ export function FAQContent({ T = {} }) {
           { client: "Yahoo Mail", steps: "Open email > Three dots menu > View raw message > Copy all" },
         ].map((item, i) => (
           <div key={i} style={{ display: "flex", gap: 12, marginBottom: i < 3 ? 10 : 0, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 10, color: "#38bdf8", fontFamily: "monospace", fontWeight: 700, whiteSpace: "nowrap", minWidth: 80 }}>{item.client}</span>
-            <span style={{ color: T.text2, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{item.steps}</span>
+            <span style={{ fontSize: 10, color: "#38bdf8", fontFamily: "monospace", fontWeight: 700, whiteSpace: "nowrap", minWidth: 60, flexShrink: 0 }}>{item.client}</span>
+            <span style={{ color: T.text2, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5, minWidth: 0, overflowWrap: "break-word" }}>{item.steps}</span>
           </div>
         ))}
       </div>

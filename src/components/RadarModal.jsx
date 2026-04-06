@@ -134,7 +134,7 @@ export function RadarPanel({ T = {}, onClose }) {
     <>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div>
             <h2 style={{ color: T.text, fontFamily: "monospace", fontSize: 18, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
               PHISHSCORE <span style={{ color: "#f43f5e" }}>RADAR</span>
@@ -169,7 +169,7 @@ export function RadarPanel({ T = {}, onClose }) {
                         onChange={e => setEmailValue(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleSendReport()}
                         placeholder="your@email.com"
-                        style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: 160, outline: "none" }}
+                        style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: "min(160px, 100%)", outline: "none" }}
                       />
                       <button
                         onClick={handleSendReport}
@@ -277,7 +277,7 @@ export function RadarPanel({ T = {}, onClose }) {
                   return (
                     <div key={cat.category} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 16, fontSize: 9, color: T.text4, fontFamily: "monospace" }}>{i + 1}</div>
-                      <div style={{ width: 110, fontSize: 10, color: T.text2, fontFamily: "monospace", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catInfo.label}</div>
+                      <div style={{ minWidth: 0, width: 110, maxWidth: 110, fontSize: 10, color: T.text2, fontFamily: "monospace", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catInfo.label}</div>
                       <div style={{ flex: 1, background: T.ringTrack, borderRadius: 3, height: 5 }}>
                         <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${catInfo.color}, ${catInfo.color}66)`, width: `${barWidth}%`, transition: "width 0.8s ease" }} />
                       </div>

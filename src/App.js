@@ -269,7 +269,7 @@ export default function App() {
           </div>
         </header>
 
-        <main style={{ padding: "28px", maxWidth: 1300, margin: "0 auto" }}>
+        <main style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
           {/* STATS */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>

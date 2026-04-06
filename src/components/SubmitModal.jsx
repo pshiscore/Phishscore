@@ -296,7 +296,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const visOpt = VISIBILITY_OPTIONS.find(o => o.id === visibility);
 
   return (
-    <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, width: "100%", padding: 32 }}>
+    <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, width: "100%", padding: 32, boxSizing: "border-box", minWidth: 0 }}>
 
         <div style={{ marginBottom: 24 }}>
           {/* FIX: uses PhishScoreLogo so PHISH is visible in light mode */}
@@ -472,9 +472,9 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
 
         {step === 3 && result && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20, flexWrap: "wrap" }}>
               <ScoreRing score={result.score} size={80} trackColor={T.ringTrack} />
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 26, fontWeight: 800, color: sc, fontFamily: "monospace", letterSpacing: 1 }}>{getStatusLabel(result.score)}</div>
                 <div style={{ color: T.text2, fontSize: 14, marginTop: 5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{result.verdict}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>

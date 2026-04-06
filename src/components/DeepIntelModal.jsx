@@ -207,7 +207,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
                 placeholder={isFreshEntry
                   ? "Paste the suspicious message, email, or website content you want investigated..."
                   : "Original message pre-filled — add anything else here..."}
-                style={{ width: "100%", minHeight: 120, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 14, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
+                style={{ width: "100%", minHeight: 120, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 14, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7, overflowWrap: "break-word", wordBreak: "break-word" }}
                 onFocus={e => e.target.style.borderColor = "#a78bfa55"}
                 onBlur={e => e.target.style.borderColor = T.inputBorder}
               />
@@ -281,7 +281,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
             <div style={{ fontSize: 11, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 20 }}>STEP 2 — INTEL VALUE ASSESSMENT</div>
 
             {/* Double score display */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
               {originalScore && (
                 <div style={{ flex: 1, textAlign: "center", padding: "16px 12px", background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12 }}>
                   <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>PHISHSCORE</div>
@@ -299,7 +299,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
             {/* IVS explanation */}
             <div style={{ background: ivsConfig.bg, border: `1px solid ${ivsConfig.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
               <div style={{ fontSize: 10, letterSpacing: 2, color: ivsConfig.color, fontFamily: "monospace", marginBottom: 6 }}>{ivs.headline}</div>
-              <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{ivs.explanation}</p>
+              <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0, overflowWrap: "break-word" }}>{ivs.explanation}</p>
             </div>
 
             {/* Honest note if not recommended */}
@@ -367,8 +367,8 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
               );
             })()}
 
-            {/* Tier 2 + 3 — side by side, compact */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            {/* Tier 2 + 3 — side by side on desktop, stacked on mobile */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 14 }}>
               {TIERS.slice(1).map(tier => (
                 <div key={tier.tier} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "12px 14px", opacity: 0.7 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: tier.color, fontFamily: "monospace", marginBottom: 2 }}>{tier.name}</div>
