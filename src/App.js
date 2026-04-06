@@ -5,6 +5,7 @@ import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from 
 import CategoryBreakdown from "./components/CategoryBreakdown";
 import SubmitModal, { ScannerPanel } from "./components/SubmitModal";
 import { FAQContent } from "./components/FAQPage";
+import { GlossaryContent } from "./components/GlossaryPage";
 import TransparencyPage from "./components/TransparencyPage";
 import LegalPage from "./components/LegalPage";
 import APITestDashboard from "./components/APITestDashboard";
@@ -398,6 +399,15 @@ export default function App() {
               </PageWrapper>
             )}
 
+            {/* GLOSSARY view */}
+            {activeView === 'glossary' && (
+              <PageWrapper>
+                <div style={{ padding: "32px 0" }}>
+                  <GlossaryContent T={T} onScanClick={() => switchView('scanner')} />
+                </div>
+              </PageWrapper>
+            )}
+
             {/* SCANNER view */}
             {activeView === 'scanner' && (
               <PageWrapper>
@@ -417,6 +427,7 @@ export default function App() {
             </div>
             <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={() => switchView('faq')} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
+              <button onClick={() => switchView('glossary')} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>GLOSSARY</button>
               <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
               <button onClick={() => { setLegalTab("terms"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TERMS</button>
               <button onClick={() => { setLegalTab("privacy"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>PRIVACY</button>
