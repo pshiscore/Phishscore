@@ -67,14 +67,15 @@ function SectorWarning({ warning, T }) {
   );
 }
 
-export default function RadarModal({ onClose, T = {} }) {
+// ── Shared radar content — used both inline and inside the modal ──────────────
+export function RadarPanel({ T = {}, onClose }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailValue, setEmailValue] = useState("");
-  const [emailStatus, setEmailStatus] = useState(null); // null | "sending" | "success" | "error"
+  const [emailStatus, setEmailStatus] = useState(null);
 
   useEffect(() => {
     loadTrends();
@@ -95,8 +96,6 @@ export default function RadarModal({ onClose, T = {} }) {
       setLoading(false);
     }
   };
-
-  const threat = data ? THREAT_CONFIG[(data.threat_level || 1) - 1] : null;
 
   const handleSendReport = async () => {
     if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
@@ -132,175 +131,183 @@ export default function RadarModal({ onClose, T = {} }) {
   };
 
   return (
+    <>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h2 style={{ color: T.text, fontFamily: "monospace", fontSize: 18, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
+              PHISHSCORE <span style={{ color: "#f43f5e" }}>RADAR</span>
+            </h2>
+            <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>COMMUNITY THREAT INTELLIGENCE</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            {/* Email share button */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              <button
+                onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
+                title="Export radar report by email"
+                style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, borderRadius: 9999, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0, fontSize: 11, fontFamily: "monospace", fontWeight: 600, letterSpacing: 0.5 }}
+              >
+                Export Report
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
+                </svg>
+              </button>
+              {emailOpen && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", animation: "slideIn 0.15s ease" }}>
+                  {emailStatus === "success" ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#34d399", fontFamily: "monospace" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Report sent!
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="email"
+                        value={emailValue}
+                        onChange={e => setEmailValue(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && handleSendReport()}
+                        placeholder="your@email.com"
+                        style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: 160, outline: "none" }}
+                      />
+                      <button
+                        onClick={handleSendReport}
+                        disabled={emailStatus === "sending"}
+                        style={{ fontSize: 9, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 6, cursor: emailStatus === "sending" ? "default" : "pointer", opacity: emailStatus === "sending" ? 0.7 : 1 }}
+                      >
+                        {emailStatus === "sending" ? "SENDING..." : "SEND REPORT"}
+                      </button>
+                      {emailStatus === "error" && (
+                        <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>
+                      )}
+                      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center", marginTop: 12 }}>
+                        Subscription reports coming soon.
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Last updated block */}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
+              <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>
+                {refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}
+              </div>
+              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates every 48h</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div style={{ textAlign: "center", padding: "48px 0" }}>
+          <div style={{ fontSize: 32, marginBottom: 12, animation: "spin 2s linear infinite", display: "inline-block" }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="2"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><line x1="12" y1="12" x2="19.5" y2="4.5"/>
+            </svg>
+          </div>
+          <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>SCANNING...</div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {!loading && error && (
+        <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <div style={{ fontSize: 13, color: T.text3, fontFamily: "Georgia, serif", marginBottom: 16 }}>{error}</div>
+          <button onClick={loadTrends} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>RETRY</button>
+        </div>
+      )}
+
+      {/* No data yet */}
+      {!loading && !error && !data && (
+        <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
+          <div style={{ fontSize: 12, color: T.text3, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>RADAR INITIALIZING</div>
+          <div style={{ fontSize: 13, color: T.text4, fontFamily: "Georgia, serif", lineHeight: 1.7 }}>First scan is being generated. Check back in a few minutes.</div>
+        </div>
+      )}
+
+      {/* Data */}
+      {!loading && !error && data && (
+        <>
+          <ThreatMeter level={data.threat_level || 1} T={T} warning={data.threat_warning} />
+
+          {/* AI Intelligence Summary */}
+          <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 8 }}>INTELLIGENCE SUMMARY</div>
+            <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{data.ai_warning}</p>
+          </div>
+
+          {/* Recommended Action */}
+          {data.recommended_action && (
+            <div style={{ background: "#34d39912", border: "1px solid #34d39940", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ flexShrink: 0, marginTop: 1 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 6 }}>WHAT TO DO NOW</div>
+                <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>{data.recommended_action}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Sector Warnings — top 3 */}
+          {Array.isArray(data.sector_warnings) && data.sector_warnings.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>SECTOR ALERTS</div>
+              {data.sector_warnings.map((w, i) => (
+                <SectorWarning key={i} warning={w} T={T} />
+              ))}
+            </div>
+          )}
+
+          {/* Activity — last 100 reports, 5 categories */}
+          {Array.isArray(data.aggregation_snapshot) && data.aggregation_snapshot.length > 0 && (
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>ACTIVITY — LAST 100 REPORTS</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {data.aggregation_snapshot.slice(0, 5).map((cat, i) => {
+                  const catInfo = getCat(cat.category);
+                  const barWidth = Math.max(10, Math.min(100, (cat.count / (data.aggregation_snapshot[0]?.count || 1)) * 100));
+                  return (
+                    <div key={cat.category} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 16, fontSize: 9, color: T.text4, fontFamily: "monospace" }}>{i + 1}</div>
+                      <div style={{ width: 110, fontSize: 10, color: T.text2, fontFamily: "monospace", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catInfo.label}</div>
+                      <div style={{ flex: 1, background: T.ringTrack, borderRadius: 3, height: 5 }}>
+                        <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${catInfo.color}, ${catInfo.color}66)`, width: `${barWidth}%`, transition: "width 0.8s ease" }} />
+                      </div>
+                      <div style={{ fontSize: 10, color: catInfo.color, fontFamily: "monospace", width: 28, textAlign: "right" }}>{cat.count}</div>
+                      <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", width: 36, textAlign: "right" }}>avg {cat.avgScore}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.cardBorder}`, fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center" }}>
+            Analysis based on last 100 community reports • AI analysis by Gemini
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// ── Modal wrapper (kept for APITestDashboard compatibility) ───────────────────
+export default function RadarModal({ onClose, T = {} }) {
+  return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 520, maxHeight: "88vh", overflowY: "auto", padding: 28, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
-
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <h2 style={{ color: T.text, fontFamily: "monospace", fontSize: 18, fontWeight: 800, margin: "0 0 4px", letterSpacing: 1 }}>
-                PHISHSCORE <span style={{ color: "#f43f5e" }}>RADAR</span>
-              </h2>
-              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>COMMUNITY THREAT INTELLIGENCE</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              {/* Email share button */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <button
-                  onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
-                  title="Export radar report by email"
-                  style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, borderRadius: 9999, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0, fontSize: 11, fontFamily: "monospace", fontWeight: 600, letterSpacing: 0.5 }}
-                >
-                  Export Report
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
-                  </svg>
-                </button>
-                {emailOpen && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end", animation: "slideIn 0.15s ease" }}>
-                    {emailStatus === "success" ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#34d399", fontFamily: "monospace" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        Report sent!
-                      </div>
-                    ) : (
-                      <>
-                        <input
-                          type="email"
-                          value={emailValue}
-                          onChange={e => setEmailValue(e.target.value)}
-                          onKeyDown={e => e.key === "Enter" && handleSendReport()}
-                          placeholder="your@email.com"
-                          style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: 160, outline: "none" }}
-                        />
-                        <button
-                          onClick={handleSendReport}
-                          disabled={emailStatus === "sending"}
-                          style={{ fontSize: 9, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 6, cursor: emailStatus === "sending" ? "default" : "pointer", opacity: emailStatus === "sending" ? 0.7 : 1 }}
-                        >
-                          {emailStatus === "sending" ? "SENDING..." : "SEND REPORT"}
-                        </button>
-                        {emailStatus === "error" && (
-                          <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>
-                        )}
-                        <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center", marginTop: 12 }}>
-                          Subscription reports coming soon.
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              {/* Last updated block */}
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
-                <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>
-                  {refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}
-                </div>
-                <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates every 48h</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Loading state */}
-        {loading && (
-          <div style={{ textAlign: "center", padding: "48px 0" }}>
-            <div style={{ fontSize: 32, marginBottom: 12, animation: "spin 2s linear infinite", display: "inline-block" }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="2"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><line x1="12" y1="12" x2="19.5" y2="4.5"/>
-              </svg>
-            </div>
-            <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>SCANNING...</div>
-          </div>
-        )}
-
-        {/* Error state */}
-        {!loading && error && (
-          <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div style={{ fontSize: 13, color: T.text3, fontFamily: "Georgia, serif", marginBottom: 16 }}>{error}</div>
-            <button onClick={loadTrends} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>RETRY</button>
-          </div>
-        )}
-
-        {/* No data yet */}
-        {!loading && !error && !data && (
-          <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
-            <div style={{ fontSize: 12, color: T.text3, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>RADAR INITIALIZING</div>
-            <div style={{ fontSize: 13, color: T.text4, fontFamily: "Georgia, serif", lineHeight: 1.7 }}>First scan is being generated. Check back in a few minutes.</div>
-          </div>
-        )}
-
-        {/* Data */}
-        {!loading && !error && data && (
-          <>
-            <ThreatMeter level={data.threat_level || 1} T={T} warning={data.threat_warning} />
-
-            {/* AI Intelligence Summary */}
-            <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
-              <div style={{ fontSize: 9, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 8 }}>INTELLIGENCE SUMMARY</div>
-              <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: 0 }}>{data.ai_warning}</p>
-            </div>
-
-            {/* Recommended Action */}
-            {data.recommended_action && (
-              <div style={{ background: "#34d39912", border: "1px solid #34d39940", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <div style={{ flexShrink: 0, marginTop: 1 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 6 }}>WHAT TO DO NOW</div>
-                  <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.7, margin: 0 }}>{data.recommended_action}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Sector Warnings — top 3 */}
-            {Array.isArray(data.sector_warnings) && data.sector_warnings.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>SECTOR ALERTS</div>
-                {data.sector_warnings.map((w, i) => (
-                  <SectorWarning key={i} warning={w} T={T} />
-                ))}
-              </div>
-            )}
-
-            {/* Activity — last 100 reports, 5 categories */}
-            {Array.isArray(data.aggregation_snapshot) && data.aggregation_snapshot.length > 0 && (
-              <div>
-                <div style={{ fontSize: 9, letterSpacing: 3, color: T.text3, fontFamily: "monospace", marginBottom: 10 }}>ACTIVITY — LAST 100 REPORTS</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {data.aggregation_snapshot.slice(0, 5).map((cat, i) => {
-                    const catInfo = getCat(cat.category);
-                    const barWidth = Math.max(10, Math.min(100, (cat.count / (data.aggregation_snapshot[0]?.count || 1)) * 100));
-                    return (
-                      <div key={cat.category} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 16, fontSize: 9, color: T.text4, fontFamily: "monospace" }}>{i + 1}</div>
-                        <div style={{ width: 110, fontSize: 10, color: T.text2, fontFamily: "monospace", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catInfo.label}</div>
-                        <div style={{ flex: 1, background: T.ringTrack, borderRadius: 3, height: 5 }}>
-                          <div style={{ height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${catInfo.color}, ${catInfo.color}66)`, width: `${barWidth}%`, transition: "width 0.8s ease" }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: catInfo.color, fontFamily: "monospace", width: 28, textAlign: "right" }}>{cat.count}</div>
-                        <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", width: 36, textAlign: "right" }}>avg {cat.avgScore}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.cardBorder}`, fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center" }}>
-              Analysis based on last 100 community reports • AI analysis by Gemini
-            </div>
-          </>
-        )}
+        <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
+        <RadarPanel T={T} onClose={onClose} />
       </div>
 
       <style>{`

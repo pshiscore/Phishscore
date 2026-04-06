@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
@@ -6,12 +6,44 @@ import CategoryBreakdown from "./components/CategoryBreakdown";
 import SubmitModal from "./components/SubmitModal";
 import FAQPage from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
-import ComingSoon from "./components/ComingSoon";
 import LegalPage from "./components/LegalPage";
 import APITestDashboard from "./components/APITestDashboard";
-import RadarModal from "./components/RadarModal";
+import RadarModal, { RadarPanel } from "./components/RadarModal";
 import DeepIntelModal from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
+
+const TrustBadge = () => {
+  return (
+    <div
+      style={{
+        marginTop: "32px",
+        padding: "20px 24px",
+        background: "rgba(16, 185, 129, 0.05)",
+        border: "1px solid rgba(16, 185, 129, 0.2)",
+        borderRadius: "12px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "16px",
+        maxWidth: "100%",
+      }}
+    >
+      <div style={{ color: "#10b981", flexShrink: 0, marginTop: "2px" }}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+      </div>
+      <div>
+        <h4 style={{ margin: "0 0 6px 0", color: "#d1d5db", fontSize: "14px", fontFamily: "monospace", fontWeight: "600", letterSpacing: "0.5px" }}>
+          AI GOVERNANCE & DATA PRIVACY
+        </h4>
+        <p style={{ margin: 0, color: "#9ca3af", fontSize: "13px", lineHeight: "1.6", fontFamily: "sans-serif" }}>
+          All community feed submissions are strictly anonymized. <strong>We never use your private case data, uploaded files, or credentials to train underlying AI models.</strong> Enterprise-grade forensic intelligence, built on absolute privacy.
+        </p>
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
@@ -57,6 +89,8 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
+  const [showRadarInline, setShowRadarInline] = useState(false);
+  const radarRef = useRef(null);
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
 
   const T = THEMES[theme] || THEMES.light;
@@ -166,11 +200,21 @@ export default function App() {
               </button>
             </Tooltip>
 
-            {/* Radar — live pulse on icon */}
-            <Tooltip text="PhishScore Radar — Live Intelligence" T={T}>
-              <button onClick={() => setShowTrends(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+            {/* Radar — toggles inline dashboard */}
+            <Tooltip text={showRadarInline ? "Close Radar" : "PhishScore Radar — Live Intelligence"} T={T}>
+              <button
+                onClick={() => {
+                  if (!showRadarInline) {
+                    setShowRadarInline(true);
+                    setTimeout(() => radarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  } else {
+                    setShowRadarInline(false);
+                  }
+                }}
+                style={{ background: showRadarInline ? "#f43f5e18" : "none", border: `1px solid ${showRadarInline ? "#f43f5e" : T.headerBorder}`, color: showRadarInline ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}
+              >
                 <span style={{ position: "relative", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />
+                  {!showRadarInline && <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />}
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="2"/>
                     <path d="M12 2a10 10 0 0 1 10 10"/>
@@ -235,6 +279,13 @@ export default function App() {
               </div>
             ))}
           </div>
+
+          {/* RADAR INLINE DASHBOARD */}
+          {showRadarInline && (
+            <div ref={radarRef} style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28, marginBottom: 26, maxWidth: "100%", scrollMarginTop: 80 }}>
+              <RadarPanel T={T} onClose={() => setShowRadarInline(false)} />
+            </div>
+          )}
 
           {/* CATEGORY BREAKDOWN */}
           {catCounts.length > 0 && <CategoryBreakdown catCounts={catCounts} maxCount={maxCount} filterCat={filterCat} setFilterCat={setFilterCat} T={T} />}
@@ -305,6 +356,8 @@ export default function App() {
               </button>
             )}
           </div>
+
+          <TrustBadge />
         </main>
 
         {/* FOOTER */}
