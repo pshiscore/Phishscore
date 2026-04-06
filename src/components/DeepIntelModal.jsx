@@ -56,7 +56,8 @@ const IVS_CONFIG = {
   CRITICAL: { color: "#f43f5e", bg: "#f43f5e12", border: "#f43f5e30", label: "CRITICAL VALUE" },
 };
 
-export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
+// ── Shared Deep Intel content — used both inline and inside the modal ─────────
+export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
   // Steps: intake → scoring → tiers → checkout → confirm
   const [step, setStep] = useState("intake");
   const [message, setMessage] = useState(prefill.message || "");
@@ -148,12 +149,7 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
   const ivsConfig = ivs ? (IVS_CONFIG[ivs.label] || IVS_CONFIG.MODERATE) : null;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16, overflowY: "auto" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 580, maxHeight: "92vh", overflowY: "auto", padding: 28, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
-
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
-
+    <>
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
@@ -402,7 +398,18 @@ export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
             </div>
           </>
         )}
+    </>
+  );
+}
 
+// ── Modal wrapper (used when launching from scan results with prefill) ────────
+export default function DeepIntelModal({ onClose, prefill = {}, T = {} }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16, overflowY: "auto" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 580, maxHeight: "92vh", overflowY: "auto", padding: 28, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+        <DeepIntelContent onClose={onClose} prefill={prefill} T={T} />
       </div>
     </div>
   );

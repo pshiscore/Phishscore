@@ -23,7 +23,7 @@ const FAQS = [
   // ── Submission ────────────────────────────────────────────────────────────────
   {
     q: "How do I get the most accurate score?",
-    a: "Include as much context as possible: the full message text, the sender email or phone number, the subject line for emails, and any links. For emails, pasting the email headers alongside the message body gives the deepest analysis — the headers reveal the true sending server even when the display name looks legitimate. For text messages, include the full phone number with country code."
+    a: "Include as much context as possible: the full message text, the sender email or phone number, the subject line for emails, and any links. For emails, pasting the email headers alongside the message body gives the deepest analysis: the headers reveal the true sending server even when the display name looks legitimate. For text messages, include the full phone number with country code."
   },
   {
     q: "What are email headers and how do I find them?",
@@ -35,7 +35,7 @@ const FAQS = [
   },
   {
     q: "What is the difference between Public, Private, and Anonymous?",
-    a: "Private is the default — your score, category, and tags appear in the community feed but message content and sender are never shown publicly. Public shares a one-sentence AI summary along with your score and tags to help the community recognize the same scam — best used when your message contains no personal information. Anonymous stores nothing after analysis — only the score and category briefly appear in the feed, with no content retained."
+    a: "Private is the default: your score, category, and tags appear in the community feed but message content and sender are never shown publicly. Public shares a one-sentence AI summary along with your score and tags to help the community recognize the same scam — best used when your message contains no personal information. Anonymous stores nothing after analysis — only the score and category briefly appear in the feed, with no content retained."
   },
 
   // ── Privacy & data ────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ const FAQS = [
   },
   {
     q: "Can I report a scam that already happened to me?",
-    a: "Yes — submit the original message even if you already fell for it. Your submission helps others recognize the same scam and contributes to community intelligence. For financial fraud, also report to the FTC at reportfraud.ftc.gov, the FBI Internet Crime Complaint Center at ic3.gov, and contact your bank immediately to initiate a fraud claim."
+    a: "Yes. Submit the original message even if you already fell for it. Your submission helps others recognize the same scam and contributes to community intelligence. For financial fraud, also report to the FTC at reportfraud.ftc.gov, the FBI Internet Crime Complaint Center at ic3.gov, and contact your bank immediately to initiate a fraud claim."
   },
 
   // ── Deep Intel ────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ const FAQS = [
   },
   {
     q: "What does a Deep Intel investigation include?",
-    a: "A Deep Intel report pulls data from URLScan.io (live screenshot and page analysis), VirusTotal (verdicts from 70+ security engines), AbuseIPDB (IP history and victim reports), and WhoisXML (domain ownership and age — most scam domains are under 30 days old). Claude AI synthesizes all of this with your personal account of what happened to produce a structured case file with an evidence summary, a specific recovery checklist tailored to your situation, and recommended next steps."
+    a: "A Deep Intel report pulls data from URLScan.io (live screenshot and page analysis), VirusTotal (verdicts from 70+ security engines), AbuseIPDB (IP history and victim reports), and WhoisXML (domain ownership and age (most scam domains are under 30 days old)). Claude AI synthesizes all of this with your personal account of what happened to produce a structured case file with an evidence summary, a specific recovery checklist tailored to your situation, and recommended next steps."
   },
   {
     q: "What service tiers will Deep Intel offer?",
@@ -81,7 +81,7 @@ const FAQS = [
   },
   {
     q: "How do I access Deep Intel?",
-    a: "After any scan that returns a score above 75, you will see an Uncover This Scam — PhishScore Deep Intel button above the Report to FTC button on your results screen. You can also access it from the magnifying glass icon in the navigation bar. The service is currently in beta and coming soon — clicking either entry point will show you a preview of what is coming and how to get early access."
+    a: "After any scan that returns a score above 75, you will see an Uncover This Scam — PhishScore Deep Intel button above the Report to FTC button on your results screen. You can also access it from the magnifying glass icon in the navigation bar. The service is currently in closed beta. Clicking either entry point will show you a preview of the upcoming launch and how to join the waitlist."
   },
 
   // ── PhishScore Mini ───────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ const FAQS = [
     q: "What is the Train PhishScore AI checkbox?",
     a: (
       <div>
-        <p style={{ margin: "0 0 10px" }}>When you check Train PhishScore AI before submitting, you consent to having enriched data from your submission used to improve PhishScore Mini. This is entirely optional — your submission is analyzed identically either way.</p>
+        <p style={{ margin: "0 0 10px" }}>When you check Train PhishScore AI before submitting, you consent to having enriched data from your submission used to improve PhishScore Mini. This is entirely optional; your submission is analyzed identically either way.</p>
         <p style={{ margin: "0 0 8px" }}>If you opt in, we collect:</p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18, lineHeight: 1.8 }}>
           <li>The full AI analysis and reasoning (score rationale, detected red flags, category inference)</li>
@@ -147,100 +147,108 @@ function FAQItem({ q, a, T }) {
   );
 }
 
-// FIX: now accepts T prop and uses it throughout instead of hardcoded dark colors
+// ── Shared FAQ content — used both inline and inside the modal ────────────────
+export function FAQContent({ T = {} }) {
+  return (
+    <>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>HELP CENTER</div>
+        <div style={{ marginBottom: 8 }}>
+          <PhishScoreLogo T={T} size={24} dotSize={13} />
+          <span style={{ fontSize: 24, fontWeight: 800, fontFamily: "monospace", color: T.text3, letterSpacing: 1 }}> FAQ</span>
+        </div>
+        <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, margin: 0 }}>
+          Everything you need to know about submitting scams, protecting your privacy, and getting the most accurate results.
+        </p>
+      </div>
+
+      <div style={{ background: T.innerBg, border: "1px solid #34d39930", borderRadius: 12, padding: 20, marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 12 }}>TIPS FOR BEST RESULTS</div>
+        {["Include the full sender address, not just the display name", "For emails, paste the email headers for deepest analysis", "Include the complete message - subject, body, any links", "For texts, include the full phone number with country code", "Submissions default to Private to protect your privacy", "Not sure of the type? Select Unknown / AI Detect and AI will auto-classify it"].map((tip, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < 5 ? 8 : 0 }}>
+            <span style={{ color: "#34d399", flexShrink: 0, fontFamily: "monospace" }}>0{i + 1}</span>
+            <span style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{tip}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ background: T.innerBg, border: "1px solid #38bdf830", borderRadius: 12, padding: 20, marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: "#38bdf8", fontFamily: "monospace", marginBottom: 12 }}>HOW TO FIND EMAIL HEADERS</div>
+        {[
+          { client: "Gmail", steps: "Open email > Three dots menu (...) > Show original > Copy all" },
+          { client: "Apple Mail", steps: "Open email > View menu > Message > All Headers > Copy all" },
+          { client: "Outlook", steps: "Open email > File > Properties > Internet headers box > Copy all" },
+          { client: "Yahoo Mail", steps: "Open email > Three dots menu > View raw message > Copy all" },
+        ].map((item, i) => (
+          <div key={i} style={{ display: "flex", gap: 12, marginBottom: i < 3 ? 10 : 0, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 10, color: "#38bdf8", fontFamily: "monospace", fontWeight: 700, whiteSpace: "nowrap", minWidth: 80 }}>{item.client}</span>
+            <span style={{ color: T.text2, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{item.steps}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+        {/* Core product */}
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>THE BASICS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {FAQS.slice(0, 4).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+          </div>
+        </div>
+
+        {/* Submission */}
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>SUBMITTING SCAMS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {FAQS.slice(4, 8).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+          </div>
+        </div>
+
+        {/* Privacy */}
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>PRIVACY & YOUR DATA</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {FAQS.slice(8, 10).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+          </div>
+        </div>
+
+        {/* Intelligence */}
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>INTELLIGENCE FEATURES</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {FAQS.slice(10, 13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+          </div>
+        </div>
+
+        {/* Deep Intel */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingLeft: 4 }}>
+            <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace" }}>PHISHSCORE DEEP INTEL</div>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {FAQS.slice(13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+          </div>
+        </div>
+
+      </div>
+
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${T.cardBorder}`, textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace", marginBottom: 8 }}>STILL HAVE QUESTIONS?</div>
+        <a href="mailto:contact@phishscore.ai" style={{ color: "#f43f5e", fontFamily: "monospace", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
+      </div>
+    </>
+  );
+}
+
+// ── Modal wrapper (kept for legacy/external callers) ──────────────────────────
 export default function FAQPage({ onClose, T = {} }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(14px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 300, padding: 16, overflowY: "auto" }}>
       <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 700, padding: 40, position: "relative", margin: "20px 0" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
-
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>HELP CENTER</div>
-          <div style={{ marginBottom: 8 }}>
-            <PhishScoreLogo T={T} size={24} dotSize={13} />
-            <span style={{ fontSize: 24, fontWeight: 800, fontFamily: "monospace", color: T.text3, letterSpacing: 1 }}> FAQ</span>
-          </div>
-          <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.7, margin: 0 }}>
-            Everything you need to know about submitting scams, protecting your privacy, and getting the most accurate results.
-          </p>
-        </div>
-
-        <div style={{ background: T.innerBg, border: "1px solid #34d39930", borderRadius: 12, padding: 20, marginBottom: 32 }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 12 }}>TIPS FOR BEST RESULTS</div>
-          {["Include the full sender address, not just the display name", "For emails, paste the email headers for deepest analysis", "Include the complete message - subject, body, any links", "For texts, include the full phone number with country code", "Submissions default to Private to protect your privacy", "Not sure of the type? Select Other and AI will auto-classify it"].map((tip, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < 5 ? 8 : 0 }}>
-              <span style={{ color: "#34d399", flexShrink: 0, fontFamily: "monospace" }}>0{i + 1}</span>
-              <span style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{tip}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: T.innerBg, border: "1px solid #38bdf830", borderRadius: 12, padding: 20, marginBottom: 32 }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: "#38bdf8", fontFamily: "monospace", marginBottom: 12 }}>HOW TO FIND EMAIL HEADERS</div>
-          {[
-            { client: "Gmail", steps: "Open email > Three dots menu (...) > Show original > Copy all" },
-            { client: "Apple Mail", steps: "Open email > View menu > Message > All Headers > Copy all" },
-            { client: "Outlook", steps: "Open email > File > Properties > Internet headers box > Copy all" },
-            { client: "Yahoo Mail", steps: "Open email > Three dots menu > View raw message > Copy all" },
-          ].map((item, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, marginBottom: i < 3 ? 10 : 0, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 10, color: "#38bdf8", fontFamily: "monospace", fontWeight: 700, whiteSpace: "nowrap", minWidth: 80 }}>{item.client}</span>
-              <span style={{ color: T.text2, fontSize: 12, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{item.steps}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-          {/* Core product */}
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>THE BASICS</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {FAQS.slice(0, 4).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-            </div>
-          </div>
-
-          {/* Submission */}
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>SUBMITTING SCAMS</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {FAQS.slice(4, 8).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-            </div>
-          </div>
-
-          {/* Privacy */}
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>PRIVACY & YOUR DATA</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {FAQS.slice(8, 10).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-            </div>
-          </div>
-
-          {/* Intelligence */}
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>INTELLIGENCE FEATURES</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {FAQS.slice(10, 13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-            </div>
-          </div>
-
-          {/* Deep Intel */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingLeft: 4 }}>
-              <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace" }}>PHISHSCORE DEEP INTEL</div>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {FAQS.slice(13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-            </div>
-          </div>
-
-        </div>
-
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${T.cardBorder}`, textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: T.text3, fontFamily: "monospace", marginBottom: 8 }}>STILL HAVE QUESTIONS?</div>
-          <a href="mailto:contact@phishscore.ai" style={{ color: "#f43f5e", fontFamily: "monospace", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>contact@phishscore.ai</a>
-        </div>
+        <FAQContent T={T} />
       </div>
     </div>
   );

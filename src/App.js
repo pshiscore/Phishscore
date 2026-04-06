@@ -4,19 +4,19 @@ import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
 import SubmitModal from "./components/SubmitModal";
-import FAQPage from "./components/FAQPage";
+import { FAQContent } from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import LegalPage from "./components/LegalPage";
 import APITestDashboard from "./components/APITestDashboard";
-import RadarModal, { RadarPanel } from "./components/RadarModal";
-import DeepIntelModal from "./components/DeepIntelModal";
+import { RadarPanel } from "./components/RadarModal";
+import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
 
 const TrustBadge = () => {
   return (
     <div
       style={{
-        marginTop: "32px",
+        marginBottom: "24px",
         padding: "20px 24px",
         background: "rgba(16, 185, 129, 0.05)",
         border: "1px solid rgba(16, 185, 129, 0.2)",
@@ -49,10 +49,11 @@ export default function App() {
   const [submissions, setSubmissions] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showFAQ, setShowFAQ] = useState(false);
   const [showTransparency, setShowTransparency] = useState(false);
-  const [showTrends, setShowTrends] = useState(false);
-  const [showInvestigation, setShowInvestigation] = useState(false);
+  // activeView drives the inline section below hero stats
+  // 'dashboard' = community feed, 'radar' = radar panel, 'faq' = FAQ, 'deep-intel' = Deep Intel
+  const [activeView, setActiveView] = useState('dashboard');
+  const [showInvestigation, setShowInvestigation] = useState(false); // modal only — for prefill from scan results
   const [showLegal, setShowLegal] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -89,8 +90,7 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
-  const [showRadarInline, setShowRadarInline] = useState(false);
-  const radarRef = useRef(null);
+  const contentRef = useRef(null); // scroll target for inline view transitions
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
 
   const T = THEMES[theme] || THEMES.light;
@@ -105,6 +105,11 @@ export default function App() {
     try { return localStorage.getItem("phishscore_bar_dismissed") === "1"; } catch { return false; }
   });
   const dismissBar = () => { setBarDismissed(true); try { localStorage.setItem("phishscore_bar_dismissed", "1"); } catch {} };
+
+  const switchView = (view) => {
+    setActiveView(view);
+    setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
 
   useEffect(() => { loadSubmissions(); }, []);
 
@@ -192,7 +197,7 @@ export default function App() {
 
             {/* FAQ */}
             <Tooltip text="FAQ & Help" T={T}>
-              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => switchView(activeView === 'faq' ? 'dashboard' : 'faq')} style={{ background: activeView === 'faq' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'faq' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'faq' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
@@ -200,27 +205,13 @@ export default function App() {
               </button>
             </Tooltip>
 
-            {/* Radar — toggles inline dashboard */}
-            <Tooltip text={showRadarInline ? "Close Radar" : "PhishScore Radar — Live Intelligence"} T={T}>
-              <button
-                onClick={() => {
-                  if (!showRadarInline) {
-                    setShowRadarInline(true);
-                    setTimeout(() => radarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-                  } else {
-                    setShowRadarInline(false);
-                  }
-                }}
-                style={{ background: showRadarInline ? "#f43f5e18" : "none", border: `1px solid ${showRadarInline ? "#f43f5e" : T.headerBorder}`, color: showRadarInline ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}
-              >
+            {/* Radar */}
+            <Tooltip text="PhishScore Radar — Live Intelligence" T={T}>
+              <button onClick={() => switchView(activeView === 'radar' ? 'dashboard' : 'radar')} style={{ background: activeView === 'radar' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'radar' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'radar' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <span style={{ position: "relative", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {!showRadarInline && <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />}
+                  {activeView !== 'radar' && <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />}
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="2"/>
-                    <path d="M12 2a10 10 0 0 1 10 10"/>
-                    <path d="M12 6a6 6 0 0 1 6 6"/>
-                    <path d="M12 10a2 2 0 0 1 2 2"/>
-                    <line x1="12" y1="12" x2="19.5" y2="4.5"/>
+                    <circle cx="12" cy="12" r="2"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 6a6 6 0 0 1 6 6"/><path d="M12 10a2 2 0 0 1 2 2"/><line x1="12" y1="12" x2="19.5" y2="4.5"/>
                   </svg>
                 </span>
                 <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>RADAR</span>
@@ -228,8 +219,8 @@ export default function App() {
             </Tooltip>
 
             {/* Deep Intel */}
-            <Tooltip text="PhishScore Deep Intel — Coming Soon" T={T}>
-              <button onClick={() => setShowInvestigation(true)} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+            <Tooltip text="PhishScore Deep Intel" T={T}>
+              <button onClick={() => switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
@@ -237,7 +228,7 @@ export default function App() {
               </button>
             </Tooltip>
 
-            {/* Theme toggle — shows current mode with active dot */}
+            {/* Theme toggle */}
             <Tooltip text={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"} T={T}>
               <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 {theme === "dark" ? (
@@ -255,8 +246,8 @@ export default function App() {
               </button>
             </Tooltip>
 
-            {/* Primary CTA */}
-            <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+            {/* Primary CTA — returns to dashboard and opens scanner */}
+            <button onClick={() => { switchView('dashboard'); setShowModal(true); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
@@ -281,83 +272,101 @@ export default function App() {
           </div>
 
           {/* RADAR INLINE DASHBOARD */}
-          {showRadarInline && (
-            <div ref={radarRef} style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28, marginBottom: 26, maxWidth: "100%", scrollMarginTop: 80 }}>
-              <RadarPanel T={T} onClose={() => setShowRadarInline(false)} />
-            </div>
-          )}
+          {/* INLINE VIEW — driven by activeView */}
+          <div ref={contentRef} style={{ scrollMarginTop: 80 }}>
 
-          {/* CATEGORY BREAKDOWN */}
-          {catCounts.length > 0 && <CategoryBreakdown catCounts={catCounts} maxCount={maxCount} filterCat={filterCat} setFilterCat={setFilterCat} T={T} />}
-
-          {/* FEED */}
-          <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-              <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
-                COMMUNITY SUBMISSIONS
-                {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
-                <span style={{ color: T.text4, marginLeft: 8, fontSize: 9 }}>{showMoreFeed ? `showing last ${Math.min(FEED_CAP, allFiltered.length)}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${Math.min(FEED_CAP, allFiltered.length)}`}</span>
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                {["all", "scam", "suspicious", "safe"].map(s => (
-                  <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : T.cardBorder}`, color: filterStatus === s ? statusColors[s] : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
-                ))}
-                <div style={{ width: 1, height: 16, background: T.cardBorder }} />
-                {["all", "public", "private", "anonymous"].map(v => {
-                  const vOpt = VISIBILITY_OPTIONS.find(o => o.id === v);
-                  const color = vOpt ? vOpt.color : "#5b6cf8";
-                  return <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : T.cardBorder}`, color: filterVis === v ? color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>;
-                })}
-                <div style={{ width: 1, height: 16, background: T.cardBorder }} />
-                <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}</button>
-              </div>
-            </div>
-
-            {dbLoading ? (
-              <div style={{ textAlign: "center", padding: "48px 0", color: T.text4, fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
-            ) : filtered.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <div style={{ color: T.text4, fontFamily: "monospace", fontSize: 12, marginBottom: 12 }}>No submissions yet - be the first!</div>
-                <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>CHECK A MESSAGE</button>
-              </div>
-            ) : (
-              filtered.map((s, i) => {
-                const cat = getCat(s.category), sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
-                return (
-                  <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start" }}>
-                    <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                        {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
-                        <VisibilityBadge visibility={vis} />
-                        {s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
-                        {s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
-                        <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
-                      </div>
-                      {isHidden ? (
-                        <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
-                      ) : (
-                        // CHANGE: show AI summary if available, fall back to raw preview for older submissions
-                        <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
-                          {s.summary || s.preview || ""}
-                        </div>
-                      )}
-                      
+            {/* DASHBOARD view */}
+            {activeView === 'dashboard' && (
+              <>
+                <TrustBadge />
+                {catCounts.length > 0 && <CategoryBreakdown catCounts={catCounts} maxCount={maxCount} filterCat={filterCat} setFilterCat={setFilterCat} T={T} />}
+                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+                    <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
+                      COMMUNITY SUBMISSIONS
+                      {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
+                      <span style={{ color: T.text4, marginLeft: 8, fontSize: 9 }}>{showMoreFeed ? `showing last ${Math.min(FEED_CAP, allFiltered.length)}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${Math.min(FEED_CAP, allFiltered.length)}`}</span>
                     </div>
-                    <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      {["all", "scam", "suspicious", "safe"].map(s => (
+                        <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : T.cardBorder}`, color: filterStatus === s ? statusColors[s] : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
+                      ))}
+                      <div style={{ width: 1, height: 16, background: T.cardBorder }} />
+                      {["all", "public", "private", "anonymous"].map(v => {
+                        const vOpt = VISIBILITY_OPTIONS.find(o => o.id === v);
+                        const color = vOpt ? vOpt.color : "#5b6cf8";
+                        return <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : T.cardBorder}`, color: filterVis === v ? color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>;
+                      })}
+                      <div style={{ width: 1, height: 16, background: T.cardBorder }} />
+                      <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}</button>
+                    </div>
                   </div>
-                );
-              })
+                  {dbLoading ? (
+                    <div style={{ textAlign: "center", padding: "48px 0", color: T.text4, fontFamily: "monospace", fontSize: 12 }}>LOADING SUBMISSIONS...</div>
+                  ) : filtered.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "48px 0" }}>
+                      <div style={{ color: T.text4, fontFamily: "monospace", fontSize: 12, marginBottom: 12 }}>No submissions yet - be the first!</div>
+                      <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>CHECK A MESSAGE</button>
+                    </div>
+                  ) : (
+                    filtered.map((s, i) => {
+                      const cat = getCat(s.category), sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
+                      return (
+                        <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start" }}>
+                          <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
+                              <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
+                              {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                              <VisibilityBadge visibility={vis} />
+                              {s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
+                              {s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
+                              <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
+                            </div>
+                            {isHidden ? (
+                              <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
+                            ) : (
+                              <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
+                                {s.summary || s.preview || ""}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                  {!dbLoading && allFiltered.length > FEED_DEFAULT && (
+                    <button onClick={() => setShowMoreFeed(v => !v)} style={{ marginTop: 16, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`, color: T.text4, padding: "10px", borderRadius: 8, cursor: "pointer", fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s" }}>
+                      {showMoreFeed ? "SHOW LESS" : `+ SHOW ${Math.min(FEED_CAP, allFiltered.length) - FEED_DEFAULT} MORE SUBMISSIONS`}
+                    </button>
+                  )}
+                </div>
+              </>
             )}
-            {!dbLoading && allFiltered.length > FEED_DEFAULT && (
-              <button onClick={() => setShowMoreFeed(v => !v)} style={{ marginTop: 16, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`, color: T.text4, padding: "10px", borderRadius: 8, cursor: "pointer", fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s" }}>
-                {showMoreFeed ? "SHOW LESS" : `+ SHOW ${Math.min(FEED_CAP, allFiltered.length) - FEED_DEFAULT} MORE SUBMISSIONS`}
-              </button>
-            )}
-          </div>
 
-          <TrustBadge />
+            {/* RADAR view */}
+            {activeView === 'radar' && (
+              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
+                <RadarPanel T={T} onClose={() => switchView('dashboard')} />
+              </div>
+            )}
+
+            {/* FAQ view */}
+            {activeView === 'faq' && (
+              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 40 }}>
+                <FAQContent T={T} />
+              </div>
+            )}
+
+            {/* DEEP INTEL view */}
+            {activeView === 'deep-intel' && (
+              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28, maxWidth: 640, margin: "0 auto" }}>
+                <DeepIntelContent onClose={() => switchView('dashboard')} prefill={deepIntelPrefill} T={T} />
+              </div>
+            )}
+
+          </div>
         </main>
 
         {/* FOOTER */}
@@ -368,7 +377,7 @@ export default function App() {
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginTop: 4 }}>PROTECTING COMMUNITIES FROM FRAUD</div>
             </div>
             <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-              <button onClick={() => setShowFAQ(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
+              <button onClick={() => switchView('faq')} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
               <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
               <button onClick={() => { setLegalTab("terms"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TERMS</button>
               <button onClick={() => { setLegalTab("privacy"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>PRIVACY</button>
@@ -379,13 +388,11 @@ export default function App() {
         </footer>
       </div>
 
-      {/* MODALS */}
+      {/* MODALS — only for flows that need overlay (scanner, checkout, transparency, legal, devtools, report) */}
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
-      {showFAQ && <FAQPage onClose={() => setShowFAQ(false)} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
-      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => setShowTrends(true)} T={T} />}
-      {showTrends && <RadarModal onClose={() => setShowTrends(false)} T={T} />}
+      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => switchView('radar')} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
