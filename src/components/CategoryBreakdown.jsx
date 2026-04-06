@@ -26,7 +26,7 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
           </span>
         )}
       </div>
-      <div className="cat-breakdown-grid no-scrollbar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+      <div className="cat-breakdown-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
         {visible.map((cat, i) => {
           const active = filterCat === cat.id;
           // Cards 4 and 5 (index 3, 4) hidden on mobile, shown on desktop
@@ -61,18 +61,6 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
         @media (max-width: 767px) {
           .breakdown-desktop-only { display: none !important; }
           .breakdown-desktop-count { display: none !important; }
-          .cat-breakdown-grid {
-            display: flex !important;
-            overflow-x: auto !important;
-            scroll-snap-type: x mandatory !important;
-            gap: 10px !important;
-            padding-bottom: 8px !important;
-          }
-          .cat-breakdown-card {
-            min-width: 240px !important;
-            flex-shrink: 0 !important;
-            scroll-snap-align: center !important;
-          }
         }
         @media (min-width: 768px) {
           .breakdown-mobile-count { display: none !important; }
