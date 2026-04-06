@@ -11,6 +11,7 @@ import APITestDashboard from "./components/APITestDashboard";
 import { RadarPanel } from "./components/RadarModal";
 import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
+import PageWrapper from "./components/PageWrapper";
 
 const TrustBadge = () => {
   return (
@@ -144,9 +145,18 @@ export default function App() {
     };
     try {
       const saved = await db.insertSubmission(newSub);
-      if (Array.isArray(saved) && saved[0]) { setSubmissions(prev => [saved[0], ...prev]); }
-      else { setSubmissions(prev => [{ ...newSub, id: Date.now(), created_at: new Date().toISOString() }, ...prev]); }
-    } catch { setSubmissions(prev => [{ ...newSub, id: Date.now(), created_at: new Date().toISOString() }, ...prev]); }
+      if (Array.isArray(saved) && saved[0]) {
+        setSubmissions(prev => [saved[0], ...prev]);
+        return saved[0].id || null;
+      } else {
+        const fallback = { ...newSub, id: Date.now(), created_at: new Date().toISOString() };
+        setSubmissions(prev => [fallback, ...prev]);
+        return null;
+      }
+    } catch {
+      setSubmissions(prev => [{ ...newSub, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
+      return null;
+    }
   };
 
   const total = submissions.length;
@@ -363,28 +373,36 @@ export default function App() {
 
             {/* RADAR view */}
             {activeView === 'radar' && (
-              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
-                <RadarPanel T={T} onClose={() => switchView('dashboard')} />
-              </div>
+              <PageWrapper>
+                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
+                  <RadarPanel T={T} onClose={() => switchView('dashboard')} />
+                </div>
+              </PageWrapper>
             )}
 
             {/* FAQ view */}
             {activeView === 'faq' && (
-              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 40 }}>
-                <FAQContent T={T} />
-              </div>
+              <PageWrapper>
+                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 40 }}>
+                  <FAQContent T={T} />
+                </div>
+              </PageWrapper>
             )}
 
             {/* DEEP INTEL view */}
             {activeView === 'deep-intel' && (
-              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
-                <DeepIntelContent onClose={() => switchView('dashboard')} prefill={deepIntelPrefill} T={T} />
-              </div>
+              <PageWrapper>
+                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
+                  <DeepIntelContent onClose={() => switchView('dashboard')} prefill={deepIntelPrefill} T={T} />
+                </div>
+              </PageWrapper>
             )}
 
             {/* SCANNER view */}
             {activeView === 'scanner' && (
-              <ScannerPanel onClose={() => switchView('dashboard')} onNewResult={handleNewResult} onDeepIntel={(prefill) => { switchView('dashboard'); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />
+              <PageWrapper>
+                <ScannerPanel onClose={() => switchView('dashboard')} onNewResult={handleNewResult} onDeepIntel={(prefill) => { switchView('dashboard'); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />
+              </PageWrapper>
             )}
 
           </div>
@@ -421,6 +439,7 @@ export default function App() {
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
         @keyframes radarNavPulse { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.2);opacity:0} }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         * { box-sizing: border-box; }
         body { margin: 0; background: ${T.pageBg}; }
         ::-webkit-scrollbar { width: 5px; }

@@ -121,24 +121,75 @@ function ShareCard({ result, category, T = {} }) {
   );
 }
 
-function AccuracyFeedback({ compact = false, T = {} }) {
-  const [feedback, setFeedback] = useState(null);
-  if (feedback) return <span style={{ fontSize: 11, color: "#34d399", fontFamily: "monospace", padding: "10px 12px", background: "#081410", borderRadius: 10, display: "flex", alignItems: "center", flex: 1, minWidth: 120 }}>Thanks for the feedback!</span>;
-  if (compact) {
+function AccuracyFeedback({ caseId = null, T = {} }) {
+  // status: 'idle' | 'form_open' | 'submitting' | 'success'
+  const [status, setStatus] = useState('idle');
+  const [feedbackText, setFeedbackText] = useState('');
+
+  const submitFeedback = async (isAccurate, text = '') => {
+    setStatus('submitting');
+    try {
+      await fetch('/api/submit-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseId, is_accurate: isAccurate, feedbackText: text }),
+      });
+    } catch { /* best-effort — show success regardless */ }
+    setStatus('success');
+  };
+
+  if (status === 'success') {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 140, background: "#0d0f1a", border: "1px solid #1a1d2e", borderRadius: 10, padding: "8px 12px" }}>
-        <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", whiteSpace: "nowrap" }}>Accurate?</span>
-        <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>YES</button>
-        <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "4px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>NO</button>
+      <div style={{ padding: "10px 14px", background: "#081410", border: "1px solid #34d39930", borderRadius: 10, display: "flex", alignItems: "center", gap: 8 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span style={{ fontSize: 11, color: "#34d399", fontFamily: "monospace" }}>Thank you for your feedback!</span>
       </div>
     );
   }
+
+  if (status === 'form_open') {
+    return (
+      <div style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "12px 14px" }}>
+        <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>WHAT DID WE MISS?</div>
+        <textarea
+          value={feedbackText}
+          onChange={e => setFeedbackText(e.target.value)}
+          placeholder="Tell us what the AI got wrong or what context it missed..."
+          style={{ width: "100%", minHeight: 88, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 12px", fontSize: 12, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.6 }}
+          onFocus={e => e.target.style.borderColor = "#f43f5e55"}
+          onBlur={e => e.target.style.borderColor = T.inputBorder}
+        />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button
+            onClick={() => submitFeedback(false, feedbackText)}
+            disabled={status === 'submitting'}
+            style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "9px 12px", borderRadius: 8, fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace" }}>
+            {status === 'submitting' ? 'SUBMITTING...' : 'SUBMIT FEEDBACK'}
+          </button>
+          <button
+            onClick={() => setStatus('idle')}
+            style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "9px 14px", borderRadius: 8, fontSize: 10, cursor: "pointer", fontFamily: "monospace" }}>
+            CANCEL
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
       <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>Was this result accurate?</span>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => setFeedback("yes")} style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>YES</button>
-        <button onClick={() => setFeedback("no")} style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "6px 16px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>NO</button>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+        <button
+          onClick={() => submitFeedback(true)}
+          style={{ background: "#081410", border: "1px solid #34d39940", color: "#34d399", padding: "6px 20px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, minWidth: 56 }}>
+          YES
+        </button>
+        <button
+          onClick={() => setStatus('form_open')}
+          style={{ background: "#160810", border: "1px solid #f43f5e40", color: "#f43f5e", padding: "6px 20px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, minWidth: 56 }}>
+          NO
+        </button>
       </div>
     </div>
   );
@@ -161,6 +212,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [trainAI, setTrainAI] = useState(false);
   const [showTrainInfo, setShowTrainInfo] = useState(false);
   const [deliveryChannel, setDeliveryChannel] = useState("other");
+  const [caseId, setCaseId] = useState(null);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -171,6 +223,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setCategory("other"); setVisibility("private"); setImage(null);
     setImagePreview(null); setErrorState(null); setDuplicate(null);
     setTrainAI(false); setInputMode("text"); setDeliveryChannel("other");
+    setCaseId(null);
   };
 
   const handleImageUpload = (e) => {
@@ -280,7 +333,8 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         });
       }
       const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
-      onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel });
+      const savedId = await onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel });
+      setCaseId(savedId || null);
       setStep(3);
     } catch {
       setErrorState({ type: "unavailable", message: "Something went wrong during analysis. Please try again." });
@@ -327,7 +381,19 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && loading && (
+          <div style={{ textAlign: "center", padding: "48px 16px" }}>
+            <div style={{ fontSize: 32, marginBottom: 16, display: "inline-block", animation: "spin 1.2s linear infinite" }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="2"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>ANALYZING...</div>
+            <div style={{ fontSize: 12, color: T.text4, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>Our AI is reviewing your submission for scam indicators.</div>
+          </div>
+        )}
+
+        {step === 2 && !loading && (
           <>
             <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 2 - SUBMIT THE CONTENT</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -472,12 +538,12 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
 
         {step === 3 && result && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20, flexWrap: "wrap", textAlign: "center" }}>
               <ScoreRing score={result.score} size={80} trackColor={T.ringTrack} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 26, fontWeight: 800, color: sc, fontFamily: "monospace", letterSpacing: 1 }}>{getStatusLabel(result.score)}</div>
                 <div style={{ color: T.text2, fontSize: 14, marginTop: 5, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{result.verdict}</div>
-                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
                   {result.tags?.map(t => <span key={t} style={{ background: T.innerBg, color: T.text3, fontSize: 10, padding: "3px 9px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                   <VisibilityBadge visibility={visibility} />
                   {result.classificationNote === "auto" && <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12" }}>AUTO-CLASSIFIED</span>}
@@ -532,10 +598,12 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
             )}
             <div>
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
-              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                <AccuracyFeedback compact />
-                <button onClick={resetForm} style={{ flex: 1, minWidth: 120, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
-                <button onClick={onClose} style={{ flex: 1, minWidth: 120, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
+              <div style={{ marginTop: 12 }}>
+                <AccuracyFeedback caseId={caseId} T={T} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button onClick={resetForm} style={{ flex: 1, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
+                <button onClick={onClose} style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
             </div>
           </div>
