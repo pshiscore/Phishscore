@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
-import SubmitModal from "./components/SubmitModal";
+import SubmitModal, { ScannerPanel } from "./components/SubmitModal";
 import { FAQContent } from "./components/FAQPage";
 import TransparencyPage from "./components/TransparencyPage";
 import LegalPage from "./components/LegalPage";
@@ -53,6 +53,7 @@ export default function App() {
   // activeView drives the inline section below hero stats
   // 'dashboard' = community feed, 'radar' = radar panel, 'faq' = FAQ, 'deep-intel' = Deep Intel
   const [activeView, setActiveView] = useState('dashboard');
+  const contentRef = useRef(null);
   const [showInvestigation, setShowInvestigation] = useState(false); // modal only — for prefill from scan results
   const [showLegal, setShowLegal] = useState(() => {
     try {
@@ -108,6 +109,12 @@ export default function App() {
   const switchView = (view) => {
     setActiveView(view);
   };
+
+  useEffect(() => {
+    if (activeView !== 'dashboard' && window.innerWidth < 768 && contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeView]);
 
   useEffect(() => { loadSubmissions(); }, []);
 
@@ -256,7 +263,7 @@ export default function App() {
             </Tooltip>
 
             {/* Primary CTA */}
-            <button onClick={() => { switchView('dashboard'); setShowModal(true); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+            <button onClick={() => switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
@@ -282,7 +289,7 @@ export default function App() {
 
           {/* RADAR INLINE DASHBOARD */}
           {/* INLINE VIEW — driven by activeView */}
-          <div>
+          <div ref={contentRef}>
 
             {/* DASHBOARD view */}
             {activeView === 'dashboard' && (
@@ -373,6 +380,11 @@ export default function App() {
               <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
                 <DeepIntelContent onClose={() => switchView('dashboard')} prefill={deepIntelPrefill} T={T} />
               </div>
+            )}
+
+            {/* SCANNER view */}
+            {activeView === 'scanner' && (
+              <ScannerPanel onClose={() => switchView('dashboard')} onNewResult={handleNewResult} onDeepIntel={(prefill) => { switchView('dashboard'); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />
             )}
 
           </div>
