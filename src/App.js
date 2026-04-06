@@ -182,7 +182,7 @@ export default function App() {
   const handleFilterChange = (setter, val) => { setter(val); setShowMoreFeed(false); };
 
   return (
-    <div style={{ minHeight: "100vh", background: T.pageBg, color: T.text, fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: T.pageBg, color: T.text, fontFamily: "Georgia, serif", overflowX: "hidden", maxWidth: "100vw" }}>
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 50% at 5% 0%, #f43f5e08, transparent 55%), radial-gradient(ellipse 50% 40% at 95% 100%, #a78bfa07, transparent 55%)" }} />
       <div style={{ position: "relative" }}>
 
@@ -199,7 +199,7 @@ export default function App() {
         )}
 
         {/* HEADER */}
-        <header style={{ borderBottom: `1px solid ${T.headerBorder}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14, background: T.headerBg, backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <header className="site-header" style={{ borderBottom: `1px solid ${T.headerBorder}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, background: T.headerBg, backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 8px #f43f5e", animation: "blink 2s infinite" }} />
@@ -208,11 +208,11 @@ export default function App() {
             <PhishScoreLogo T={T} size={22} dotSize={13} />
             <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div className="nav-buttons" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
 
             {/* Home */}
             <Tooltip text="Home — Community Dashboard" T={T}>
-              <button onClick={() => switchView('dashboard')} style={{ background: activeView === 'dashboard' ? "#5b6cf818" : "none", border: `1px solid ${activeView === 'dashboard' ? "#5b6cf8" : T.headerBorder}`, color: activeView === 'dashboard' ? "#5b6cf8" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => switchView('dashboard')} className="nav-btn" style={{ background: activeView === 'dashboard' ? "#5b6cf818" : "none", border: `1px solid ${activeView === 'dashboard' ? "#5b6cf8" : T.headerBorder}`, color: activeView === 'dashboard' ? "#5b6cf8" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                   <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -223,7 +223,7 @@ export default function App() {
 
             {/* FAQ */}
             <Tooltip text="FAQ & Help" T={T}>
-              <button onClick={() => switchView(activeView === 'faq' ? 'dashboard' : 'faq')} style={{ background: activeView === 'faq' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'faq' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'faq' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => switchView(activeView === 'faq' ? 'dashboard' : 'faq')} className="nav-btn" style={{ background: activeView === 'faq' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'faq' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'faq' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
@@ -233,7 +233,7 @@ export default function App() {
 
             {/* Radar */}
             <Tooltip text="PhishScore Radar — Live Intelligence" T={T}>
-              <button onClick={() => switchView(activeView === 'radar' ? 'dashboard' : 'radar')} style={{ background: activeView === 'radar' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'radar' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'radar' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => switchView(activeView === 'radar' ? 'dashboard' : 'radar')} className="nav-btn" style={{ background: activeView === 'radar' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'radar' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'radar' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <span style={{ position: "relative", width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {activeView !== 'radar' && <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1.5px solid #f43f5e", animation: "radarNavPulse 2s ease-out infinite", opacity: 0.6 }} />}
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -246,7 +246,7 @@ export default function App() {
 
             {/* Deep Intel */}
             <Tooltip text="PhishScore Deep Intel" T={T}>
-              <button onClick={() => switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
@@ -256,7 +256,7 @@ export default function App() {
 
             {/* Theme toggle */}
             <Tooltip text={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"} T={T}>
-              <button onClick={toggleTheme} style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={toggleTheme} className="nav-btn" style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 {theme === "dark" ? (
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
@@ -273,25 +273,25 @@ export default function App() {
             </Tooltip>
 
             {/* Primary CTA */}
-            <button onClick={() => switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+            <button onClick={() => switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} className="cta-btn" style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)", whiteSpace: "nowrap" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
         </header>
 
-        <main style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
+        <main className="site-main" style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
           {/* STATS */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
             {[
               { label: "TOTAL REPORTS", value: total, accent: "#5b6cf8" },
               { label: "CONFIRMED SCAMS", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
               { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
+              <div key={s.label} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
                 <div style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
-                <div style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
+                <div className="stat-value" style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
                 {s.sub && <div style={{ fontSize: 10, color: T.text4, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
             ))}
@@ -450,6 +450,17 @@ export default function App() {
         a:hover { color: #f43f5e !important; }
         .nav-label { display: none; }
         @media (min-width: 768px) { .nav-label { display: inline; } }
+        @media (max-width: 767px) {
+          .site-header { padding: 12px 14px !important; gap: 8px !important; }
+          .nav-buttons { gap: 4px !important; }
+          .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; }
+          .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; }
+          .site-main { padding: 16px 14px !important; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; margin-bottom: 18px !important; }
+          .stat-card { padding: 12px 14px !important; border-radius: 10px !important; }
+          .stat-value { font-size: 22px !important; }
+          .cat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+        }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }
           .modal-inner .step-indicators { gap: 4px !important; }

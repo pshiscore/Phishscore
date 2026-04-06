@@ -1,27 +1,38 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, getScoreColor, getStatusLabel, getCat } from "../constants";
 import { ScoreRing, CatIconSvg, VisibilityBadge, Tooltip, PhishScoreLogo } from "./Primitives";
 import db from "../db";
 
 function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
   const [showAll, setShowAll] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  const initialCount = isDesktop ? 9 : 5; // +1 pinned "other" = 10 desktop / 6 mobile
   const otherCat = SCAM_CATEGORIES.find(c => c.id === "other");
   const restCats = SCAM_CATEGORIES.filter(c => c.id !== "other");
   const sorted = [...restCats].sort((a, b) => (submissionCounts[b.id] || 0) - (submissionCounts[a.id] || 0));
-  const top5 = sorted.slice(0, 5), remaining = sorted.slice(5);
-  const visible = [otherCat, ...top5, ...(showAll ? remaining : [])];
+  const topN = sorted.slice(0, initialCount);
+  const remaining = sorted.slice(initialCount);
+  const visible = [otherCat, ...topN, ...(showAll ? remaining : [])];
+
   return (
     <div>
       <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
         Select the type that best matches - or pick <strong style={{ color: "#94a3b8" }}>Unknown / AI Detect</strong> and AI will automatically classify it.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
+      <div className="cat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
         {visible.map(cat => {
           const active = selected === cat.id;
           return (
-            <button key={cat.id} onClick={() => onSelect(cat.id)} style={{ background: active ? `${cat.color}18` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "8px 8px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)" }}>
+            <button key={cat.id} onClick={() => onSelect(cat.id)} style={{ background: active ? `${cat.color}18` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "8px 8px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", transform: active ? "scale(1.03)" : "scale(1)", minWidth: 0, boxSizing: "border-box" }}>
               <div style={{ marginBottom: 6 }}><CatIconSvg icon={cat.icon} color={active ? "#ffffff" : "#64748b"} size={18} /></div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3 }}>{cat.label}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: active ? cat.color : "#64748b", fontFamily: "monospace", lineHeight: 1.3, wordBreak: "break-word" }}>{cat.label}</div>
               {submissionCounts[cat.id] > 0 && <div style={{ fontSize: 9, color: "#334155", fontFamily: "monospace", marginTop: 3 }}>{submissionCounts[cat.id]} reports</div>}
             </button>
           );
