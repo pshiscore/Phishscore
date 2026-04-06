@@ -306,24 +306,24 @@ export default function App() {
               <>
                 <TrustBadge />
                 {catCounts.length > 0 && <CategoryBreakdown catCounts={catCounts} maxCount={maxCount} filterCat={filterCat} setFilterCat={setFilterCat} T={T} />}
-                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-                    <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace" }}>
+                <div className="feed-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, boxSizing: "border-box", width: "100%", minWidth: 0, overflowX: "hidden" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+                    <div style={{ fontSize: 10, letterSpacing: 3, color: T.text3, fontFamily: "monospace", minWidth: 0, overflowWrap: "break-word" }}>
                       COMMUNITY SUBMISSIONS
-                      {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>- {getCat(filterCat).label}</span>}
+                      {filterCat !== "all" && <span style={{ color: getCat(filterCat).color, marginLeft: 8 }}>— {getCat(filterCat).label}</span>}
                       <span style={{ color: T.text4, marginLeft: 8, fontSize: 9 }}>{showMoreFeed ? `showing last ${Math.min(FEED_CAP, allFiltered.length)}` : `showing last ${Math.min(FEED_DEFAULT, allFiltered.length)} of ${Math.min(FEED_CAP, allFiltered.length)}`}</span>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       {["all", "scam", "suspicious", "safe"].map(s => (
                         <button key={s} onClick={() => handleFilterChange(setFilterStatus, s)} style={{ background: filterStatus === s ? `${statusColors[s]}18` : "none", border: `1px solid ${filterStatus === s ? statusColors[s] : T.cardBorder}`, color: filterStatus === s ? statusColors[s] : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", transition: "all 0.15s" }}>{s}</button>
                       ))}
-                      <div style={{ width: 1, height: 16, background: T.cardBorder }} />
+                      <span className="filter-divider" style={{ width: 1, height: 16, background: T.cardBorder, flexShrink: 0 }} />
                       {["all", "public", "private", "anonymous"].map(v => {
                         const vOpt = VISIBILITY_OPTIONS.find(o => o.id === v);
                         const color = vOpt ? vOpt.color : "#5b6cf8";
                         return <button key={v} onClick={() => handleFilterChange(setFilterVis, v)} style={{ background: filterVis === v ? `${color}18` : "none", border: `1px solid ${filterVis === v ? color : T.cardBorder}`, color: filterVis === v ? color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}>{v}</button>;
                       })}
-                      <div style={{ width: 1, height: 16, background: T.cardBorder }} />
+                      <span className="filter-divider" style={{ width: 1, height: 16, background: T.cardBorder, flexShrink: 0 }} />
                       <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}</button>
                     </div>
                   </div>
@@ -338,7 +338,7 @@ export default function App() {
                     filtered.map((s, i) => {
                       const cat = getCat(s.category), sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
                       return (
-                        <div key={s.id} style={{ display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 16, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start" }}>
+                        <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
                           <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
@@ -460,6 +460,10 @@ export default function App() {
           .stat-card { padding: 12px 14px !important; border-radius: 10px !important; }
           .stat-value { font-size: 22px !important; }
           .cat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+          .feed-card { padding: 16px 14px !important; border-radius: 12px !important; }
+          .feed-row { grid-template-columns: 44px 1fr !important; gap: 10px !important; }
+          .feed-row > *:last-child { grid-column: 2; margin-top: -4px; }
+          .filter-divider { display: none !important; }
         }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }
