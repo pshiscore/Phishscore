@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_internal/
+Disallow: /webhooks/
+
+Sitemap: https://phishscore.ai/sitemap.xml
