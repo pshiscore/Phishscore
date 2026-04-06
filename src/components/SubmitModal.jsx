@@ -144,8 +144,8 @@ function AccuracyFeedback({ compact = false, T = {} }) {
   );
 }
 
-// ── Main modal ─────────────────────────────────────────────────────────────────
-export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
+// ── Shared scanner content — used both inline and inside the modal ────────────
+export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
@@ -296,10 +296,7 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
   const visOpt = VISIBILITY_OPTIONS.find(o => o.id === visibility);
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-inner" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 900, maxHeight: "92vh", overflowY: "auto", padding: 32, position: "relative", boxShadow: "0 32px 96px rgba(0,0,0,0.7)" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: "none", color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
+    <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, width: "100%", padding: 32 }}>
 
         <div style={{ marginBottom: 24 }}>
           {/* FIX: uses PhishScoreLogo so PHISH is visible in light mode */}
@@ -543,6 +540,17 @@ export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submiss
             </div>
           </div>
         )}
+    </div>
+  );
+}
+
+// ── Modal wrapper (kept for deep-intel prefill flow from scan results) ─────────
+export default function SubmitModal({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-inner" style={{ width: "100%", maxWidth: 900, maxHeight: "92vh", overflowY: "auto", position: "relative" }}>
+        <ScannerPanel onClose={onClose} onNewResult={onNewResult} onDeepIntel={onDeepIntel} submissionCounts={submissionCounts} theme={theme} T={T} />
       </div>
     </div>
   );
