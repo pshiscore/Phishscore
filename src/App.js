@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
@@ -90,7 +90,6 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
-  const contentRef = useRef(null); // scroll target for inline view transitions
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
 
   const T = THEMES[theme] || THEMES.light;
@@ -108,7 +107,6 @@ export default function App() {
 
   const switchView = (view) => {
     setActiveView(view);
-    setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
   useEffect(() => { loadSubmissions(); }, []);
@@ -195,6 +193,17 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
 
+            {/* Home */}
+            <Tooltip text="Home — Community Dashboard" T={T}>
+              <button onClick={() => switchView('dashboard')} style={{ background: activeView === 'dashboard' ? "#5b6cf818" : "none", border: `1px solid ${activeView === 'dashboard' ? "#5b6cf8" : T.headerBorder}`, color: activeView === 'dashboard' ? "#5b6cf8" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>HOME</span>
+              </button>
+            </Tooltip>
+
             {/* FAQ */}
             <Tooltip text="FAQ & Help" T={T}>
               <button onClick={() => switchView(activeView === 'faq' ? 'dashboard' : 'faq')} style={{ background: activeView === 'faq' ? "#f43f5e18" : "none", border: `1px solid ${activeView === 'faq' ? "#f43f5e" : T.headerBorder}`, color: activeView === 'faq' ? "#f43f5e" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
@@ -247,7 +256,7 @@ export default function App() {
             </Tooltip>
 
             {/* Primary CTA — returns to dashboard and opens scanner */}
-            <button onClick={() => { switchView('dashboard'); setShowModal(true); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+            <button onClick={() => switchView('dashboard')} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
@@ -273,7 +282,7 @@ export default function App() {
 
           {/* RADAR INLINE DASHBOARD */}
           {/* INLINE VIEW — driven by activeView */}
-          <div ref={contentRef} style={{ scrollMarginTop: 80 }}>
+          <div>
 
             {/* DASHBOARD view */}
             {activeView === 'dashboard' && (
@@ -361,7 +370,7 @@ export default function App() {
 
             {/* DEEP INTEL view */}
             {activeView === 'deep-intel' && (
-              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28, maxWidth: 640, margin: "0 auto" }}>
+              <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
                 <DeepIntelContent onClose={() => switchView('dashboard')} prefill={deepIntelPrefill} T={T} />
               </div>
             )}
