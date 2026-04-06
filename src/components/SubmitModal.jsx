@@ -56,10 +56,12 @@ function VisibilityPicker({ selected, onSelect }) {
           const active = selected === opt.id;
           return (
             <Tooltip key={opt.id} text={opt.description}>
-              <button onClick={() => onSelect(opt.id)} style={{ background: active ? `${opt.color}18` : "#0d0f1a", border: `1.5px solid ${active ? opt.color : "#1a1d2e"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", minWidth: 90 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : "#334155", fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: active ? opt.color : "#64748b", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
-                <div style={{ fontSize: 10, color: active ? `${opt.color}cc` : "#334155", fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
+              <button onClick={() => onSelect(opt.id)} style={{ background: active ? `${opt.color}0f` : "#f8fafc", border: `1.5px solid ${active ? opt.color : "#e2e8f0"}`, borderRadius: 10, padding: "8px 12px", cursor: "pointer", textAlign: "left", transition: "background 0.2s, border-color 0.2s", minWidth: 90 }}
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.borderColor = "#cbd5e1"; } }}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#e2e8f0"; } }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: active ? opt.color : "#475569", fontFamily: "monospace", marginBottom: 4 }}>{opt.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: active ? opt.color : "#475569", fontFamily: "monospace", marginBottom: 3 }}>{opt.label}</div>
+                <div style={{ fontSize: 10, color: active ? `${opt.color}bb` : "#94a3b8", fontFamily: "Georgia, serif", lineHeight: 1.3 }}>{opt.short}</div>
               </button>
             </Tooltip>
           );

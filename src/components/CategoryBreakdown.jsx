@@ -26,14 +26,14 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
           </span>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+      <div className="cat-breakdown-grid no-scrollbar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
         {visible.map((cat, i) => {
           const active = filterCat === cat.id;
           // Cards 4 and 5 (index 3, 4) hidden on mobile, shown on desktop
           const isDesktopOnly = i >= DEFAULT_MOBILE;
           return (
             <button key={cat.id} onClick={() => setFilterCat(active ? "all" : cat.id)}
-              className={!showAll && isDesktopOnly ? "breakdown-desktop-only" : ""}
+              className={`cat-breakdown-card${!showAll && isDesktopOnly ? " breakdown-desktop-only" : ""}`}
               style={{ background: active ? `${cat.color}14` : T.innerBg, border: `1.5px solid ${active ? cat.color : T.innerBorder}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -56,9 +56,23 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
         </button>
       )}
       <style>{`
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         @media (max-width: 767px) {
           .breakdown-desktop-only { display: none !important; }
           .breakdown-desktop-count { display: none !important; }
+          .cat-breakdown-grid {
+            display: flex !important;
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory !important;
+            gap: 10px !important;
+            padding-bottom: 8px !important;
+          }
+          .cat-breakdown-card {
+            min-width: 240px !important;
+            flex-shrink: 0 !important;
+            scroll-snap-align: center !important;
+          }
         }
         @media (min-width: 768px) {
           .breakdown-mobile-count { display: none !important; }

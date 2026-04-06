@@ -209,6 +209,7 @@ export default function App() {
             <PhishScoreLogo T={T} size={22} dotSize={13} />
             <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
+          <div className="nav-scroll-wrapper no-scrollbar" style={{ display: "flex", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           <div className="nav-buttons" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
 
             {/* Home */}
@@ -277,6 +278,7 @@ export default function App() {
             <button onClick={() => switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} className="cta-btn" style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)", whiteSpace: "nowrap" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
+          </div>
           </div>
         </header>
 
@@ -353,7 +355,7 @@ export default function App() {
                             {isHidden ? (
                               <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
                             ) : (
-                              <div style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
+                              <div className="feed-text" style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
                                 {s.summary || s.preview || ""}
                               </div>
                             )}
@@ -461,11 +463,14 @@ export default function App() {
         a:hover { color: #f43f5e !important; }
         .nav-label { display: none; }
         @media (min-width: 768px) { .nav-label { display: inline; } }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         @media (max-width: 767px) {
           .site-header { padding: 12px 14px !important; gap: 8px !important; }
-          .nav-buttons { gap: 4px !important; }
-          .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; }
-          .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; }
+          .nav-scroll-wrapper { overflow-x: auto !important; }
+          .nav-buttons { gap: 4px !important; flex-wrap: nowrap !important; padding-bottom: 2px; }
+          .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; flex-shrink: 0 !important; }
+          .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; flex-shrink: 0 !important; }
           .site-main { padding: 16px 14px !important; }
           .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; margin-bottom: 18px !important; }
           .stat-card { padding: 12px 14px !important; border-radius: 10px !important; }
@@ -475,6 +480,7 @@ export default function App() {
           .feed-row { grid-template-columns: 44px 1fr !important; gap: 10px !important; }
           .feed-row > *:last-child { grid-column: 2; margin-top: -4px; }
           .filter-divider { display: none !important; }
+          .feed-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
         }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }
