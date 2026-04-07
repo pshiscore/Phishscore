@@ -195,7 +195,7 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra te
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 600,
+          maxOutputTokens: 1024,
           responseMimeType: 'application/json',
         },
       }),
@@ -228,8 +228,13 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra te
     console.log('Gemini intelligence parsed — threatLevel:', parsed.threatLevel);
     return parsed;
   } catch (e) {
-    console.error('Gemini JSON parse failed:', clean.slice(0, 200));
-    return null;
+    console.error('Gemini JSON parse failed. Raw text:', raw);
+    return {
+      threatLevel: 0,
+      threatWarning: "Intelligence analysis temporarily unavailable.",
+      intelligenceSummary: "AI analysis timed out or returned an invalid format. Threat data is still being aggregated — please refresh the Radar in a few minutes.",
+      recommendedAction: "Check back shortly for updated threat intelligence."
+    };
   }
 }
 
