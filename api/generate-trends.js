@@ -210,7 +210,18 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra te
   }
 
   const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+  const match = raw.match(/\{[\s\S]*\}/);
+  let clean = match ? match[0] : raw.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  clean = clean.replace(/\\n/g, "\\n")
+               .replace(/\\'/g, "\\'")
+               .replace(/\\"/g, '\\"')
+               .replace(/\\&/g, "\\&")
+               .replace(/\\r/g, "\\r")
+               .replace(/\\t/g, "\\t")
+               .replace(/\\b/g, "\\b")
+               .replace(/\\f/g, "\\f");
+  clean = clean.replace(/[\u0000-\u0019]+/g, "");
 
   try {
     const parsed = JSON.parse(clean);

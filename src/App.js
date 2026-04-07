@@ -300,15 +300,15 @@ export default function App() {
         <main className="site-main" style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
           {/* STATS */}
-          <div className="stats-grid no-scrollbar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 26 }}>
             {[
-              { label: "TOTAL REPORTS", value: total, accent: "#5b6cf8" },
-              { label: "CONFIRMED SCAMS", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
-              { label: "SUSPICIOUS", value: suspicious, accent: "#fb923c" },
-              { label: "LIKELY SAFE", value: safe, accent: "#34d399" },
+              { label: <><span className="stat-label-break">TOTAL</span> REPORTS</>, key: "total", value: total, accent: "#5b6cf8" },
+              { label: <><span className="stat-label-break">CONFIRMED</span> SCAMS</>, key: "scams", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
+              { label: "SUSPICIOUS", key: "susp", value: suspicious, accent: "#fb923c" },
+              { label: <><span className="stat-label-break">LIKELY</span> SAFE</>, key: "safe", value: safe, accent: "#34d399" },
             ].map(s => (
-              <div key={s.label} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
-                <div style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace" }}>{s.label}</div>
+              <div key={s.key} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
+                <div className="stat-label" style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace", whiteSpace: "normal" }}>{s.label}</div>
                 <div className="stat-value" style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
                 {s.sub && <div style={{ fontSize: 10, color: T.text4, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
               </div>
@@ -503,8 +503,10 @@ export default function App() {
           .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; flex-shrink: 0 !important; }
           .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; flex-shrink: 0 !important; }
           .site-main { padding: 16px 14px !important; }
-          .stats-grid { display: flex !important; overflow-x: auto !important; scroll-snap-type: x mandatory !important; gap: 10px !important; margin-bottom: 18px !important; padding-bottom: 4px !important; }
-          .stat-card { min-width: 45% !important; flex-shrink: 0 !important; scroll-snap-align: center !important; padding: 12px 14px !important; border-radius: 10px !important; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; margin-bottom: 18px !important; }
+          .stat-card { padding: 14px 12px !important; border-radius: 10px !important; }
+          .stat-label { line-height: 1.4 !important; }
+          .stat-label-break::after { content: "\\A"; white-space: pre; }
           .stat-value { font-size: 22px !important; }
           .cat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
           .feed-card { padding: 16px 14px !important; border-radius: 12px !important; }
