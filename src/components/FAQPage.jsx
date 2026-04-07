@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PhishScoreLogo } from "./Primitives";
 
 const FAQS = [
@@ -149,6 +149,14 @@ function FAQItem({ q, a, T }) {
 
 // ── Shared FAQ content — used both inline and inside the modal ────────────────
 export function FAQContent({ T = {} }) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const showFull = !isMobile || isExpanded;
   return (
     <>
       <div style={{ marginBottom: 32 }}>
@@ -187,9 +195,10 @@ export function FAQContent({ T = {} }) {
         ))}
       </div>
 
+      {/* On mobile: show only THE BASICS section until expanded */}
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-        {/* Core product */}
+        {/* Core product — always visible */}
         <div>
           <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>THE BASICS</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -197,40 +206,51 @@ export function FAQContent({ T = {} }) {
           </div>
         </div>
 
-        {/* Submission */}
-        <div>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>SUBMITTING SCAMS</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {FAQS.slice(4, 8).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-          </div>
-        </div>
+        {/* Mobile expand button */}
+        {!showFull && (
+          <button onClick={() => setIsExpanded(true)} style={{ width: "100%", background: "none", border: "1px solid #f43f5e60", color: "#f43f5e", padding: "12px", borderRadius: 10, cursor: "pointer", fontFamily: "monospace", fontSize: 11, fontWeight: 700, letterSpacing: 2 }}>
+            READ FULL FAQ ↓
+          </button>
+        )}
 
-        {/* Privacy */}
-        <div>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>PRIVACY & YOUR DATA</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {FAQS.slice(8, 10).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-          </div>
-        </div>
+        {showFull && (
+          <>
+            {/* Submission */}
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>SUBMITTING SCAMS</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {FAQS.slice(4, 8).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+              </div>
+            </div>
 
-        {/* Intelligence */}
-        <div>
-          <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>INTELLIGENCE FEATURES</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {FAQS.slice(10, 13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-          </div>
-        </div>
+            {/* Privacy */}
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>PRIVACY & YOUR DATA</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {FAQS.slice(8, 10).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+              </div>
+            </div>
 
-        {/* Deep Intel */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingLeft: 4 }}>
-            <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace" }}>PHISHSCORE DEEP INTEL</div>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {FAQS.slice(13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
-          </div>
-        </div>
+            {/* Intelligence */}
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: 3, color: T.text4, fontFamily: "monospace", marginBottom: 12, paddingLeft: 4 }}>INTELLIGENCE FEATURES</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {FAQS.slice(10, 13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+              </div>
+            </div>
+
+            {/* Deep Intel */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingLeft: 4 }}>
+                <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace" }}>PHISHSCORE DEEP INTEL</div>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {FAQS.slice(13).map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} T={T} />)}
+              </div>
+            </div>
+          </>
+        )}
 
       </div>
 

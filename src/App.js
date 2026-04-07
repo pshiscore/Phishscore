@@ -14,7 +14,9 @@ import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
 import PageWrapper from "./components/PageWrapper";
 
-const TrustBadge = () => {
+const TrustBadge = ({ isMobile }) => {
+  const [expanded, setExpanded] = useState(false);
+  const showFull = !isMobile || expanded;
   return (
     <div
       style={{
@@ -40,7 +42,12 @@ const TrustBadge = () => {
           AI GOVERNANCE & DATA PRIVACY
         </h4>
         <p style={{ margin: 0, color: "#9ca3af", fontSize: "13px", lineHeight: "1.6", fontFamily: "sans-serif" }}>
-          All community feed submissions are strictly anonymized. <strong>We never use your private case data, uploaded files, or credentials to train underlying AI models.</strong> Enterprise-grade forensic intelligence, built on absolute privacy.
+          All community feed submissions are strictly anonymized.{" "}
+          {showFull ? (
+            <><strong>We never use your private case data, uploaded files, or credentials to train underlying AI models.</strong> Enterprise-grade forensic intelligence, built on absolute privacy.</>
+          ) : (
+            <button onClick={() => setExpanded(true)} style={{ background: "none", border: "none", padding: 0, color: "#64748b", fontSize: "13px", fontFamily: "sans-serif", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "2px" }}>Read more...</button>
+          )}
         </p>
       </div>
     </div>
@@ -93,6 +100,14 @@ export default function App() {
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [showMoreFeed, setShowMoreFeed] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isDeepIntelOpen, setIsDeepIntelOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
 
   const T = THEMES[theme] || THEMES.light;
@@ -248,7 +263,7 @@ export default function App() {
 
             {/* Deep Intel */}
             <Tooltip text="PhishScore Deep Intel" T={T}>
-              <button onClick={() => switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+              <button onClick={() => isMobile ? setIsDeepIntelOpen(true) : switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
@@ -275,7 +290,7 @@ export default function App() {
             </Tooltip>
 
             {/* Primary CTA */}
-            <button onClick={() => switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} className="cta-btn" style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)", whiteSpace: "nowrap" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+            <button onClick={() => isMobile ? setIsScannerOpen(true) : switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')} className="cta-btn" style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "13px 22px", borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 24px rgba(244,63,94,0.4)", whiteSpace: "nowrap" }} onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"} onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
               CHECK A MESSAGE
             </button>
           </div>
@@ -285,7 +300,7 @@ export default function App() {
         <main className="site-main" style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
           {/* STATS */}
-          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
+          <div className="stats-grid no-scrollbar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 26 }}>
             {[
               { label: "TOTAL REPORTS", value: total, accent: "#5b6cf8" },
               { label: "CONFIRMED SCAMS", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
@@ -307,7 +322,7 @@ export default function App() {
             {/* DASHBOARD view */}
             {activeView === 'dashboard' && (
               <>
-                <TrustBadge />
+                <TrustBadge isMobile={isMobile} />
                 {catCounts.length > 0 && <CategoryBreakdown catCounts={catCounts} maxCount={maxCount} filterCat={filterCat} setFilterCat={setFilterCat} T={T} />}
                 <div className="feed-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, boxSizing: "border-box", width: "100%", minWidth: 0, overflowX: "hidden" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
@@ -441,6 +456,22 @@ export default function App() {
       </div>
 
       {/* MODALS — only for flows that need overlay (scanner, checkout, transparency, legal, devtools, report) */}
+      {isScannerOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", background: T.cardBg, borderRadius: 16, padding: 24 }}>
+            <button onClick={() => setIsScannerOpen(false)} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: T.text3, cursor: "pointer", fontSize: 20, lineHeight: 1, zIndex: 1 }}>×</button>
+            <ScannerPanel onClose={() => setIsScannerOpen(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setIsScannerOpen(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />
+          </div>
+        </div>
+      )}
+      {isDeepIntelOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", background: T.cardBg, borderRadius: 16, padding: 24 }}>
+            <button onClick={() => setIsDeepIntelOpen(false)} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: T.text3, cursor: "pointer", fontSize: 20, lineHeight: 1, zIndex: 1 }}>×</button>
+            <DeepIntelContent onClose={() => setIsDeepIntelOpen(false)} prefill={deepIntelPrefill} T={T} />
+          </div>
+        </div>
+      )}
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
@@ -472,8 +503,8 @@ export default function App() {
           .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; flex-shrink: 0 !important; }
           .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; flex-shrink: 0 !important; }
           .site-main { padding: 16px 14px !important; }
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; margin-bottom: 18px !important; }
-          .stat-card { padding: 12px 14px !important; border-radius: 10px !important; }
+          .stats-grid { display: flex !important; overflow-x: auto !important; scroll-snap-type: x mandatory !important; gap: 10px !important; margin-bottom: 18px !important; padding-bottom: 4px !important; }
+          .stat-card { min-width: 45% !important; flex-shrink: 0 !important; scroll-snap-align: center !important; padding: 12px 14px !important; border-radius: 10px !important; }
           .stat-value { font-size: 22px !important; }
           .cat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
           .feed-card { padding: 16px 14px !important; border-radius: 12px !important; }

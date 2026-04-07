@@ -83,7 +83,7 @@ async function storeTrainingData(parsed, context = {}) {
       // periodically update training_reflag_snapshot on opted-in submissions
       // after N days using the reflag_count column
     };
-    await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_KEY,
@@ -93,6 +93,11 @@ async function storeTrainingData(parsed, context = {}) {
       },
       body: JSON.stringify(record)
     });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Supabase Insert Failed [${res.status}]:`, errorText);
+      throw new Error(`Database error: ${res.status}`);
+    }
   } catch (e) {
     console.error('Training data storage error:', e);
   }
