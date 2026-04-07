@@ -184,7 +184,9 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra te
   "threatWarning": "<1-2 sentence high-impact executive summary naming the specific dominant threat and who is being targeted right now>",
   "intelligenceSummary": "<3-4 sentences: explain the specific mechanics of the current dominant scams — name the impersonated brands from the entity data, describe the psychological trigger being used, explain how victims are being funneled, and what the scammers ultimately want to extract>",
   "recommendedAction": "<1 sentence of highly specific, actionable advice directly tied to the current primary threat vector>"
-}`;
+}
+
+CRITICAL: You must complete the entire JSON object and close all brackets. Be concise in your text summaries to ensure you do not run out of tokens.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
@@ -195,7 +197,7 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no backticks, no extra te
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 4096,
           responseMimeType: 'application/json',
         },
       }),
@@ -254,6 +256,8 @@ async function storeTrend(payload) {
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────────
+
+module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
