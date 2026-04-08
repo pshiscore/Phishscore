@@ -150,6 +150,30 @@ const API_GROUPS = [
         }
       },
       {
+        id: 'perplexity', name: 'Perplexity Sonar Pro',
+        desc: 'Live web context and real-time search — powers newsletter enrichment',
+        run: async () => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/test-perplexity`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await safeJson(r);
+          if (d.error) throw new Error(d.error);
+          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Model: sonar-pro`, `Response: ${(d.response || '').slice(0, 120)}`].join('\n');
+        }
+      },
+      {
+        id: 'cohere', name: 'Cohere Command R+',
+        desc: 'RAG and multi-document synthesis — powers weekly newsletter generation',
+        run: async () => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/test-cohere`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await safeJson(r);
+          if (d.error) throw new Error(d.error);
+          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Model: command-r-plus`, `Response: ${(d.response || '').slice(0, 120)}`].join('\n');
+        }
+      },
+      {
         id: 'cnl', name: 'Cloud Natural Language',
         desc: 'Entity extraction + sentiment analysis — tests with a scam paragraph (requires 20+ words)',
         run: async () => {
@@ -389,6 +413,60 @@ function NewsRefreshPanel({ onOpenNews, T }) {
   );
 }
 
+// ── Newsletter Refresh Panel ───────────────────────────────────────────────────
+function NewsletterRefreshPanel({ T }) {
+  const [status, setStatus] = useState('idle'); // idle | running | done | failed
+  const [error, setError] = useState('');
+
+  const handleGenerate = async () => {
+    setStatus('running');
+    setError('');
+    try {
+      const r = await fetch(`${BASE}/api/cron/generate-newsletter`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || 'phiscore-radara-2026',
+        },
+        body: JSON.stringify({}),
+      });
+      const d = await safeJson(r);
+      if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+      setStatus('done');
+    } catch (err) {
+      setError(err.message);
+      setStatus('failed');
+    }
+  };
+
+  return (
+    <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', fontFamily: 'monospace', letterSpacing: 2, marginBottom: 2 }}>NEWSLETTER ORCHESTRATOR</div>
+          <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Triggers Perplexity search + Cohere RAG synthesis for weekly draft</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {status === 'done' && (
+            <span style={{ fontSize: 10, color: '#34d399', fontFamily: 'monospace', fontWeight: 700, padding: '8px 14px', background: '#34d39918', border: '1px solid #34d39940', borderRadius: 8 }}>
+              ✓ GENERATED
+            </span>
+          )}
+          <button onClick={handleGenerate} disabled={status === 'running'}
+            style={{ background: status === 'running' ? T.cardBg : status === 'failed' ? '#f43f5e18' : 'linear-gradient(135deg,#f59e0b,#d97706)', border: status === 'failed' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'failed' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            {status === 'running' ? 'GENERATING...' : status === 'failed' ? '✗ FAILED — RETRY' : 'GENERATE NEWSLETTER'}
+          </button>
+        </div>
+      </div>
+      {error && (
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid #f43f5e30`, fontSize: 11, color: '#f43f5e', fontFamily: 'monospace', lineHeight: 1.6 }}>
+          <span style={{ fontSize: 9, letterSpacing: 2 }}>ERROR: </span>{error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── API Card Component ─────────────────────────────────────────────────────────
 function APICard({ api, url, imageBase64, autoRun, T }) {
   const [status, setStatus] = useState('idle');
@@ -528,6 +606,9 @@ export default function APITestDashboard({ onClose, onOpenRadar, onOpenNews, T =
 
         {/* News Refresh Panel */}
         <NewsRefreshPanel onOpenNews={() => { onClose(); onOpenNews && onOpenNews(); }} T={T} />
+
+        {/* Newsletter Orchestrator Panel */}
+        <NewsletterRefreshPanel T={T} />
 
         {/* Notes */}
         <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 10, color: T.text4, fontFamily: 'monospace', lineHeight: 1.7 }}>
