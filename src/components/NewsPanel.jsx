@@ -94,11 +94,99 @@ function NewsCard({ item, T }) {
   );
 }
 
+function SubscribeModal({ T, onClose }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // idle | submitting | success | error
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus('submitting');
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Subscription failed');
+      setStatus('success');
+    } catch (err) {
+      setErrorMsg(err.message || 'Something went wrong. Please try again.');
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 460, padding: "36px 32px", position: "relative" }}>
+
+        {/* Close */}
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 30, height: 30, borderRadius: "50%", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+
+        {/* Header */}
+        <div style={{ fontSize: 9, letterSpacing: 4, color: "#a78bfa", fontFamily: "monospace", marginBottom: 10 }}>WEEKLY INTELLIGENCE</div>
+        <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", color: T.text, marginBottom: 6, letterSpacing: 0.5 }}>PhishScore Weekly Brief</div>
+        <p style={{ fontSize: 13, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: "0 0 24px" }}>
+          One email per week. The most critical threats, synthesized by AI.
+        </p>
+
+        {status === 'success' ? (
+          <div style={{ background: "#081410", border: "1px solid #34d39930", borderRadius: 12, padding: "18px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOU'RE IN</div>
+            <div style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>Check your inbox for a confirmation. Your first briefing arrives next week.</div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                style={{ flex: 1, background: T.inputBg, border: `1.5px solid ${status === 'error' ? '#f43f5e' : T.inputBorder}`, borderRadius: 10, color: T.text, padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#a78bfa55"}
+                onBlur={e => e.target.style.borderColor = status === 'error' ? '#f43f5e' : T.inputBorder}
+              />
+              <button
+                type="submit"
+                disabled={status === 'submitting'}
+                style={{ background: status === 'submitting' ? T.innerBg : "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: status === 'submitting' ? T.text4 : "#fff", padding: "10px 20px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, cursor: status === 'submitting' ? "default" : "pointer", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                {status === 'submitting' ? '...' : 'SUBSCRIBE'}
+              </button>
+            </div>
+            {status === 'error' && (
+              <div style={{ fontSize: 11, color: "#f43f5e", fontFamily: "monospace", marginBottom: 14 }}>{errorMsg}</div>
+            )}
+          </form>
+        )}
+
+        {/* AI Transparency Note */}
+        <div style={{ background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 12, padding: "14px 16px", marginTop: status === 'success' ? 16 : 0 }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, letterSpacing: 2, color: "#a78bfa", marginBottom: 6 }}>🤖 AI TRANSPARENCY</div>
+          <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.65, margin: "0 0 8px" }}>
+            <strong style={{ color: T.text2 }}>100% AI-Generated.</strong> This briefing is autonomously synthesized by AI. We use Cohere's enterprise RAG (Retrieval-Augmented Generation) models to digest thousands of community reports and global threat feeds into a single, zero-hallucination newsletter. No human writers involved.
+          </p>
+          <p style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 0.5, margin: 0 }}>
+            One email per week. Unsubscribe anytime. We never sell your data.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 export function NewsPanel({ T = {}, onClose }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSource, setActiveSource] = useState('all');
+  const [showSubscribe, setShowSubscribe] = useState(false);
 
   useEffect(() => {
     async function fetchNews() {
@@ -154,8 +242,8 @@ export function NewsPanel({ T = {}, onClose }) {
         )}
       </div>
 
-      {/* Source filter buttons */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+      {/* Source filter buttons + subscribe CTA */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 20 }}>
         {SOURCES.map(src => {
           const active = activeSource === src;
           return (
@@ -181,7 +269,15 @@ export function NewsPanel({ T = {}, onClose }) {
             </button>
           );
         })}
+        <button
+          onClick={() => setShowSubscribe(true)}
+          style={{ marginLeft: "auto", background: "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: "#fff", padding: "5px 14px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          📬 GET THE WEEKLY BRIEF
+        </button>
       </div>
+
+      {showSubscribe && <SubscribeModal T={T} onClose={() => setShowSubscribe(false)} />}
 
       {/* Body */}
       {loading ? (
