@@ -71,10 +71,10 @@ Snippet: ${snippet || '(no snippet available)'}`;
 
   let data;
   try {
-    data = await callClaude('claude-3-5-sonnet-20241022');
+    data = await callClaude('claude-sonnet-4-6');
   } catch (primaryErr) {
     console.warn('Sonnet failed, falling back to Haiku:', primaryErr.message);
-    data = await callClaude('claude-3-haiku-20240307');
+    data = await callClaude('claude-haiku-4-5-20251001');
   }
 
   const raw = data?.content?.[0]?.text || '';
