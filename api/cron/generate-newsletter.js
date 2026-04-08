@@ -1,9 +1,11 @@
 const { CohereClient } = require('cohere-ai');
+const { marked } = require('marked');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 const COHERE_KEY = process.env.COHERE_API_KEY;
+const RESEND_KEY = process.env.RESEND_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 module.exports.config = { maxDuration: 60 };
@@ -148,6 +150,89 @@ Write in a direct, authoritative style. Be specific. Name real tactics and real 
   return response.text || '';
 }
 
+// ── Step 4: Fetch subscribers ─────────────────────────────────────────────────
+
+async function fetchSubscribers() {
+  const rows = await sbFetch('subscribers?select=email,unsubscribe_token&confirmed=eq.true');
+  return Array.isArray(rows) ? rows : [];
+}
+
+// ── Step 5: Dispatch emails via Resend ────────────────────────────────────────
+
+function buildEmailHtml(bodyHtml, unsubscribeToken) {
+  const unsubscribeUrl = `https://phishscore.ai/api/unsubscribe?token=${unsubscribeToken}`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PhishScore Weekly Intelligence Brief</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:Georgia,serif;color:#e2e8f0;">
+<div style="max-width:640px;margin:0 auto;padding:32px 24px;">
+  <div style="margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #1e293b;">
+    <div style="font-family:monospace;font-size:10px;letter-spacing:4px;color:#38bdf8;margin-bottom:8px;">WEEKLY INTELLIGENCE BRIEFING</div>
+    <div style="font-family:monospace;font-size:22px;font-weight:800;color:#f1f5f9;letter-spacing:0.5px;">PhishScore<span style="color:#f43f5e;">.ai</span></div>
+  </div>
+  <div style="line-height:1.75;font-size:14px;color:#cbd5e1;">
+    ${bodyHtml}
+  </div>
+  <div style="margin-top:40px;padding-top:20px;border-top:1px solid #1e293b;font-family:monospace;font-size:10px;color:#475569;text-align:center;line-height:1.8;">
+    <div>You're receiving this because you subscribed at phishscore.ai</div>
+    <div><a href="${unsubscribeUrl}" style="color:#64748b;text-decoration:underline;">Unsubscribe</a> &nbsp;·&nbsp; PhishScore.ai &nbsp;·&nbsp; AI-powered phishing intelligence</div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+async function dispatchEmails(markdownContent, subscribers) {
+  if (!RESEND_KEY) {
+    console.warn('RESEND_API_KEY not set — skipping email dispatch');
+    return 0;
+  }
+
+  const bodyHtml = marked(markdownContent);
+  let dispatched = 0;
+
+  for (const sub of subscribers) {
+    const { email, unsubscribe_token } = sub;
+    if (!email) continue;
+
+    const html = buildEmailHtml(bodyHtml, unsubscribe_token || '');
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${RESEND_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'PhishScore Weekly <brief@phishscore.ai>',
+          to: email,
+          subject: `PhishScore Weekly Intelligence Brief — ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+          html,
+        }),
+      });
+
+      if (res.ok) {
+        dispatched++;
+      } else {
+        const err = await res.text();
+        console.error(`Resend failed for ${email} [${res.status}]:`, err.slice(0, 120));
+      }
+    } catch (err) {
+      console.error(`Resend error for ${email}:`, err.message);
+    }
+
+    // Rate-limit: 200ms between sends
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  return dispatched;
+}
+
 // ── Main handler ───────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -178,8 +263,14 @@ module.exports = async function handler(req, res) {
       created_at: new Date().toISOString(),
     });
 
-    console.log('generate-newsletter: complete');
-    return res.status(200).json({ ok: true, message: 'Newsletter generated and stored successfully.' });
+    console.log('generate-newsletter: fetching subscribers...');
+    const subscribers = await fetchSubscribers();
+
+    console.log(`generate-newsletter: dispatching to ${subscribers.length} subscribers...`);
+    const dispatched = await dispatchEmails(newsletterContent, subscribers);
+
+    console.log(`generate-newsletter: complete — dispatched ${dispatched}/${subscribers.length}`);
+    return res.status(200).json({ ok: true, message: 'Newsletter generated and stored successfully.', dispatched, total: subscribers.length });
 
   } catch (err) {
     console.error('generate-newsletter error:', err.message);
