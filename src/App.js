@@ -10,6 +10,7 @@ import TransparencyPage from "./components/TransparencyPage";
 import LegalPage from "./components/LegalPage";
 import APITestDashboard from "./components/APITestDashboard";
 import { RadarPanel } from "./components/RadarModal";
+import { NewsPanel } from "./components/NewsPanel";
 import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
 import PageWrapper from "./components/PageWrapper";
@@ -261,6 +262,16 @@ export default function App() {
               </button>
             </Tooltip>
 
+            {/* News */}
+            <Tooltip text="Cyber Threat Briefing — AI News" T={T}>
+              <button onClick={() => switchView(activeView === 'news' ? 'dashboard' : 'news')} className="nav-btn" style={{ background: activeView === 'news' ? "#38bdf818" : "none", border: `1px solid ${activeView === 'news' ? "#38bdf8" : T.headerBorder}`, color: activeView === 'news' ? "#38bdf8" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+                </svg>
+                <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>NEWS</span>
+              </button>
+            </Tooltip>
+
             {/* Deep Intel */}
             <Tooltip text="PhishScore Deep Intel" T={T}>
               <button onClick={() => isMobile ? setIsDeepIntelOpen(true) : switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
@@ -387,6 +398,15 @@ export default function App() {
                   )}
                 </div>
               </>
+            )}
+
+            {/* NEWS view */}
+            {activeView === 'news' && (
+              <PageWrapper>
+                <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 28 }}>
+                  <NewsPanel T={T} onClose={() => switchView('dashboard')} />
+                </div>
+              </PageWrapper>
             )}
 
             {/* RADAR view */}
