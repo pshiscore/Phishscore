@@ -495,7 +495,7 @@ export default function App() {
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
-      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => switchView('radar')} T={T} />}
+      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => switchView('radar')} onOpenNews={() => switchView('news')} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
