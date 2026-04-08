@@ -136,7 +136,7 @@ async function synthesiseWithCohere(extractedData, perplexityContext) {
   ];
 
   const response = await cohere.chat({
-    model: 'command-r-plus',
+    model: 'command-r-08-2024',
     documents,
     message: `You are the Lead Editor for PhishScore.ai. Write our Weekly Cyber Intelligence Briefing. You must synthesize the provided documents into a cohesive, professional newsletter. Use Markdown formatting. Include these sections:
 

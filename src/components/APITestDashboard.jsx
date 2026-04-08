@@ -170,7 +170,7 @@ const API_GROUPS = [
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const d = await safeJson(r);
           if (d.error) throw new Error(d.error);
-          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Model: command-r-plus`, `Response: ${(d.response || '').slice(0, 120)}`].join('\n');
+          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Model: command-r-08-2024`, `Response: ${(d.response || '').slice(0, 120)}`].join('\n');
         }
       },
       {

@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
     const cohere = new CohereClient({ token: COHERE_KEY });
 
     const response = await cohere.chat({
-      model: 'command-r-plus',
+      model: 'command-r-08-2024',
       message: "Ping: Return the single word 'Pong' and nothing else.",
     });
 
