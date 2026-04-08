@@ -1,14 +1,14 @@
 const { CohereClient } = require('cohere-ai');
 const { marked } = require('marked');
 
+module.exports.config = { maxDuration: 60 };
+
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 const COHERE_KEY = process.env.COHERE_API_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
-
-module.exports.config = { maxDuration: 60 };
 
 // ── Supabase helpers ───────────────────────────────────────────────────────────
 
@@ -153,7 +153,7 @@ Write in a direct, authoritative style. Be specific. Name real tactics and real 
 // ── Step 4: Fetch subscribers ─────────────────────────────────────────────────
 
 async function fetchSubscribers() {
-  const rows = await sbFetch('subscribers?select=email,unsubscribe_token&confirmed=eq.true');
+  const rows = await sbFetch('subscribers?select=email,unsubscribe_token');
   return Array.isArray(rows) ? rows : [];
 }
 
@@ -192,7 +192,7 @@ async function dispatchEmails(markdownContent, subscribers) {
     return 0;
   }
 
-  const bodyHtml = marked(markdownContent);
+  const bodyHtml = marked.parse(markdownContent);
   let dispatched = 0;
 
   for (const sub of subscribers) {
