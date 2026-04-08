@@ -4,6 +4,16 @@ import { PhishScoreLogo } from "./Primitives";
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
+const SOURCES = [
+  'all',
+  'BleepingComputer',
+  'Writer Beware',
+  'The Record',
+  'Ars Technica',
+  'Fraud of the Day',
+  'TorrentFreak',
+];
+
 function timeAgo(ts) {
   if (!ts) return "";
   const diff = Date.now() - new Date(ts).getTime();
@@ -88,6 +98,7 @@ export function NewsPanel({ T = {}, onClose }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeSource, setActiveSource] = useState('all');
 
   useEffect(() => {
     async function fetchNews() {
@@ -95,7 +106,7 @@ export function NewsPanel({ T = {}, onClose }) {
       setError(null);
       try {
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/threat_news?select=*&order=published_at.desc&limit=10`,
+          `${SUPABASE_URL}/rest/v1/threat_news?select=*&order=published_at.desc&limit=60`,
           {
             headers: {
               apikey: SUPABASE_KEY,
@@ -116,10 +127,14 @@ export function NewsPanel({ T = {}, onClose }) {
     fetchNews();
   }, []);
 
+  const visibleNews = activeSource === 'all'
+    ? articles
+    : articles.filter(a => a.source_name === activeSource);
+
   return (
     <div>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: 4, color: "#38bdf8", fontFamily: "monospace", marginBottom: 8 }}>
             CYBER THREAT BRIEFING
@@ -139,6 +154,35 @@ export function NewsPanel({ T = {}, onClose }) {
         )}
       </div>
 
+      {/* Source filter buttons */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+        {SOURCES.map(src => {
+          const active = activeSource === src;
+          return (
+            <button
+              key={src}
+              onClick={() => setActiveSource(src)}
+              style={{
+                background: active ? T.cardBorder : T.innerBg,
+                border: `1px solid ${active ? "#38bdf8" : T.innerBorder}`,
+                color: active ? "#38bdf8" : T.text4,
+                padding: "4px 10px",
+                borderRadius: 20,
+                fontSize: 10,
+                fontWeight: active ? 700 : 400,
+                fontFamily: "monospace",
+                letterSpacing: 1,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                transition: "all 0.15s",
+              }}
+            >
+              {src}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Body */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "48px 0", color: T.text4, fontFamily: "monospace", fontSize: 12 }}>
@@ -148,18 +192,18 @@ export function NewsPanel({ T = {}, onClose }) {
         <div style={{ textAlign: "center", padding: "48px 0", color: "#f43f5e", fontFamily: "monospace", fontSize: 12 }}>
           {error}
         </div>
-      ) : articles.length === 0 ? (
+      ) : visibleNews.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 0" }}>
           <div style={{ color: T.text4, fontFamily: "monospace", fontSize: 12, marginBottom: 8 }}>
-            NO BRIEFINGS AVAILABLE YET
+            {activeSource === 'all' ? 'NO BRIEFINGS AVAILABLE YET' : `NO ARTICLES FROM ${activeSource.toUpperCase()} YET`}
           </div>
           <div style={{ color: T.text4, fontFamily: "Georgia, serif", fontSize: 13 }}>
-            The news pipeline is warming up. Check back shortly.
+            {activeSource === 'all' ? 'The news pipeline is warming up. Check back shortly.' : 'Try selecting a different source or check back after the next refresh.'}
           </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {articles.map(item => (
+          {visibleNews.map(item => (
             <NewsCard key={item.id} item={item} T={T} />
           ))}
         </div>

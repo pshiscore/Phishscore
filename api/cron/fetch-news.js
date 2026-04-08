@@ -1,23 +1,46 @@
 const Parser = require('rss-parser');
 
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 const FEEDS = [
   { name: 'BleepingComputer', url: 'https://www.bleepingcomputer.com/feed/' },
+  { name: 'Writer Beware',    url: 'https://writerbeware.blog/feed/' },
+  { name: 'The Record',       url: 'https://therecord.media/feed' },
+  { name: 'Ars Technica',     url: 'https://arstechnica.com/tag/security/feed/' },
+  { name: 'Fraud of the Day', url: 'https://fraudoftheday.com/feed' },
+  { name: 'TorrentFreak',     url: 'https://torrentfreak.com/feed' },
 ];
 
-const ITEMS_PER_FEED = 5;
+const ITEMS_PER_FEED = 2;
 
-// ── Claude call with model fallback ───────────────────────────────────────────
+// ── Duplicate check ────────────────────────────────────────────────────────────
+
+async function articleExists(articleUrl) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/threat_news?select=id&article_url=eq.${encodeURIComponent(articleUrl)}&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+      }
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// ── Claude summarisation with model fallback ───────────────────────────────────
 
 async function summariseWithClaude(title, snippet) {
-  const prompt = `Act as a Cyber Threat Analyst. Given the following news article title and snippet, output ONLY a valid JSON object with exactly these three keys:
-- "hook": One bold sentence summarizing the core threat or news.
-- "impact": Who is targeted or what is the specific risk.
-- "takeaway": One actionable sentence for an everyday user or IT professional.
+  const prompt = `You are a Cyber Threat Intelligence Analyst. Summarize this news article into a JSON object. Return ONLY valid JSON with three keys: "hook" (one bold sentence summarizing the threat/news), "impact" (who/what it affects), and "takeaway" (one actionable security recommendation).
 
 Do not include markdown, backticks, or any text outside the JSON object.
 
@@ -25,7 +48,6 @@ Title: ${title}
 Snippet: ${snippet || '(no snippet available)'}`;
 
   const body = {
-    model: 'claude-sonnet-4-6',
     max_tokens: 256,
     messages: [{ role: 'user', content: prompt }],
   };
@@ -49,10 +71,10 @@ Snippet: ${snippet || '(no snippet available)'}`;
 
   let data;
   try {
-    data = await callClaude('claude-sonnet-4-6');
+    data = await callClaude('claude-3-5-sonnet-20241022');
   } catch (primaryErr) {
     console.warn('Sonnet failed, falling back to Haiku:', primaryErr.message);
-    data = await callClaude('claude-haiku-4-5-20251001');
+    data = await callClaude('claude-3-haiku-20240307');
   }
 
   const raw = data?.content?.[0]?.text || '';
@@ -61,9 +83,9 @@ Snippet: ${snippet || '(no snippet available)'}`;
   return JSON.parse(match[0]);
 }
 
-// ── Supabase upsert ────────────────────────────────────────────────────────────
+// ── Supabase insert ────────────────────────────────────────────────────────────
 
-async function upsertArticle(record) {
+async function insertArticle(record) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/threat_news`, {
     method: 'POST',
     headers: {
@@ -76,7 +98,7 @@ async function upsertArticle(record) {
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error(`Supabase upsert failed [${res.status}]:`, err);
+    console.error(`Supabase insert failed [${res.status}]:`, err);
   }
 }
 
@@ -111,6 +133,10 @@ module.exports = async function handler(req, res) {
       const articleUrl = item.link;
       if (!articleUrl) { results.skipped++; continue; }
 
+      // Skip already-stored articles
+      const exists = await articleExists(articleUrl);
+      if (exists) { results.skipped++; continue; }
+
       const title = item.title || '(no title)';
       const snippet = item.contentSnippet || item.content || '';
 
@@ -124,7 +150,7 @@ module.exports = async function handler(req, res) {
         continue;
       }
 
-      await upsertArticle({
+      await insertArticle({
         source_name: feed.name,
         article_url: articleUrl,
         title,

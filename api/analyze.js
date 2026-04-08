@@ -54,9 +54,9 @@ async function sendAdminSubmissionAlert(urls, parsed, flaggedSources) {
 
 // ── Store anonymized training data ────────────────────────────────────────────
 async function storeTrainingData(parsed, context = {}) {
-  const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+  const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   try {
     const record = {
       score: parsed.score || 0,
@@ -70,6 +70,7 @@ async function storeTrainingData(parsed, context = {}) {
       urlhaus_flagged: parsed.urlhausFlagged === true,
       has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
       has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
+      original_text: context.rawText || null,
       // Enriched training fields (only written when trainAI === true)
       training_analysis: parsed,
       training_modality: context.modality || 'text',
@@ -79,9 +80,6 @@ async function storeTrainingData(parsed, context = {}) {
       training_urlhaus_state: context.urlhausFlagged || false,
       training_is_anonymous: context.isAnonymous || false,
       training_consent_version: 'v1',
-      // TODO: training reflag enrichment — future background job should
-      // periodically update training_reflag_snapshot on opted-in submissions
-      // after N days using the reflag_count column
     };
     const res = await fetch(`${SUPABASE_URL}/rest/v1/training_data`, {
       method: 'POST',
@@ -89,7 +87,7 @@ async function storeTrainingData(parsed, context = {}) {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
+        Prefer: 'return=representation'
       },
       body: JSON.stringify(record)
     });
@@ -98,8 +96,11 @@ async function storeTrainingData(parsed, context = {}) {
       console.error(`Supabase Insert Failed [${res.status}]:`, errorText);
       throw new Error(`Database error: ${res.status}`);
     }
+    const data = await res.json();
+    return data[0]?.id || null;
   } catch (e) {
     console.error('Training data storage error:', e);
+    return null;
   }
 }
 
@@ -332,7 +333,8 @@ module.exports = async function handler(req, res) {
       } catch (e) { console.error('Response injection error:', e); }
     }
 
-    // ── Store training data if opted in (fire and forget) ───────────────────
+    // ── Store training data if opted in ─────────────────────────────────────
+    let trainingId = null;
     if (req.body.trainAI === true) {
       try {
         const raw = data.content?.map(c => c.text || '').join('') || '';
@@ -340,14 +342,20 @@ module.exports = async function handler(req, res) {
         const modality = (req.body.messages || []).some(m =>
           Array.isArray(m.content) && m.content.some(c => c.type === 'image')
         ) ? 'image' : 'text';
-        storeTrainingData(parsed, {
+        const rawText = (req.body.messages || [])
+          .flatMap(m => Array.isArray(m.content)
+            ? m.content.filter(c => c.type === 'text').map(c => c.text)
+            : [typeof m.content === 'string' ? m.content : '']
+          ).join('\n').slice(0, 4000);
+        trainingId = await storeTrainingData(parsed, {
           modality,
+          rawText,
           gsbFlagged,
           radarFlagged,
           urlhausFlagged,
           isAnonymous: req.body.isAnonymous === true,
-        }).catch(e => console.error('Training store error:', e));
-      } catch (e) { /* silent */ }
+        });
+      } catch (e) { console.error('Training store error:', e); }
     }
 
     // ── Admin notification (fire and forget) ────────────────────────────────
@@ -357,7 +365,7 @@ module.exports = async function handler(req, res) {
       sendAdminSubmissionAlert(uniqueUrls, parsed, flaggedSources).catch(e => console.error('Admin alert error:', e));
     } catch (e) { /* silent */ }
 
-    return res.status(200).json(data);
+    return res.status(200).json({ ...data, trainingId });
 
   } catch (err) {
     console.error('Analysis error:', err);

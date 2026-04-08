@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { caseId, is_accurate, feedbackText = '' } = req.body || {};
+  const { caseId, trainingId, is_accurate, feedbackText = '' } = req.body || {};
 
   if (is_accurate === undefined) {
     return res.status(400).json({ error: 'is_accurate is required' });
@@ -42,7 +42,31 @@ module.exports = async (req, res) => {
     }
   }
 
-  // ── 2. Send admin alert for negative feedback ─────────────────────────────────
+  // ── 2. Update training_data accuracy label ────────────────────────────────────
+  if (trainingId) {
+    try {
+      const patch = await fetch(
+        `${SUPABASE_URL}/rest/v1/training_data?id=eq.${trainingId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({ is_accurate }),
+        }
+      );
+      if (!patch.ok) {
+        console.error('submit-feedback: training_data PATCH failed', await patch.text());
+      }
+    } catch (err) {
+      console.error('submit-feedback: training_data error', err.message);
+    }
+  }
+
+  // ── 3. Send admin alert for negative feedback ─────────────────────────────────
   if (!is_accurate && feedbackText && RESEND_KEY) {
     try {
       await fetch('https://api.resend.com/emails', {

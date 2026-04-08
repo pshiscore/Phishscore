@@ -134,7 +134,7 @@ function ShareCard({ result, category, T = {} }) {
   );
 }
 
-function AccuracyFeedback({ caseId = null, T = {} }) {
+function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
   // status: 'idle' | 'form_open' | 'submitting' | 'success'
   const [status, setStatus] = useState('idle');
   const [feedbackText, setFeedbackText] = useState('');
@@ -145,7 +145,7 @@ function AccuracyFeedback({ caseId = null, T = {} }) {
       await fetch('/api/submit-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId, is_accurate: isAccurate, feedbackText: text }),
+        body: JSON.stringify({ caseId, trainingId, is_accurate: isAccurate, feedbackText: text }),
       });
     } catch { /* best-effort — show success regardless */ }
     setStatus('success');
@@ -226,6 +226,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [showTrainInfo, setShowTrainInfo] = useState(false);
   const [deliveryChannel, setDeliveryChannel] = useState("other");
   const [caseId, setCaseId] = useState(null);
+  const [trainingId, setTrainingId] = useState(null);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -237,6 +238,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setImagePreview(null); setErrorState(null); setDuplicate(null);
     setTrainAI(false); setInputMode("text"); setDeliveryChannel("other");
     setCaseId(null);
+    setTrainingId(null);
   };
 
   const handleImageUpload = (e) => {
@@ -323,6 +325,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       }
 
       const data = await res.json();
+      if (data.trainingId) setTrainingId(data.trainingId);
       const raw = data.content?.map(c => c.text || "").join("") || "";
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
       let finalCategory = category, classificationNote = null;
@@ -612,7 +615,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
             <div>
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
               <div style={{ marginTop: 12 }}>
-                <AccuracyFeedback caseId={caseId} T={T} />
+                <AccuracyFeedback caseId={caseId} trainingId={trainingId} T={T} />
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button onClick={resetForm} style={{ flex: 1, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
