@@ -7,6 +7,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
+const { analyzeContactData } = require('../lib/ipqs');
 
 // ── Telemetry wrapper ─────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ async function fetchWithTelemetry(serviceName, url, options = {}, telemetryLog) 
 
 // ── Admin email alert ─────────────────────────────────────────────────────────
 
-async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog = []) {
+async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog = [], ipqsData = null) {
   if (!RESEND_KEY) return;
   const verdict = urlscanData?.verdict || 'N/A';
   const abuseScore = abuseData?.abuseScore ?? 'N/A';
@@ -127,6 +128,18 @@ async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData,
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
               <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">KEY FINDINGS SUMMARY</p>
               <p style="font-family:Georgia,serif;font-size:13px;color:#374151;line-height:1.7;margin:0;">${summary}${forensicReport && forensicReport.length > 400 ? '…' : ''}</p>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">IPQS OSINT ENRICHMENT</p>
+              ${ipqsData?.data ? `
+                <h3 style="font-family:monospace;font-size:11px;color:#374151;margin:0 0 8px;">IPQS Forensic Background Check</h3>
+                <ul style="font-family:monospace;font-size:11px;color:#374151;margin:0;padding-left:16px;line-height:1.8;">
+                  <li><b>Target:</b> ${ipqsData.input} (${ipqsData.type})</li>
+                  <li><b>Fraud Score:</b> ${ipqsData.data.fraud_score ?? 'N/A'}/100</li>
+                  <li><b>Recent Abuse:</b> ${ipqsData.data.recent_abuse ? 'Yes' : 'No'}</li>
+                  <li><b>Extra Meta:</b> ${ipqsData.type === 'email' ? (ipqsData.data.spam_trap ? 'Spam Trap Detected' : 'No Spam Trap') + ' · Disposable: ' + (ipqsData.data.disposable ? 'Yes' : 'No') : (ipqsData.data.line_type || 'Unknown') + ' Line Type · Carrier: ' + (ipqsData.data.carrier || 'N/A')}</li>
+                </ul>
+              ` : `<i style="font-family:monospace;font-size:11px;color:#9ca3af;">IPQS OSINT Enrichment: N/A (No contact provided or API timeout)</i>`}
             </div>
             <p style="font-family:monospace;font-size:10px;color:#9ca3af;margin:0;">Timestamp: ${new Date().toISOString()}</p>
           </div>
@@ -277,6 +290,16 @@ async function checkVirusTotal(url, telemetryLog) {
   }
 }
 
+// Extract first email or phone from message text
+function extractContact(text) {
+  if (!text) return null;
+  const emailMatch = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  if (emailMatch) return emailMatch[0];
+  const phoneMatch = text.match(/(?:\+?[\d][\d\s\-().]{7,}[\d])/);
+  if (phoneMatch) return phoneMatch[0].trim();
+  return null;
+}
+
 // Extract first URL from message
 function extractUrl(text) {
   if (!text) return null;
@@ -292,7 +315,7 @@ function extractDomain(url) {
 
 // ── Claude Opus report generation ────────────────────────────────────────────
 
-async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, telemetryLog) {
+async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, telemetryLog) {
   const domainAge = whoisData?.domainAge;
   const ageWarning = domainAge && domainAge < 30
     ? `CRITICAL: Domain is only ${domainAge} days old — extremely common with scam infrastructure.`
@@ -312,6 +335,40 @@ async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisD
     ? `VirusTotal: ${vtData.malicious || 0} malicious detections out of ${vtData.total || '?'} engines.`
     : 'VirusTotal: Not scanned.';
 
+  // Build IPQS forensic block if available
+  let ipqsBlock = '';
+  if (ipqsData?.data) {
+    const d = ipqsData.data;
+    if (ipqsData.type === 'email') {
+      ipqsBlock = `
+IPQS FORENSIC BACKGROUND CHECK — EMAIL (${ipqsData.input}):
+Fraud Score: ${d.fraud_score ?? 'N/A'}/100
+Recent Abuse Flag: ${d.recent_abuse ? 'YES — flagged for recent malicious activity' : 'No'}
+Disposable Address: ${d.disposable ? 'YES — throwaway inbox' : 'No'}
+Spam Trap: ${d.spam_trap ? 'YES' : 'No'}
+Honeypot: ${d.honeypot ? 'YES' : 'No'}
+Domain: ${d.domain || 'Unknown'}
+MX Records Valid: ${d.mx_records ? 'Yes' : 'No'}
+Leaked in Breach: ${d.leaked ? 'YES' : 'No'}
+First Seen: ${d.first_seen || 'Unknown'}`;
+    } else if (ipqsData.type === 'phone') {
+      ipqsBlock = `
+IPQS FORENSIC BACKGROUND CHECK — PHONE (${ipqsData.input}):
+Fraud Score: ${d.fraud_score ?? 'N/A'}/100
+Recent Abuse Flag: ${d.recent_abuse ? 'YES — flagged for recent malicious activity' : 'No'}
+Line Type: ${d.line_type || 'Unknown'} ${d.line_type === 'VOIP' ? '— CRITICAL: VOIP numbers are heavily used by scammers' : ''}
+Carrier: ${d.carrier || 'Unknown'}
+Registered Name: ${d.name || 'Not available'}
+Country: ${d.country || 'Unknown'}${d.region ? `, ${d.region}` : ''}${d.city ? ` (${d.city})` : ''}
+Prepaid: ${d.prepaid ? 'YES' : 'No'}
+Active Status: ${d.active_status || (d.active ? 'Active' : 'Unknown')}
+Risky: ${d.risky ? 'YES' : 'No'}
+Spammer Listed: ${d.spammer ? 'YES' : 'No'}
+Do Not Call Registry: ${d.do_not_call ? 'YES' : 'No'}
+Leaked in Breach: ${d.leaked ? 'YES' : 'No'}`;
+    }
+  }
+
   // Build CNL context block if available
   let cnlBlock = '';
   if (cnlData) {
@@ -329,11 +386,14 @@ Note: Cross-reference the organizations listed above with the WHOIS and VirusTot
 
   const prompt = `You are PhishScore Deep Intel's forensic analyst. You have completed a full investigation of a suspected scam. Write a professional, specific case file report for the victim.
 
+ANALYST INSTRUCTION: If IPQS Forensic Data is provided below, explicitly reference the fraud score, line type (e.g., VOIP), domain age, or abuse flags in your report to substantiate your analysis. Do not omit this data — it is verified ground truth.
+
 CASE DETAILS:
 Original PhishScore: ${caseRecord.original_score || 'N/A'}/100
 Category: ${caseRecord.original_category || 'Unknown'}
 What the victim reported: ${caseRecord.story || 'No story provided'}
 Original message: ${(caseRecord.original_message || '').slice(0, 1500)}
+${ipqsBlock}
 ${cnlBlock}
 
 FORENSIC FINDINGS:
@@ -516,20 +576,31 @@ module.exports = async function handler(req, res) {
     // Initialise telemetry log — tracks every external API call in execution order
     const telemetryLog = [];
 
-    // Run all external checks in parallel — CNL runs alongside URL checks
-    const [urlscanData, whoisData, vtData, cnlData] = await Promise.all([
+    // Extract scammer contact (email or phone) from message/story for IPQS check
+    const scammerContact = caseRecord.contact_info
+      || extractContact(caseRecord.story || '')
+      || extractContact(messageText);
+
+    // Run all external checks in parallel — CNL and IPQS run alongside URL checks
+    const [urlscanData, whoisData, vtData, cnlData, ipqsData] = await Promise.all([
       url ? runURLScan(url, telemetryLog) : Promise.resolve(null),
       domain ? checkWhois(domain, telemetryLog) : Promise.resolve(null),
       url ? checkVirusTotal(url, telemetryLog) : Promise.resolve(null),
       messageText ? analyzeForDeepIntel(messageText) : Promise.resolve(null),
+      scammerContact
+        ? analyzeContactData(scammerContact).catch(err => {
+            console.warn('IPQS check failed (non-fatal):', err.message);
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
 
     // Check IP from URLScan result
     const abuseData = urlscanData?.ip ? await checkAbuseIPDB(urlscanData.ip, telemetryLog) : null;
 
-    // Generate forensic report with Opus — now includes CNL ground truth and telemetry
+    // Generate forensic report with Opus — includes CNL, IPQS, and telemetry
     const forensicReport = await generateForensicReport(
-      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, telemetryLog
+      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, telemetryLog
     );
 
     // Save all results to Supabase
@@ -548,6 +619,7 @@ module.exports = async function handler(req, res) {
         abuseipdb_data: abuseData || null,
         whois_data: whoisData || null,
         virustotal_data: vtData || null,
+        ipqs_data: ipqsData || null,
         forensic_report: forensicReport,
         api_telemetry: telemetryLog,
         report_generated_at: new Date().toISOString(),
@@ -557,7 +629,7 @@ module.exports = async function handler(req, res) {
 
     // Admin notification
     try {
-      await sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog);
+      await sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog, ipqsData);
       console.log("Admin telemetry alert sent.");
     } catch (e) {
       console.error('Admin deep intel alert error:', e);

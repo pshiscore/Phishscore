@@ -190,6 +190,37 @@ const API_GROUPS = [
     ]
   },
   {
+    id: 'ipqs',
+    label: 'IPQS OSINT ENGINE',
+    color: '#fb923c',
+    apis: [
+      {
+        id: 'ipqs-email', name: 'IPQS Email Intelligence',
+        desc: 'Fraud score, disposable, spam trap, honeypot, breach status',
+        run: async () => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/test-ipqs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: 'test@example.com' }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await safeJson(r);
+          if (d.error) throw new Error(d.error);
+          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Type: ${d.type}`, `Fraud Score: ${d.data?.fraud_score ?? 'N/A'}`, `Disposable: ${d.data?.disposable ? 'YES' : 'No'}`, `Recent Abuse: ${d.data?.recent_abuse ? 'YES' : 'No'}`].join('\n');
+        }
+      },
+      {
+        id: 'ipqs-phone', name: 'IPQS Phone Intelligence',
+        desc: 'Line type (VOIP/Wireless), carrier, fraud score, spammer status',
+        run: async () => {
+          const start = Date.now();
+          const r = await fetch(`${BASE}/api/test-ipqs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: '18005550199' }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const d = await safeJson(r);
+          if (d.error) throw new Error(d.error);
+          return [`Status: OK`, `Time: ${d.elapsed || ((Date.now() - start) / 1000).toFixed(1)}s`, `Type: ${d.type}`, `Fraud Score: ${d.data?.fraud_score ?? 'N/A'}`, `Line Type: ${d.data?.line_type || 'N/A'}`, `Carrier: ${d.data?.carrier || 'N/A'}`, `Recent Abuse: ${d.data?.recent_abuse ? 'YES' : 'No'}`].join('\n');
+        }
+      },
+    ]
+  },
+  {
     id: 'vision',
     label: 'VISION API (IMAGE ANALYSIS)',
     color: '#34d399',
