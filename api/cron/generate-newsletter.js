@@ -45,7 +45,7 @@ async function extractData() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [latestTrends, recentNews, topSubmissions] = await Promise.all([
-    sbFetch('trends?select=cnl_top_categories,threat_warning,intelligence_summary&order=created_at.desc&limit=1'),
+    sbFetch('trends?select=cnl_top_categories,threat_warning&order=created_at.desc&limit=1'),
     sbFetch(`threat_news?select=title,hook,impact,takeaway,source_name,published_at&order=published_at.desc&published_at=gte.${sevenDaysAgo}&limit=5`),
     sbFetch(`submissions?select=score,category,summary,preview,created_at&visibility=eq.public&score=gte.75&order=score.desc&created_at=gte.${sevenDaysAgo}&limit=3`),
   ]);
@@ -54,7 +54,7 @@ async function extractData() {
   return {
     trend,
     topCategories: trend?.cnl_top_categories || [],
-    threatWarning: trend?.threat_warning || trend?.intelligence_summary || '',
+    threatWarning: trend?.threat_warning || '',
     recentNews: Array.isArray(recentNews) ? recentNews : [],
     topSubmissions: Array.isArray(topSubmissions) ? topSubmissions : [],
   };
