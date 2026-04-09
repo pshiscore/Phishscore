@@ -14,6 +14,7 @@ import { NewsPanel } from "./components/NewsPanel";
 import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
 import ReportStatusModal from "./components/ReportStatusModal";
 import PageWrapper from "./components/PageWrapper";
+import InvestigatorChat from "./components/InvestigatorChat";
 
 const TrustBadge = ({ isMobile }) => {
   const [expanded, setExpanded] = useState(false);
@@ -499,6 +500,7 @@ export default function App() {
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
+      <InvestigatorChat />
 
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
