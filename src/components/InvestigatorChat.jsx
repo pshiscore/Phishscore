@@ -23,6 +23,12 @@ export default function InvestigatorChat() {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    const open = () => setIsOpen(true);
+    document.addEventListener('openInvestigatorChat', open);
+    return () => document.removeEventListener('openInvestigatorChat', open);
+  }, []);
+
+  useEffect(() => {
     if (isOpen) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       setTimeout(() => inputRef.current?.focus(), 100);

@@ -273,6 +273,16 @@ export default function App() {
               </button>
             </Tooltip>
 
+            {/* Investigator Chat */}
+            <Tooltip text="Intelligence Investigator — Ask our AI" T={T}>
+              <button onClick={() => document.dispatchEvent(new CustomEvent('openInvestigatorChat'))} className="nav-btn" style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                {!isMobile && <span className="nav-label" style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1 }}>CHAT</span>}
+              </button>
+            </Tooltip>
+
             {/* Deep Intel */}
             <Tooltip text="PhishScore Deep Intel" T={T}>
               <button onClick={() => isMobile ? setIsDeepIntelOpen(true) : switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
