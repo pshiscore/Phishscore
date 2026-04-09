@@ -67,7 +67,7 @@ export default function InvestigatorChat() {
   }
 
   return (
-    <>
+    <div className="investigator-chat-root">
       {/* Chat window */}
       {isOpen && (
         <div style={{
@@ -261,7 +261,10 @@ export default function InvestigatorChat() {
           0%, 100% { opacity: 0.3; transform: scale(0.8); }
           50% { opacity: 1; transform: scale(1.2); }
         }
+        @media (max-width: 767px) {
+          .investigator-chat-root { display: none !important; }
+        }
       `}</style>
-    </>
+    </div>
   );
 }
