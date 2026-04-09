@@ -1,5 +1,4 @@
 const { CohereClient } = require('cohere-ai');
-const { marked } = require('marked');
 
 module.exports.config = { maxDuration: 60 };
 
@@ -192,6 +191,7 @@ async function dispatchEmails(markdownContent, subscribers) {
     return 0;
   }
 
+  const { marked } = await import('marked');
   const bodyHtml = marked.parse(markdownContent);
   let dispatched = 0;
 
