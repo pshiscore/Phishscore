@@ -1,11 +1,8 @@
-const { CohereClient } = require('cohere-ai');
-
 module.exports.config = { maxDuration: 60 };
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
-const COHERE_KEY = process.env.COHERE_API_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -60,17 +57,36 @@ async function extractData() {
   };
 }
 
-// ── Step 2: Perplexity live web enrichment ────────────────────────────────────
+// ── Step 2: Generate newsletter with Perplexity ───────────────────────────────
 
-async function enrichWithPerplexity(topCategories) {
+async function generateNewsletterWithPerplexity(extractedData) {
   if (!PERPLEXITY_KEY) {
-    console.warn('PERPLEXITY_API_KEY not set — skipping web enrichment');
-    return 'Live web enrichment unavailable (API key not configured).';
+    throw new Error('PERPLEXITY_API_KEY not configured');
   }
+
+  const { threatWarning, topCategories, recentNews, topSubmissions } = extractedData;
 
   const categoryList = Array.isArray(topCategories) && topCategories.length
     ? topCategories.map(c => (typeof c === 'string' ? c : c.category || JSON.stringify(c))).join(', ')
     : 'phishing, banking fraud, tech support scams';
+
+  const newsSummary = recentNews.length
+    ? recentNews.map(n => `- ${n.title} (${n.source_name}): ${n.hook || ''} Impact: ${n.impact || ''} Action: ${n.takeaway || ''}`).join('\n')
+    : 'No recent threat news available.';
+
+  const submissionSummary = topSubmissions.length
+    ? topSubmissions.map(s => `- Score ${s.score}/100 · ${s.category}: ${s.summary || s.preview || '(no preview)'}`).join('\n')
+    : 'No high-scoring public submissions this week.';
+
+  const internalData = `RADAR TRENDS:
+Current threat warning: ${threatWarning || 'No active warning.'}
+Top categories: ${categoryList}
+
+RECENT THREAT NEWS:
+${newsSummary}
+
+COMMUNITY SUBMISSIONS (highest risk, scored by AI):
+${submissionSummary}`;
 
   const res = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
@@ -81,10 +97,13 @@ async function enrichWithPerplexity(topCategories) {
     body: JSON.stringify({
       model: 'sonar-pro',
       messages: [
-        { role: 'system', content: 'You are a cyber intelligence researcher.' },
+        {
+          role: 'system',
+          content: 'You are the Lead Editor and Cyber Intelligence Researcher for PhishScore.ai.',
+        },
         {
           role: 'user',
-          content: `Search the web for recent news, statistics, or FBI/CISA warnings from the past 7 days related to these specific threat categories: ${categoryList}. Provide a concise, factual summary of the current real-world landscape for these threats.`,
+          content: `Here is our internal community data for the week:\n\n${internalData}\n\nTask 1: Search the live web for recent news, statistics, or FBI/CISA warnings from the past 7 days related to our top threat categories.\nTask 2: Synthesize our internal data and your live web research into our Weekly Cyber Intelligence Briefing. Use strict Markdown formatting. Include these sections:\n1. Executive Summary (Combine our radar trends with your live web context).\n2. Community Threat Board (Highlight our top user submissions).\n3. Curated Intelligence (Summarize the news articles).`,
         },
       ],
     }),
@@ -92,71 +111,21 @@ async function enrichWithPerplexity(topCategories) {
 
   if (!res.ok) {
     const err = await res.text();
-    console.error(`Perplexity error [${res.status}]:`, err);
-    return 'Live web enrichment unavailable at this time.';
+    throw new Error(`Perplexity error [${res.status}]: ${err.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content || 'No web context retrieved.';
+  return data?.choices?.[0]?.message?.content || '';
 }
 
-// ── Step 3: Cohere RAG synthesis ──────────────────────────────────────────────
-
-async function synthesiseWithCohere(extractedData, perplexityContext) {
-  const cohere = new CohereClient({ token: COHERE_KEY });
-
-  const { threatWarning, recentNews, topSubmissions } = extractedData;
-
-  const newsSummary = recentNews.length
-    ? recentNews.map(n => `- ${n.title} (${n.source_name}): ${n.hook || ''} Impact: ${n.impact || ''} Action: ${n.takeaway || ''}`).join('\n')
-    : 'No recent threat news available.';
-
-  const submissionSummary = topSubmissions.length
-    ? topSubmissions.map(s => `- Score ${s.score}/100 · ${s.category}: ${s.summary || s.preview || '(no preview)'}`).join('\n')
-    : 'No high-scoring public submissions this week.';
-
-  const documents = [
-    {
-      title: 'Radar Trends',
-      snippet: `Current threat warning: ${threatWarning || 'No active warning.'}\n\nTop categories: ${JSON.stringify(extractedData.topCategories)}`,
-    },
-    {
-      title: 'Perplexity Live Web Context',
-      snippet: perplexityContext,
-    },
-    {
-      title: 'Recent Threat News',
-      snippet: newsSummary,
-    },
-    {
-      title: 'Community Submissions',
-      snippet: submissionSummary,
-    },
-  ];
-
-  const response = await cohere.chat({
-    model: 'command-r-08-2024',
-    documents,
-    message: `You are the Lead Editor for PhishScore.ai. Write our Weekly Cyber Intelligence Briefing. You must synthesize the provided documents into a cohesive, professional newsletter. Use Markdown formatting. Include these sections:
-
-1. **Executive Summary** (Combine our radar trends with the live web context to describe the current threat landscape in 2-3 paragraphs).
-2. **Community Threat Board** (Highlight our top user-submitted cases with context on what scammers are targeting).
-3. **Curated Intelligence** (Summarize the news articles into digestible threat briefs, one paragraph each).
-
-Write in a direct, authoritative style. Be specific. Name real tactics and real targets where the data supports it.`,
-  });
-
-  return response.text || '';
-}
-
-// ── Step 4: Fetch subscribers ─────────────────────────────────────────────────
+// ── Step 3: Fetch subscribers ─────────────────────────────────────────────────
 
 async function fetchSubscribers() {
   const rows = await sbFetch('subscribers?select=email,unsubscribe_token');
   return Array.isArray(rows) ? rows : [];
 }
 
-// ── Step 5: Dispatch emails via Resend ────────────────────────────────────────
+// ── Step 4: Dispatch emails via Resend ────────────────────────────────────────
 
 function buildEmailHtml(bodyHtml, unsubscribeToken) {
   const unsubscribeUrl = `https://phishscore.ai/api/unsubscribe?token=${unsubscribeToken}`;
@@ -243,19 +212,16 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  if (!COHERE_KEY) return res.status(500).json({ error: 'COHERE_API_KEY not configured' });
+  if (!PERPLEXITY_KEY) return res.status(500).json({ error: 'PERPLEXITY_API_KEY not configured' });
 
   try {
     console.log('generate-newsletter: extracting data...');
     const extractedData = await extractData();
 
-    console.log('generate-newsletter: enriching with Perplexity...');
-    const perplexityContext = await enrichWithPerplexity(extractedData.topCategories);
+    console.log('generate-newsletter: generating with Perplexity...');
+    const newsletterContent = await generateNewsletterWithPerplexity(extractedData);
 
-    console.log('generate-newsletter: synthesising with Cohere...');
-    const newsletterContent = await synthesiseWithCohere(extractedData, perplexityContext);
-
-    if (!newsletterContent) throw new Error('Cohere returned empty content');
+    if (!newsletterContent) throw new Error('Perplexity returned empty content');
 
     console.log('generate-newsletter: storing in Supabase...');
     await sbInsert('newsletters', {
