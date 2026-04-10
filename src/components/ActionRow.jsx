@@ -14,8 +14,14 @@ const SCORE_LABEL = (score) => {
   return 'LIKELY SAFE';
 };
 
-export default function ActionRow({ T, onAnalyzeThreat }) {
-  const [omniOpen, setOmniOpen] = useState(false);
+export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
+  // activePanel: null | 'quickscan' | 'analyze'
+  const [activePanel, setActivePanel] = useState(null);
+
+  // Sync: when analyzer is closed externally, clear analyze panel
+  useEffect(() => {
+    if (!analyzerOpen && activePanel === 'analyze') setActivePanel(null);
+  }, [analyzerOpen, activePanel]);
   const [input, setInput] = useState('');
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,12 +30,32 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
   const inputRef = useRef(null);
   const omniRef = useRef(null);
 
+  const omniOpen = activePanel === 'quickscan';
+
   useEffect(() => {
     if (omniOpen) {
       setTimeout(() => inputRef.current?.focus(), 120);
       setTimeout(() => omniRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
     }
   }, [omniOpen]);
+
+  function openQuickScan() {
+    setActivePanel(p => p === 'quickscan' ? null : 'quickscan');
+    setResult(null);
+    setError(null);
+  }
+
+  function openAnalyzeThreat() {
+    setActivePanel('analyze');
+    onAnalyzeThreat();
+  }
+
+  function closePanel() {
+    setActivePanel(null);
+    setResult(null);
+    setError(null);
+    setInput('');
+  }
 
   async function runScan() {
     if (!input.trim() || loading) return;
@@ -63,84 +89,96 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
     inputRef.current?.focus();
   }
 
-  const accentBlue = '#5b6cf8';
   const accentRed = '#f43f5e';
+  const accentBlue = '#5b6cf8';
+  const panelOpen = activePanel !== null;
 
   return (
     <div style={{ marginBottom: 24 }}>
 
-      {/* Action Row — 50/50 split */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12,
-      }} className="action-row-grid">
+      {/* Action Row — hidden when a panel is open */}
+      {!panelOpen && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="action-row-grid">
 
-        {/* Quick Scan */}
-        <button
-          onClick={() => { setOmniOpen(o => !o); setResult(null); setError(null); }}
-          style={{
-            background: omniOpen
-              ? `${accentBlue}18`
-              : T.cardBg,
-            border: `1.5px solid ${omniOpen ? accentBlue : T.cardBorder}`,
-            borderRadius: 14,
-            padding: '18px 22px',
-            cursor: 'pointer',
-            textAlign: 'left',
-            color: T.text,
-            transition: 'all 0.2s',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <span style={{ fontSize: 18 }}>⚡</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, letterSpacing: 2, color: omniOpen ? accentBlue : T.text }}>
-              QUICK SCAN
-            </span>
-          </div>
-          <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: T.text3, lineHeight: 1.5, paddingLeft: 28 }}>
-            Best for checking phone numbers, sender emails, or malicious URLs.
-          </div>
-        </button>
+          {/* Quick Scan */}
+          <button
+            onClick={openQuickScan}
+            style={{
+              background: T.cardBg,
+              border: `1.5px solid ${T.cardBorder}`,
+              borderRadius: 14,
+              padding: '18px 22px',
+              cursor: 'pointer',
+              textAlign: 'left',
+              color: T.text,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = accentRed; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.cardBorder; }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 18 }}>⚡</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, letterSpacing: 2, color: accentRed }}>
+                QUICK SCAN
+              </span>
+            </div>
+            <div style={{ fontFamily: 'sans-serif', fontSize: 14, fontWeight: 700, color: T.text3, lineHeight: 1.5, paddingLeft: 28 }}>
+              Best for checking phone numbers, sender emails, or malicious URLs.
+            </div>
+          </button>
 
-        {/* Analyze Threat */}
-        <button
-          onClick={onAnalyzeThreat}
-          style={{
-            background: T.cardBg,
-            border: `1.5px solid ${T.cardBorder}`,
-            borderRadius: 14,
-            padding: '18px 22px',
-            cursor: 'pointer',
-            textAlign: 'left',
-            color: T.text,
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = accentRed; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = T.cardBorder; }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <span style={{ fontSize: 18 }}>🔬</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, letterSpacing: 2, color: T.text }}>
-              ANALYZE THREAT
-            </span>
-          </div>
-          <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: T.text3, lineHeight: 1.5, paddingLeft: 28 }}>
-            Best for complex scams, full email chains, and deep forensic context.
-          </div>
-        </button>
-      </div>
+          {/* Analyze Threat */}
+          <button
+            onClick={openAnalyzeThreat}
+            style={{
+              background: T.cardBg,
+              border: `1.5px solid ${T.cardBorder}`,
+              borderRadius: 14,
+              padding: '18px 22px',
+              cursor: 'pointer',
+              textAlign: 'left',
+              color: T.text,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = accentRed; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.cardBorder; }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 18 }}>🔬</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, letterSpacing: 2, color: accentRed }}>
+                ANALYZE THREAT
+              </span>
+            </div>
+            <div style={{ fontFamily: 'sans-serif', fontSize: 14, fontWeight: 700, color: T.text3, lineHeight: 1.5, paddingLeft: 28 }}>
+              Best for complex scams, full email chains, and deep forensic context.
+            </div>
+          </button>
+        </div>
+      )}
 
-      {/* Omni-Box — expands below when Quick Scan is active */}
+      {/* Omni-Box — shown when Quick Scan panel is active */}
       {omniOpen && (
         <div ref={omniRef} style={{
-          marginTop: 10,
           background: T.cardBg,
           border: `1.5px solid ${focused ? accentBlue : T.cardBorder}`,
           borderRadius: 14,
           overflow: 'hidden',
           transition: 'border-color 0.2s',
         }}>
+          {/* Back button */}
+          <div style={{ padding: '10px 14px 0', display: 'flex', alignItems: 'center' }}>
+            <button onClick={closePanel} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: T.text3, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1,
+              padding: '4px 0', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              BACK
+            </button>
+          </div>
+
           {/* Input area */}
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <textarea
@@ -158,7 +196,7 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                padding: '16px 18px',
+                padding: '12px 18px',
                 color: T.text,
                 fontSize: 14,
                 fontFamily: 'sans-serif',
@@ -225,7 +263,7 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
           {/* Error */}
           {error && (
             <div style={{ padding: '14px 18px', borderTop: `1px solid ${T.cardBorder}`, background: 'rgba(244,63,94,0.05)' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#f43f5e' }}>ERROR: {error}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: accentRed }}>ERROR: {error}</span>
             </div>
           )}
 
@@ -233,7 +271,6 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
           {result && !loading && (
             <div style={{ borderTop: `1px solid ${T.cardBorder}`, padding: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
-                {/* Score ring */}
                 <div style={{
                   width: 64, height: 64, borderRadius: '50%',
                   border: `3px solid ${SCORE_COLOR(result.score)}`,
@@ -244,13 +281,11 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
                   <div style={{ fontFamily: 'monospace', fontSize: 7, color: SCORE_COLOR(result.score), letterSpacing: 1 }}>/100</div>
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{
                       fontFamily: 'monospace', fontSize: 9, letterSpacing: 2, fontWeight: 700,
-                      color: SCORE_COLOR(result.score),
-                      background: `${SCORE_COLOR(result.score)}18`,
-                      border: `1px solid ${SCORE_COLOR(result.score)}40`,
-                      borderRadius: 5, padding: '2px 8px',
+                      color: SCORE_COLOR(result.score), background: `${SCORE_COLOR(result.score)}18`,
+                      border: `1px solid ${SCORE_COLOR(result.score)}40`, borderRadius: 5, padding: '2px 8px',
                     }}>{SCORE_LABEL(result.score)}</span>
                     <span style={{
                       fontFamily: 'monospace', fontSize: 9, letterSpacing: 1,
@@ -271,27 +306,16 @@ export default function ActionRow({ T, onAnalyzeThreat }) {
                 </div>
               </div>
 
-              {/* OSINT flags */}
               {result.osint && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {result.osint.fraud_score !== null && (
-                    <OsintPill label="IPQS FRAUD" value={`${result.osint.fraud_score}/100`} color={result.osint.fraud_score > 50 ? '#f43f5e' : '#34d399'} T={T} />
+                    <OsintPill label="IPQS FRAUD" value={`${result.osint.fraud_score}/100`} color={result.osint.fraud_score > 50 ? accentRed : '#34d399'} T={T} />
                   )}
-                  {result.osint.recent_abuse && (
-                    <OsintPill label="RECENT ABUSE" value="FLAGGED" color="#f43f5e" T={T} />
-                  )}
-                  {result.osint.disposable && (
-                    <OsintPill label="DISPOSABLE EMAIL" value="YES" color="#fb923c" T={T} />
-                  )}
-                  {result.osint.spam_trap && (
-                    <OsintPill label="SPAM TRAP" value="YES" color="#f43f5e" T={T} />
-                  )}
-                  {result.osint.line_type && (
-                    <OsintPill label="LINE TYPE" value={result.osint.line_type} color={result.osint.line_type === 'VOIP' ? '#f43f5e' : T.text3} T={T} />
-                  )}
-                  {result.osint.carrier && (
-                    <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />
-                  )}
+                  {result.osint.recent_abuse && <OsintPill label="RECENT ABUSE" value="FLAGGED" color={accentRed} T={T} />}
+                  {result.osint.disposable && <OsintPill label="DISPOSABLE EMAIL" value="YES" color="#fb923c" T={T} />}
+                  {result.osint.spam_trap && <OsintPill label="SPAM TRAP" value="YES" color={accentRed} T={T} />}
+                  {result.osint.line_type && <OsintPill label="LINE TYPE" value={result.osint.line_type} color={result.osint.line_type === 'VOIP' ? accentRed : T.text3} T={T} />}
+                  {result.osint.carrier && <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />}
                 </div>
               )}
             </div>

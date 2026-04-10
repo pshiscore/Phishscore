@@ -345,6 +345,7 @@ export default function App() {
           {/* ACTION ROW + OMNI-BOX */}
           <ActionRow
             T={T}
+            analyzerOpen={isScannerOpen || activeView === 'scanner'}
             onAnalyzeThreat={() => isMobile ? setIsScannerOpen(true) : switchView(activeView === 'scanner' ? 'dashboard' : 'scanner')}
           />
 
