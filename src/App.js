@@ -380,18 +380,26 @@ export default function App() {
                     </div>
                   ) : (
                     filtered.map((s, i) => {
-                      const cat = getCat(s.category), sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
+                      const sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
                       const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
+                      // Quick scan: use input_type as the primary category pill
+                      const qsCatLabel = s._isQuickScan ? ({ phone: '📱 Phone Scan', email: '📧 Email Scan', url: '🔗 Link Scan', text: '📝 Text Scan' }[s.input_type] || '⚡ Quick Scan') : null;
+                      const cat = s._isQuickScan ? null : getCat(s.category);
+                      // For quick scans: prepend ai_category as first tag, then ai_tags
+                      const qsTags = s._isQuickScan ? [s.category, ...(s.ai_tags || [])].filter(Boolean) : [];
                       return (
                         <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
                           <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
-                              <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                              {(s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
+                              {s._isQuickScan ? (
+                                <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1 }}>{qsCatLabel}</span>
+                              ) : (
+                                <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
+                              )}
+                              {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                               <VisibilityBadge visibility={vis} />
-                              {s._isQuickScan && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#38bdf8", border: "1px solid #38bdf840", background: "#38bdf812", fontFamily: "monospace", letterSpacing: 1 }}>⚡ QUICK SCAN</span>}
-                              {s._isQuickScan && (s.ai_tags || []).map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#94a3b8", border: "1px solid #33415520", background: "#1e293b", fontFamily: "monospace", letterSpacing: 1 }}>{tag}</span>)}
+                              {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#64748b", border: "1px solid #1e293b", background: "#0f172a", fontFamily: "monospace", letterSpacing: 1 }}>{tag}</span>)}
                               {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
                               {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
                               <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
