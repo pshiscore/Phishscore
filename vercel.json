@@ -4,5 +4,8 @@
       "path": "/api/cron/fetch-news",
       "schedule": "0 */12 * * *"
     }
+  ],
+  "rewrites": [
+    { "source": "/beta", "destination": "/index.html" }
   ]
 }
