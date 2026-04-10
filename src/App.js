@@ -146,16 +146,8 @@ export default function App() {
         db.getQuickScans().catch(() => []),
       ]);
       const subs = Array.isArray(subData) ? subData : [];
-      const scans = Array.isArray(scanData) ? scanData.map(q => ({
-        id: `qs_${q.id}`,
-        _isQuickScan: true,
-        score: q.ai_score,
-        category: q.ai_category,
-        visibility: 'private',
-        input_type: q.input_type,
-        created_at: q.created_at,
-        tags: [],
-      })) : [];
+      // scanData is already normalized by /api/get-quick-scans (PII stripped server-side)
+      const scans = Array.isArray(scanData) ? scanData : [];
       const merged = [...subs, ...scans].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setSubmissions(merged);
     } catch (e) { console.error(e); }
@@ -389,12 +381,7 @@ export default function App() {
                   ) : (
                     filtered.map((s, i) => {
                       const cat = getCat(s.category), sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
-                      const quickScanLabel = s._isQuickScan ? (
-                        s.input_type === 'phone' ? 'Private Phone Scan — IPQS OSINT details hidden.' :
-                        s.input_type === 'email' ? 'Private Email Scan — Content hidden.' :
-                        s.input_type === 'url'   ? 'Private URL Scan — Content hidden.' :
-                        'Private Quick Scan — Content hidden.'
-                      ) : null;
+                      const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
                       return (
                         <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
                           <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />

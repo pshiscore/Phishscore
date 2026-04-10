@@ -9,9 +9,7 @@ const db = {
   },
 
   async getQuickScans() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,created_at&order=created_at.desc&limit=50`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-    });
+    const res = await fetch('/api/get-quick-scans');
     return res.json();
   },
 
