@@ -77,8 +77,18 @@ Instructions: ${hasOsint
   ? `Analyze the contextual claims in the User Input against the technical reality of the OSINT Data. If the text claims to be from a legitimate organization (e.g., a bank, government agency) but the OSINT shows a VOIP line, high fraud score, disposable email, or phishing flag — treat that mismatch as a severe threat indicator and raise the score significantly.`
   : `Analyze the User Input for scam patterns, urgency tactics, impersonation, suspicious links, or social engineering. Score based on content alone.`}
 
-Return this exact JSON shape:
-{"score": <0-100 integer>, "category": "<one of: phishing|scam|fraud|spam|suspicious|safe|unknown>", "summary": "<one sentence, max 120 chars>"}
+Return this exact JSON shape (no markdown, no explanation):
+{"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>"}
+
+Category rules:
+- MUST be a specific, highly descriptive label — e.g. "Insurance Scam", "Delivery Phishing", "Tech Support Fraud", "Bank Impersonation", "Romance Scam", "Investment Fraud", "IRS Impersonation", "Suspicious URL"
+- NEVER output "Unknown", "AI Detect", "unknown", or any generic placeholder
+- If genuinely unclear, use the closest plausible threat type, e.g. "Suspicious Cold Call" or "Unverified Link"
+
+Tags rules:
+- 1 to 3 short context tags based on the input (e.g. ["Insurance", "Cold Call", "Spoofed Number"])
+- Tags must NOT contain any PII (no phone numbers, emails, names, or addresses)
+- Tags should describe the scam type, medium, or tactic — not the victim
 
 Scoring guide:
 - 0-20 = safe / low risk
@@ -114,10 +124,12 @@ Additional rules:
   // Parse JSON — strip any accidental markdown fences
   const jsonStr = text.replace(/^```json?\s*/i, '').replace(/```$/i, '').trim();
   try {
-    return JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonStr);
+    // Ensure tags is always an array
+    if (!Array.isArray(parsed.tags)) parsed.tags = [];
+    return parsed;
   } catch {
-    // Fallback if parsing fails
-    return { score: 50, category: 'unknown', summary: 'Could not parse AI response.' };
+    return { score: 50, category: 'Suspicious Activity', tags: [], summary: 'Could not parse AI response.' };
   }
 }
 
@@ -180,6 +192,7 @@ module.exports = async function handler(req, res) {
     ipqs_data: ipqsData || null,
     ai_score: aiResult.score,
     ai_category: aiResult.category,
+    ai_tags: aiResult.tags || [],
     visibility: 'private',
     created_at: new Date().toISOString(),
   });

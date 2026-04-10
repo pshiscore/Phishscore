@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,created_at&order=created_at.desc&limit=50`,
+      `${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,ai_tags,created_at&order=created_at.desc&limit=50`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
 
@@ -23,6 +23,7 @@ module.exports = async function handler(req, res) {
       input_type: q.input_type,
       preview: `Private ${q.input_type || 'quick'} scan — OSINT details hidden.`,
       tags: [],
+      ai_tags: Array.isArray(q.ai_tags) ? q.ai_tags : [],
       created_at: q.created_at,
     }));
 
