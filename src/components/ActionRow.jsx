@@ -316,6 +316,12 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                   {result.osint.spam_trap && <OsintPill label="SPAM TRAP" value="YES" color={accentRed} T={T} />}
                   {result.osint.line_type && <OsintPill label="LINE TYPE" value={result.osint.line_type} color={result.osint.line_type === 'VOIP' ? accentRed : T.text3} T={T} />}
                   {result.osint.carrier && <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />}
+                  {result.osint.phishing && <OsintPill label="PHISHING" value="DETECTED" color={accentRed} T={T} />}
+                  {result.osint.malware && <OsintPill label="MALWARE" value="DETECTED" color={accentRed} T={T} />}
+                  {result.osint.unsafe && <OsintPill label="UNSAFE URL" value="YES" color="#fb923c" T={T} />}
+                  {result.osint.risk_score !== null && result.osint.type === 'url' && (
+                    <OsintPill label="URL RISK" value={`${result.osint.risk_score}/100`} color={result.osint.risk_score > 50 ? accentRed : '#34d399'} T={T} />
+                  )}
                 </div>
               )}
             </div>

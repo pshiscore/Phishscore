@@ -18,30 +18,79 @@ function detectInputType(input) {
 
 // ── Claude Haiku quick scoring ────────────────────────────────────────────────
 
-async function scoreWithClaude(input, inputType, ipqsData) {
-  let osintBlock = '';
-  if (ipqsData?.data) {
-    const d = ipqsData.data;
-    if (ipqsData.type === 'email') {
-      osintBlock = `\nOSINT DATA (IPQS): fraud_score=${d.fraud_score}, disposable=${d.disposable}, recent_abuse=${d.recent_abuse}, spam_trap=${d.spam_trap}, honeypot=${d.honeypot}, leaked=${d.leaked}`;
-    } else if (ipqsData.type === 'phone') {
-      osintBlock = `\nOSINT DATA (IPQS): fraud_score=${d.fraud_score}, line_type=${d.line_type}, carrier=${d.carrier}, recent_abuse=${d.recent_abuse}, risky=${d.risky}, spammer=${d.spammer}, voip=${d.line_type === 'VOIP'}`;
-    }
+function buildOsintBlock(ipqsData) {
+  if (!ipqsData?.data) return '';
+  const d = ipqsData.data;
+  const entity = ipqsData.input;
+
+  if (ipqsData.type === 'email') {
+    return `
+OSINT DATA — We extracted the email "${entity}" and found:
+  Fraud Score: ${d.fraud_score ?? 'N/A'}/100
+  Recent Abuse: ${d.recent_abuse}
+  Disposable Address: ${d.disposable}
+  Spam Trap: ${d.spam_trap}
+  Honeypot: ${d.honeypot}
+  Leaked in Breach: ${d.leaked}
+  Domain: ${d.domain || 'N/A'}`;
   }
 
-  const prompt = `You are a cyber threat analyst. Analyze this input and return a JSON object only — no explanation, no markdown.
+  if (ipqsData.type === 'phone') {
+    return `
+OSINT DATA — We extracted the phone number "${entity}" and found:
+  Fraud Score: ${d.fraud_score ?? 'N/A'}/100
+  Line Type: ${d.line_type || 'Unknown'} ${d.line_type === 'VOIP' ? '(CRITICAL: VOIP is heavily used by scammers)' : ''}
+  Carrier: ${d.carrier || 'Unknown'}
+  Recent Abuse: ${d.recent_abuse}
+  Spammer Listed: ${d.spammer}
+  Risky: ${d.risky}`;
+  }
 
-Input type: ${inputType}
-Input: ${input}${osintBlock}
+  if (ipqsData.type === 'url') {
+    return `
+OSINT DATA — We scanned the URL "${entity}" and found:
+  Risk Score: ${d.risk_score ?? 'N/A'}/100
+  Phishing: ${d.phishing}
+  Malware: ${d.malware}
+  Unsafe: ${d.unsafe}
+  Suspicious: ${d.suspicious}
+  Domain Age: ${d.domain_age ? JSON.stringify(d.domain_age) : 'Unknown'}
+  Category: ${d.category || 'N/A'}`;
+  }
+
+  return '';
+}
+
+async function scoreWithClaude(rawInput, inputType, ipqsData) {
+  const osintBlock = buildOsintBlock(ipqsData);
+  const hasOsint = osintBlock.length > 0;
+
+  const prompt = `You are a cyber threat analyst. Analyze the following and return a JSON object only — no explanation, no markdown.
+
+User Input (what the user submitted):
+"${rawInput}"
+
+Input Type: ${inputType}
+${hasOsint ? osintBlock : 'OSINT DATA: No entity extracted or OSINT unavailable for this input type.'}
+
+Instructions: ${hasOsint
+  ? `Analyze the contextual claims in the User Input against the technical reality of the OSINT Data. If the text claims to be from a legitimate organization (e.g., a bank, government agency) but the OSINT shows a VOIP line, high fraud score, disposable email, or phishing flag — treat that mismatch as a severe threat indicator and raise the score significantly.`
+  : `Analyze the User Input for scam patterns, urgency tactics, impersonation, suspicious links, or social engineering. Score based on content alone.`}
 
 Return this exact JSON shape:
 {"score": <0-100 integer>, "category": "<one of: phishing|scam|fraud|spam|suspicious|safe|unknown>", "summary": "<one sentence, max 120 chars>"}
 
-Rules:
-- score 0-20 = safe/low risk, 21-50 = suspicious, 51-75 = likely threat, 76-100 = confirmed threat
-- If OSINT fraud_score is provided, weight it heavily in your score
-- VOIP line type is a strong scam indicator
-- Disposable or honeypot email = high score
+Scoring guide:
+- 0-20 = safe / low risk
+- 21-50 = suspicious
+- 51-75 = likely threat
+- 76-100 = confirmed threat
+
+Additional rules:
+- VOIP line type + legitimacy claim in text = score ≥ 80
+- Fraud score ≥ 75 from IPQS = score ≥ 70
+- Disposable or honeypot email = score ≥ 65
+- Phishing or malware flag from URL scan = score ≥ 85
 - Be concise and objective`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -107,14 +156,13 @@ module.exports = async function handler(req, res) {
   const rawInput = input.trim();
   const inputType = detectInputType(rawInput);
 
-  // OSINT check for email/phone — fail open
+  // OSINT check — run for all types; smart router extracts entity from free text too
   let ipqsData = null;
-  if (inputType === 'email' || inputType === 'phone') {
-    try {
-      ipqsData = await analyzeContactData(rawInput);
-    } catch (err) {
-      console.warn('IPQS quick-scan failed (non-fatal):', err.message);
-    }
+  try {
+    ipqsData = await analyzeContactData(rawInput);
+    if (ipqsData?.type === 'unknown') ipqsData = null; // no entity found, skip
+  } catch (err) {
+    console.warn('IPQS quick-scan failed (non-fatal):', err.message);
   }
 
   // AI scoring
@@ -145,14 +193,19 @@ module.exports = async function handler(req, res) {
     osint: ipqsData
       ? {
           type: ipqsData.type,
-          fraud_score: ipqsData.data?.fraud_score ?? null,
+          fraud_score: ipqsData.data?.fraud_score ?? ipqsData.data?.risk_score ?? null,
           recent_abuse: ipqsData.data?.recent_abuse ?? null,
-          // email extras
+          // email
           disposable: ipqsData.data?.disposable ?? null,
           spam_trap: ipqsData.data?.spam_trap ?? null,
-          // phone extras
+          // phone
           line_type: ipqsData.data?.line_type ?? null,
           carrier: ipqsData.data?.carrier ?? null,
+          // url
+          phishing: ipqsData.data?.phishing ?? null,
+          malware: ipqsData.data?.malware ?? null,
+          unsafe: ipqsData.data?.unsafe ?? null,
+          risk_score: ipqsData.data?.risk_score ?? null,
         }
       : null,
   });
