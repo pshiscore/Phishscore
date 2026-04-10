@@ -8,6 +8,13 @@ const db = {
     return res.json();
   },
 
+  async getQuickScans() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,created_at&order=created_at.desc&limit=50`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    return res.json();
+  },
+
   async checkDuplicate(preview) {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=50`, {
