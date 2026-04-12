@@ -72,13 +72,19 @@ function VisibilityPicker({ selected, onSelect }) {
   );
 }
 
-function ConfidenceMeter({ text, source, T = {} }) {
+function ConfidenceMeter({ text, source, hasImage = false, T = {} }) {
   let score = 0, tips = [];
-  if (text.trim().length > 20) { score += 30; } else { tips.push("Add more message text"); }
-  if (text.trim().length > 150) score += 15;
+  if (hasImage) {
+    score += 40;
+  } else {
+    if (text.trim().length > 20) { score += 30; } else { tips.push("Add more message text"); }
+    if (text.trim().length > 150) score += 15;
+  }
   if (source && source.trim().length > 3) { score += 25; } else { tips.push("Add sender address or phone number"); }
-  if (/@/.test(text + source) || (text + source).split("").filter(c => c >= "0" && c <= "9").length >= 7) score += 15;
-  if (/received:|message-id:|dkim-signature:|x-mailer:/i.test(text)) { score += 15; } else if (text.length > 100) tips.push("Paste email headers for deepest analysis");
+  if (!hasImage) {
+    if (/@/.test(text + source) || (text + source).split("").filter(c => c >= "0" && c <= "9").length >= 7) score += 15;
+    if (/received:|message-id:|dkim-signature:|x-mailer:/i.test(text)) { score += 15; } else if (text.length > 100) tips.push("Paste email headers for deepest analysis");
+  }
   score = Math.min(score, 100);
   const barColor = score >= 80 ? "#34d399" : score >= 50 ? "#fb923c" : "#f43f5e";
   const label = score >= 80 ? "Strong submission" : score >= 50 ? "Good submission" : "Basic submission";
@@ -211,13 +217,13 @@ function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
 // ── Shared scanner content — used both inline and inside the modal ────────────
 export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
   const [step, setStep] = useState(1);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
   const [text, setText] = useState("");
   const [source, setSource] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [inputMode, setInputMode] = useState("text");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [duplicate, setDuplicate] = useState(null);
@@ -232,11 +238,17 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const isSubmitting = useRef(false);
   const cat = getCat(category);
 
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const resetForm = () => {
     setStep(1); setResult(null); setText(""); setSource("");
     setCategory("other"); setVisibility("private"); setImage(null);
     setImagePreview(null); setErrorState(null); setDuplicate(null);
-    setTrainAI(false); setInputMode("text"); setDeliveryChannel("other");
+    setTrainAI(false); setDeliveryChannel("other");
     setCaseId(null);
     setTrainingId(null);
   };
@@ -251,20 +263,22 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const analyze = async () => {
     // CHANGE: block if already in flight
     if (isSubmitting.current) return;
-    if (inputMode === "text" && !text.trim()) return;
-    if (inputMode === "image" && !image) return;
+    if (!text.trim() && !image) return;
     isSubmitting.current = true;
-    if (inputMode === "text" && text.trim().length > 30) {
+    if (text.trim().length > 30) {
       const dup = await db.checkDuplicate(text.slice(0, 130));
       if (dup) setDuplicate(dup);
     }
     setLoading(true);
     try {
-      let messages;
       const categoryList = "publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, other";
       // CHANGE: summary trimmed to 1 sentence; whatToDo explicitly banned from including any URLs
       const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<ONE plain-English sentence describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action sentence — NEVER include any URLs, domain names, or web addresses of any kind, not even official ones. Say 'go to the official website' or 'contact your bank directly' instead>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>}`;
-      if (inputMode === "image" && image) {
+      const systemInstruction = `You are PhishScore.ai. Analyze this content for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}`;
+
+      // Build content array dynamically — image + text can coexist
+      const content = [];
+      if (image) {
         // Compress image before sending to stay under 4.5MB Vercel limit
         const compressedImage = await new Promise((resolve) => {
           const img = new Image();
@@ -283,14 +297,14 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           img.src = image;
         });
         const base64 = compressedImage.split(",")[1];
-        const mimeType = "image/jpeg";
-        messages = [{ role: "user", content: [
-          { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-          { type: "text", text: `You are PhishScore.ai. Analyze this screenshot for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}` }
-        ]}];
-      } else {
-        messages = [{ role: "user", content: `You are PhishScore.ai. Analyze this message for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}\n\nMessage:\n${text}` }];
+        content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } });
       }
+      if (text.trim()) {
+        content.push({ type: "text", text: `User Message:\n${text}` });
+      }
+      content.push({ type: "text", text: systemInstruction });
+
+      const messages = [{ role: "user", content }];
       // Get reCAPTCHA v3 token before submitting
       let recaptchaToken = null;
       try {
@@ -349,7 +363,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         });
       }
       const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
-      const savedId = await onNewResult({ category: finalCategory, text: inputMode === "image" ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel });
+      const savedId = await onNewResult({ category: finalCategory, text: image && !text.trim() ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel });
       setCaseId(savedId || null);
       setStep(3);
     } catch {
@@ -362,42 +376,18 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   };
 
   const sc = result ? getScoreColor(result.score) : "#fff";
-  const canAnalyze = inputMode === "text" ? text.trim().length > 0 : image !== null;
+  const canAnalyze = text.trim().length > 0 || image !== null;
   const visOpt = VISIBILITY_OPTIONS.find(o => o.id === visibility);
 
   return (
     <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 16, width: "100%", padding: 32, boxSizing: "border-box", minWidth: 0 }}>
 
         <div style={{ marginBottom: 24 }}>
-          {/* FIX: uses PhishScoreLogo so PHISH is visible in light mode */}
           <div style={{ marginBottom: 8 }}><PhishScoreLogo T={T} size={20} dotSize={13} /></div>
-          {step < 3 && (
-            <div className="step-indicators" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-              {["Choose Type", "Submit", "Your Score"].map((s, i) => (
-                <div key={s} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: i + 1 <= step ? "#f43f5e" : T.innerBg, color: i + 1 <= step ? "#fff" : T.text4, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace" }}>{i + 1}</div>
-                  <span style={{ fontSize: 10, color: i + 1 <= step ? "#94a3b8" : T.text4, fontFamily: "monospace" }}>{s}</span>
-                  {i < 2 && <div style={{ width: 16, height: 1, background: T.innerBg }} />}
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{ fontSize: 14, letterSpacing: 2, color: T.text, fontFamily: "monospace", marginBottom: 16 }}>DEEP INTEL ANALYSIS</div>
         </div>
 
-        {step === 1 && (
-          <>
-            <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 1 - WHAT TYPE OF SCAM?</div>
-            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.cardBorder}` }}>
-              <VisibilityPicker selected={visibility} onSelect={setVisibility} />
-            </div>
-            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={() => setStep(2)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>NEXT</button>
-            </div>
-          </>
-        )}
-
-        {step === 2 && loading && (
+        {(step === 1 || step === 2) && loading && (
           <div style={{ textAlign: "center", padding: "48px 16px" }}>
             <div style={{ fontSize: 32, marginBottom: 16, display: "inline-block", animation: "spin 1.2s linear infinite" }}>
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -409,48 +399,44 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           </div>
         )}
 
-        {step === 2 && !loading && (
+        {(step === 1 || step === 2) && !loading && (
           <>
-            <div style={{ fontSize: 12, letterSpacing: 3, color: "#475569", fontFamily: "monospace", marginBottom: 16 }}>STEP 2 - SUBMIT THE CONTENT</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: `${cat.color}12`, border: `1px solid ${cat.color}35`, borderRadius: 20 }}>
-                <span style={{ fontSize: 10, color: cat.color, fontFamily: "monospace", fontWeight: 700 }}>{cat.label}</span>
-                <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 10, fontFamily: "monospace" }}>change</button>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: `${visOpt.color}12`, border: `1px solid ${visOpt.color}35`, borderRadius: 20 }}>
-                <span style={{ fontSize: 10, color: visOpt.color, fontFamily: "monospace", fontWeight: 700 }}>{visOpt.label.toUpperCase()}</span>
-                <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 10, fontFamily: "monospace" }}>change</button>
-              </div>
+            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.cardBorder}`, marginBottom: 16 }}>
+              <VisibilityPicker selected={visibility} onSelect={setVisibility} />
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <button onClick={() => setInputMode("text")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "text" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "text" ? "#f43f5e18" : T.innerBg, color: inputMode === "text" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>PASTE TEXT</button>
-              <button onClick={() => setInputMode("image")} style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1.5px solid ${inputMode === "image" ? "#f43f5e" : T.innerBorder}`, background: inputMode === "image" ? "#f43f5e18" : T.innerBg, color: inputMode === "image" ? "#f43f5e" : T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>UPLOAD SCREENSHOT</button>
-            </div>
-            {inputMode === "text" ? (
-              <>
+            <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? 16 : 12, marginBottom: 0 }}>
+              {/* Text input */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <textarea value={text} onChange={e => { setText(e.target.value); if (!source.trim()) { const t = e.target.value, atIdx = t.indexOf("@"); if (atIdx > 0) { const start = t.slice(0, atIdx).replace(/.*\s/, ""), end = t.slice(atIdx + 1).replace(/\s.*/, ""); if (start && end && end.includes(".")) setSource(start + "@" + end.split(".").slice(0, 2).join(".")); } } }}
                   placeholder="Paste the full suspicious message here. Include sender address, subject line, and all body text for best results."
                   style={{ width: "100%", minHeight: 144, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
-                <ConfidenceMeter text={text} source={source} T={T} />
-              </>
-            ) : (
-              <div style={{ marginBottom: 12 }}>
+              </div>
+              {/* Image upload */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <input type="file" accept="image/*" ref={fileRef} onChange={handleImageUpload} style={{ display: "none" }} />
                 {!imagePreview ? (
-                  <button onClick={() => fileRef.current.click()} style={{ width: "100%", minHeight: 160, background: T.inputBg, border: `2px dashed ${T.inputBorder}`, borderRadius: 10, color: T.text4, fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <div style={{ fontSize: 28 }}>[ IMG ]</div>
-                    <div>Tap to upload screenshot</div>
-                    <div style={{ fontSize: 10, color: T.text4 }}>JPG, PNG, or HEIC from your camera roll</div>
-                  </button>
+                  isDesktop ? (
+                    <button onClick={() => fileRef.current.click()} style={{ width: "100%", height: "100%", minHeight: 144, background: T.inputBg, border: `2px dashed ${T.inputBorder}`, borderRadius: 10, color: T.text4, fontFamily: "monospace", fontSize: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, boxSizing: "border-box" }}>
+                      <div style={{ fontSize: 24 }}>[ IMG ]</div>
+                      <div>Upload screenshot</div>
+                      <div style={{ fontSize: 10, color: T.text4 }}>optional — JPG, PNG, HEIC</div>
+                    </button>
+                  ) : (
+                    <button onClick={() => fileRef.current.click()} style={{ width: "100%", height: 48, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text4, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, letterSpacing: 1 }}>
+                      📷 TAP TO UPLOAD SCREENSHOT
+                    </button>
+                  )
                 ) : (
-                  <div style={{ position: "relative" }}>
-                    <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 280, objectFit: "contain", background: "#0d0f1a" }} />
+                  <div style={{ position: "relative", height: "100%" }}>
+                    <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: isDesktop ? 280 : 200, objectFit: "contain", background: "#0d0f1a" }} />
                     <button onClick={() => { setImage(null); setImagePreview(null); }} style={{ position: "absolute", top: 8, right: 8, background: "#f43f5e", border: "none", color: "#fff", width: 26, height: 26, borderRadius: "50%", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>x</button>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+            <ConfidenceMeter text={text} source={source} hasImage={image !== null} T={T} />
             {/* Delivery channel picker */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>HOW WAS THIS DELIVERED TO YOU?</div>
@@ -493,8 +479,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
                 <button onClick={() => setDuplicate(null)} style={{ background: "none", border: "none", color: "#fbbf24", cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: 0 }}>Analyze anyway</button>
               </div>
             )}
-            <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginBottom: 12 }}>
-              <button onClick={() => setStep(1)} style={{ background: T.innerBg, border: "none", color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>BACK</button>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 12 }}>
               <button onClick={e => { e.preventDefault(); analyze(); }} disabled={loading || !canAnalyze} style={{ background: loading || !canAnalyze ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !canAnalyze ? "#334155" : "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading || !canAnalyze ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading || !canAnalyze ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
                 {loading ? "ANALYZING..." : "GET MY SCORE"}
               </button>
@@ -546,7 +531,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
               {errorState.message}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={() => { setStep(2); setErrorState(null); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>TRY AGAIN</button>
+              <button onClick={() => { setStep(1); setErrorState(null); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>TRY AGAIN</button>
               <button onClick={onClose} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>CLOSE</button>
             </div>
           </div>
