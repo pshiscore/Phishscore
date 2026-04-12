@@ -399,6 +399,10 @@ export default function App() {
                               )}
                               {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
                               <VisibilityBadge visibility={vis} />
+                              {s._isQuickScan
+                                ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>⚡ QUICK SCAN</span>
+                                : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>🔬 ANALYZE THREAT</span>
+                              }
                               {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 9px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500, boxShadow: "0 1px 2px rgba(0,0,0,0.12)" }}>{tag}</span>)}
                               {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
                               {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
