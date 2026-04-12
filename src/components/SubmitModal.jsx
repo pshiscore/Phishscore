@@ -385,7 +385,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ marginBottom: 8 }}><PhishScoreLogo T={T} size={20} dotSize={13} /></div>
-          <div style={{ fontSize: 14, letterSpacing: 2, color: T.text, fontFamily: "monospace", marginBottom: 16 }}>DEEP INTEL ANALYSIS</div>
+          <div style={{ fontSize: 14, letterSpacing: 2, color: T.text, fontFamily: "monospace", marginBottom: 16 }}>ANALYZE THREAT</div>
         </div>
 
         {(step === 1 || step === 2) && loading && (
