@@ -218,6 +218,7 @@ function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
 export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
   const [step, setStep] = useState(1);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [activeModal, setActiveModal] = useState('none');
   const [category, setCategory] = useState("other");
   const [visibility, setVisibility] = useState("private");
   const [text, setText] = useState("");
@@ -401,10 +402,29 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
 
         {(step === 1 || step === 2) && !loading && (
           <>
-            <CategoryPicker selected={category} onSelect={setCategory} submissionCounts={submissionCounts} T={T} />
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.cardBorder}`, marginBottom: 16 }}>
-              <VisibilityPicker selected={visibility} onSelect={setVisibility} />
+            {/* Interactive pill row */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              <button
+                onClick={() => setActiveModal(v => v === 'category' ? 'none' : 'category')}
+                style={{ background: cat.color + '15', border: `1px solid ${cat.color}`, borderRadius: 20, padding: "6px 14px", color: cat.color, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.15s" }}>
+                {cat.label} {activeModal === 'category' ? '▲' : '▼'}
+              </button>
+              <button
+                onClick={() => setActiveModal(v => v === 'visibility' ? 'none' : 'visibility')}
+                style={{ background: visOpt.color + '15', border: `1px solid ${visOpt.color}`, borderRadius: 20, padding: "6px 14px", color: visOpt.color, fontFamily: "monospace", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.15s" }}>
+                {visOpt.label.toUpperCase()} {activeModal === 'visibility' ? '▲' : '▼'}
+              </button>
             </div>
+            {activeModal === 'category' && (
+              <div style={{ marginBottom: 16, padding: 16, background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12 }}>
+                <CategoryPicker selected={category} onSelect={v => { setCategory(v); setActiveModal('none'); }} submissionCounts={submissionCounts} T={T} />
+              </div>
+            )}
+            {activeModal === 'visibility' && (
+              <div style={{ marginBottom: 16, padding: 16, background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12 }}>
+                <VisibilityPicker selected={visibility} onSelect={v => { setVisibility(v); setActiveModal('none'); }} />
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? 16 : 12, marginBottom: 0 }}>
               {/* Text input */}
               <div style={{ flex: 1, minWidth: 0 }}>
