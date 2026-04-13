@@ -19,10 +19,25 @@ import ActionRow from "./components/ActionRow";
 
 const TrustBadge = ({ isMobile }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
   const showFull = !isMobile || expanded;
+
+  useEffect(() => {
+    const hidden = localStorage.getItem('hideGovernanceBanner');
+    if (hidden !== 'true') setShowBanner(true);
+  }, []);
+
+  const dismissBanner = () => {
+    setShowBanner(false);
+    localStorage.setItem('hideGovernanceBanner', 'true');
+  };
+
+  if (!showBanner) return null;
+
   return (
     <div
       style={{
+        position: "relative",
         marginBottom: "24px",
         padding: "20px 24px",
         background: "rgba(16, 185, 129, 0.05)",
@@ -53,6 +68,7 @@ const TrustBadge = ({ isMobile }) => {
           )}
         </p>
       </div>
+      <button onClick={dismissBanner} style={{ position: "absolute", top: "12px", right: "12px", background: "none", border: "none", color: "#059669", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0 }}>✕</button>
     </div>
   );
 };
