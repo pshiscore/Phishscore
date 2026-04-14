@@ -89,22 +89,22 @@ function FeedItem({ s, i, T }) {
     <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
       <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
       <div style={{ minWidth: 0 }}>
-        <div className="no-scrollbar" style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "nowrap", overflowX: "auto", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
           {s._isQuickScan ? (
-            <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>{qsCatLabel}</span>
+            <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1 }}>{qsCatLabel}</span>
           ) : (
-            <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
+            <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
           )}
-          {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", flexShrink: 0 }}>{t}</span>)}
+          {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
           <VisibilityBadge visibility={vis} />
           {s._isQuickScan
-            ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, flexShrink: 0 }}>⚡ QUICK SCAN</span>
-            : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, flexShrink: 0 }}>🔬 ANALYZE THREAT</span>
+            ? <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>⚡ QUICK SCAN</span>
+            : <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>🔬 ANALYZE THREAT</span>
           }
-          {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 9px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500, boxShadow: "0 1px 2px rgba(0,0,0,0.12)", flexShrink: 0 }}>{tag}</span>)}
-          {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>AUTO</span>}
-          {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>RECLASSIFIED</span>}
-          <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto", flexShrink: 0 }}>{timeAgo(s.created_at)}</span>
+          {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500 }}>{tag}</span>)}
+          {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
+          {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
+          <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
         </div>
         {quickScanLabel ? (
           <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{quickScanLabel}</div>
@@ -216,6 +216,7 @@ export default function App() {
       const subs = Array.isArray(subData) ? subData : [];
       // scanData is already normalized by /api/get-quick-scans (PII stripped server-side)
       const scans = Array.isArray(scanData) ? scanData : [];
+      console.log('[feed] submissions:', subs.length, 'quick scans:', scans.length);
       const merged = [...subs, ...scans].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setSubmissions(merged);
     } catch (e) { console.error(e); }
@@ -596,7 +597,7 @@ export default function App() {
           .feed-row { grid-template-columns: 44px 1fr !important; gap: 10px !important; }
           .feed-row > *:last-child { grid-column: 2; margin-top: -4px; }
           .filter-divider { display: none !important; }
-          .feed-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+          .feed-text { display: block; overflow: visible; }
         }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }

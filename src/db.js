@@ -10,7 +10,16 @@ const db = {
 
   async getQuickScans() {
     const res = await fetch('/api/get-quick-scans');
-    return res.json();
+    if (!res.ok) {
+      console.warn('[db] get-quick-scans returned', res.status);
+      return [];
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      console.warn('[db] get-quick-scans unexpected response:', data);
+      return [];
+    }
+    return data;
   },
 
   async checkDuplicate(preview) {

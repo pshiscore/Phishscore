@@ -10,7 +10,11 @@ module.exports = async function handler(req, res) {
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
 
-    if (!r.ok) throw new Error(`Supabase error [${r.status}]`);
+    if (!r.ok) {
+      const errBody = await r.text();
+      console.error('get-quick-scans Supabase error:', r.status, errBody);
+      return res.status(200).json([]); // return empty array so feed degrades gracefully
+    }
     const rows = await r.json();
 
     // Strip PII — never send raw_input or ipqs_data to the browser
