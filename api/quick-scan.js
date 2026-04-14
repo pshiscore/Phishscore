@@ -1,6 +1,6 @@
 const { analyzeContactData } = require('../lib/ipqs');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -136,6 +136,10 @@ Additional rules:
 // ── Supabase insert ───────────────────────────────────────────────────────────
 
 async function insertQuickScan(record) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('insertQuickScan: missing env vars — SUPABASE_URL:', !!SUPABASE_URL, 'SUPABASE_SERVICE_KEY:', !!SUPABASE_KEY);
+    return;
+  }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/quick_scans`, {
     method: 'POST',
     headers: {
@@ -148,8 +152,9 @@ async function insertQuickScan(record) {
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error('quick_scans insert failed:', err);
-    // Non-fatal — don't crash the response if DB insert fails
+    console.error('quick_scans insert failed [' + res.status + ']:', err);
+  } else {
+    console.log('quick_scans insert ok, input_type:', record.input_type, 'score:', record.ai_score);
   }
 }
 
