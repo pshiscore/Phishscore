@@ -75,7 +75,7 @@ const TrustBadge = ({ isMobile }) => {
 
 const MAX_SUMMARY = 120;
 
-function FeedItem({ s, i, T }) {
+function FeedItem({ s, i, T, isMobile }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
   const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
@@ -98,8 +98,8 @@ function FeedItem({ s, i, T }) {
           {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
           <VisibilityBadge visibility={vis} />
           {s._isQuickScan
-            ? <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>⚡ QUICK SCAN</span>
-            : <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>🔬 ANALYZE THREAT</span>
+            ? <span className="desktop-only" style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>⚡ QUICK SCAN</span>
+            : <span className="desktop-only" style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>🔬 ANALYZE THREAT</span>
           }
           {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500 }}>{tag}</span>)}
           {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
@@ -112,10 +112,12 @@ function FeedItem({ s, i, T }) {
           <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
         ) : (
           <div className="feed-text" style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
-            {isTruncatable && !isExpanded ? (
+            {isMobile && isTruncatable && !isExpanded ? (
               <>{summaryText.slice(0, MAX_SUMMARY)}... <button onClick={() => setIsExpanded(true)} style={{ background: "none", border: "none", padding: 0, color: T.text4, fontSize: 11, fontFamily: "monospace", fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>read more</button></>
+            ) : isMobile && isTruncatable && isExpanded ? (
+              <>{summaryText} <button onClick={() => setIsExpanded(false)} style={{ background: "none", border: "none", padding: 0, color: T.text4, fontSize: 11, fontFamily: "monospace", fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>show less</button></>
             ) : (
-              <>{summaryText}{isTruncatable && isExpanded && <> <button onClick={() => setIsExpanded(false)} style={{ background: "none", border: "none", padding: 0, color: T.text4, fontSize: 11, fontFamily: "monospace", fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>show less</button></>}</>
+              summaryText
             )}
           </div>
         )}
@@ -452,7 +454,7 @@ export default function App() {
                       <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>CHECK A MESSAGE</button>
                     </div>
                   ) : (
-                    filtered.map((s, i) => <FeedItem key={s.id} s={s} i={i} T={T} />)
+                    filtered.map((s, i) => <FeedItem key={s.id} s={s} i={i} T={T} isMobile={isMobile} />)
                   )}
                   {!dbLoading && allFiltered.length > FEED_DEFAULT && (
                     <button onClick={() => setShowMoreFeed(v => !v)} style={{ marginTop: 16, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`, color: T.text4, padding: "10px", borderRadius: 8, cursor: "pointer", fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s" }}>
@@ -598,6 +600,7 @@ export default function App() {
           .feed-row > *:last-child { grid-column: 2; margin-top: -4px; }
           .filter-divider { display: none !important; }
           .feed-text { display: block; overflow: visible; }
+          .desktop-only { display: none !important; }
         }
         @media (max-width: 480px) {
           .modal-inner { padding: 20px 16px !important; }
