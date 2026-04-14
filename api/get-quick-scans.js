@@ -1,19 +1,24 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('get-quick-scans: missing env vars. SUPABASE_URL:', !!SUPABASE_URL, 'SUPABASE_SERVICE_KEY:', !!SUPABASE_KEY);
+    return res.status(200).json([]);
+  }
+
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,ai_tags,created_at&order=created_at.desc&limit=50`,
+      `${SUPABASE_URL}/rest/v1/quick_scans?select=id,input_type,ai_score,ai_category,ai_tags,created_at&order=created_at.desc&limit=500`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
 
     if (!r.ok) {
       const errBody = await r.text();
       console.error('get-quick-scans Supabase error:', r.status, errBody);
-      return res.status(200).json([]); // return empty array so feed degrades gracefully
+      return res.status(200).json([]);
     }
     const rows = await r.json();
 
@@ -34,6 +39,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(safe);
   } catch (err) {
     console.error('get-quick-scans error:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(200).json([]); // degrade gracefully — never 500 to the browser
   }
 };
