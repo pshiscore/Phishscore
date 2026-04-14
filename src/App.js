@@ -260,6 +260,8 @@ export default function App() {
   const scams = submissions.filter(s => s.score >= 75).length;
   const suspicious = submissions.filter(s => s.score >= 45 && s.score < 75).length;
   const safe = submissions.filter(s => s.score < 45).length;
+  const quickScanCount = submissions.filter(s => s._isQuickScan).length;
+  const analyzeThreatCount = submissions.filter(s => !s._isQuickScan).length;
 
   const catCounts = SCAM_CATEGORIES
     .map(cat => ({ ...cat, count: submissions.filter(s => s.category === cat.id).length, scamCount: submissions.filter(s => s.category === cat.id && s.score >= 75).length }))
@@ -387,14 +389,16 @@ export default function App() {
         <main className="site-main" style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
           {/* STATS */}
-          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 26 }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 26 }}>
             {[
               { label: "TOTAL REPORTS", key: "total", value: total, accent: "#5b6cf8" },
               { label: "CONFIRMED SCAMS", key: "scams", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
               { label: "SUSPICIOUS", key: "susp", value: suspicious, accent: "#fb923c" },
               { label: "LIKELY SAFE", key: "safe", value: safe, accent: "#34d399" },
+              { label: "⚡ QUICK SCANS", key: "qs", value: quickScanCount, accent: "#d97706" },
+              { label: "🔬 ANALYZE THREAT", key: "at", value: analyzeThreatCount, accent: "#818cf8" },
             ].map(s => (
-              <div key={s.key} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${s.accent}` }}>
+              <div key={s.key} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "14px 16px", borderTop: `3px solid ${s.accent}` }}>
                 <div className="stat-label" style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace", whiteSpace: "normal" }}>{s.label}</div>
                 <div className="stat-value" style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
                 {s.sub && <div className="stat-sub" style={{ fontSize: 10, color: T.text4, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
@@ -582,7 +586,7 @@ export default function App() {
           .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; flex-shrink: 0 !important; }
           .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; flex-shrink: 0 !important; }
           .site-main { padding: 16px 14px !important; }
-          .stats-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; margin-bottom: 14px !important; }
+          .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; margin-bottom: 14px !important; }
           .stat-card { padding: 8px 6px !important; border-radius: 8px !important; border-top-width: 2px !important; }
           .stat-label { font-size: 7px !important; letter-spacing: 1px !important; line-height: 1.3 !important; margin-bottom: 4px !important; text-align: center !important; }
           .stat-value { font-size: 18px !important; text-align: center !important; }
