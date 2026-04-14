@@ -73,6 +73,58 @@ const TrustBadge = ({ isMobile }) => {
   );
 };
 
+const MAX_SUMMARY = 120;
+
+function FeedItem({ s, i, T }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
+  const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
+  const qsCatLabel = s._isQuickScan ? ({ phone: '📱 Phone Scan', email: '📧 Email Scan', url: '🔗 Link Scan', text: '📝 Text Scan' }[s.input_type] || '⚡ Quick Scan') : null;
+  const cat = s._isQuickScan ? null : getCat(s.category);
+  const qsTags = s._isQuickScan ? [s.category, ...(s.ai_tags || [])].filter(Boolean) : [];
+  const summaryText = s.summary || s.preview || "";
+  const isTruncatable = summaryText.length > MAX_SUMMARY;
+
+  return (
+    <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
+      <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
+      <div style={{ minWidth: 0 }}>
+        <div className="no-scrollbar" style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "nowrap", overflowX: "auto", alignItems: "center" }}>
+          {s._isQuickScan ? (
+            <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>{qsCatLabel}</span>
+          ) : (
+            <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
+          )}
+          {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", flexShrink: 0 }}>{t}</span>)}
+          <VisibilityBadge visibility={vis} />
+          {s._isQuickScan
+            ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, flexShrink: 0 }}>⚡ QUICK SCAN</span>
+            : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, flexShrink: 0 }}>🔬 ANALYZE THREAT</span>
+          }
+          {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 9px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500, boxShadow: "0 1px 2px rgba(0,0,0,0.12)", flexShrink: 0 }}>{tag}</span>)}
+          {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>AUTO</span>}
+          {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>RECLASSIFIED</span>}
+          <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto", flexShrink: 0 }}>{timeAgo(s.created_at)}</span>
+        </div>
+        {quickScanLabel ? (
+          <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{quickScanLabel}</div>
+        ) : isHidden ? (
+          <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
+        ) : (
+          <div className="feed-text" style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
+            {isTruncatable && !isExpanded ? (
+              <>{summaryText.slice(0, MAX_SUMMARY)}... <button onClick={() => setIsExpanded(true)} style={{ background: "none", border: "none", padding: 0, color: T.text4, fontSize: 11, fontFamily: "monospace", fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>read more</button></>
+            ) : (
+              <>{summaryText}{isTruncatable && isExpanded && <> <button onClick={() => setIsExpanded(false)} style={{ background: "none", border: "none", padding: 0, color: T.text4, fontSize: 11, fontFamily: "monospace", fontWeight: 700, cursor: "pointer", letterSpacing: 1 }}>show less</button></>}</>
+            )}
+          </div>
+        )}
+      </div>
+      <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
+    </div>
+  );
+}
+
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
@@ -395,49 +447,7 @@ export default function App() {
                       <button onClick={() => setShowModal(true)} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 24px", borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 2 }}>CHECK A MESSAGE</button>
                     </div>
                   ) : (
-                    filtered.map((s, i) => {
-                      const sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
-                      const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
-                      // Quick scan: use input_type as the primary category pill
-                      const qsCatLabel = s._isQuickScan ? ({ phone: '📱 Phone Scan', email: '📧 Email Scan', url: '🔗 Link Scan', text: '📝 Text Scan' }[s.input_type] || '⚡ Quick Scan') : null;
-                      const cat = s._isQuickScan ? null : getCat(s.category);
-                      // For quick scans: prepend ai_category as first tag, then ai_tags
-                      const qsTags = s._isQuickScan ? [s.category, ...(s.ai_tags || [])].filter(Boolean) : [];
-                      return (
-                        <div key={s.id} className="feed-row" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", gap: 12, padding: "16px 0", borderTop: i > 0 ? `1px solid ${T.feedDivider}` : "none", alignItems: "start", minWidth: 0 }}>
-                          <ScoreRing score={s.score} size={52} trackColor={T.ringTrack} />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
-                              {s._isQuickScan ? (
-                                <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1 }}>{qsCatLabel}</span>
-                              ) : (
-                                <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
-                              )}
-                              {!s._isQuickScan && (s.tags || []).slice(0, 2).map(t => <span key={t} style={{ background: T.tagBg, color: T.tagColor, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontFamily: "monospace" }}>{t}</span>)}
-                              <VisibilityBadge visibility={vis} />
-                              {s._isQuickScan
-                                ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#d97706", border: "1px solid #d9780640", background: "#d9780612", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>⚡ QUICK SCAN</span>
-                                : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 20, color: "#818cf8", border: "1px solid #818cf840", background: "#818cf812", fontFamily: "monospace", letterSpacing: 1, fontWeight: 700 }}>🔬 ANALYZE THREAT</span>
-                              }
-                              {s._isQuickScan && qsTags.map(tag => <span key={tag} style={{ fontSize: 9, padding: "2px 9px", borderRadius: 20, color: T.text2, border: `1px solid ${T.cardBorder}`, background: T.cardBg, fontFamily: "monospace", letterSpacing: 1, fontWeight: 500, boxShadow: "0 1px 2px rgba(0,0,0,0.12)" }}>{tag}</span>)}
-                              {!s._isQuickScan && s.classification_note === "auto" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#a78bfa", border: "1px solid #a78bfa40", background: "#a78bfa12", fontFamily: "monospace", letterSpacing: 1 }}>AUTO</span>}
-                              {!s._isQuickScan && s.classification_note === "reclassified" && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 20, color: "#f97316", border: "1px solid #f9731640", background: "#f9731612", fontFamily: "monospace", letterSpacing: 1 }}>RECLASSIFIED</span>}
-                              <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginLeft: "auto" }}>{timeAgo(s.created_at)}</span>
-                            </div>
-                            {quickScanLabel ? (
-                              <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{quickScanLabel}</div>
-                            ) : isHidden ? (
-                              <div style={{ fontSize: 12, color: T.text4, fontFamily: "monospace", fontStyle: "italic", marginBottom: 4 }}>{vis === "anonymous" ? "Anonymous submission - content not stored" : "Private submission - content hidden"}</div>
-                            ) : (
-                              <div className="feed-text" style={{ fontSize: 13, color: T.text3, lineHeight: 1.6, marginBottom: 6, fontFamily: "Georgia, serif" }}>
-                                {s.summary || s.preview || ""}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ padding: "5px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 2, color: sc, border: `1px solid ${sc}35`, background: `${sc}0d`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{getStatusLabel(s.score)}</div>
-                        </div>
-                      );
-                    })
+                    filtered.map((s, i) => <FeedItem key={s.id} s={s} i={i} T={T} />)
                   )}
                   {!dbLoading && allFiltered.length > FEED_DEFAULT && (
                     <button onClick={() => setShowMoreFeed(v => !v)} style={{ marginTop: 16, width: "100%", background: "none", border: `1px dashed ${T.cardBorder}`, color: T.text4, padding: "10px", borderRadius: 8, cursor: "pointer", fontFamily: "monospace", fontSize: 10, letterSpacing: 1, transition: "all 0.15s" }}>
