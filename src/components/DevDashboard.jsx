@@ -31,6 +31,7 @@ export default function DevDashboard() {
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [maintenanceToggling, setMaintenanceToggling] = useState(false);
+  const [maintenanceError, setMaintenanceError] = useState(null);
 
   // Check for existing valid session on mount
   useEffect(() => {
@@ -41,8 +42,12 @@ export default function DevDashboard() {
           setAuthState('authenticated');
           fetch('/api/maintenance')
             .then(r => r.json())
-            .then(d => { setMaintenance(d.maintenance); setMaintenanceLoading(false); })
-            .catch(() => setMaintenanceLoading(false));
+            .then(d => {
+              if (d.error) setMaintenanceError(d.error);
+              setMaintenance(d.maintenance || false);
+              setMaintenanceLoading(false);
+            })
+            .catch(() => { setMaintenanceError('Could not reach maintenance API.'); setMaintenanceLoading(false); });
         } else {
           setAuthState('login');
         }
@@ -167,13 +172,13 @@ export default function DevDashboard() {
                 {maintenanceLoading ? '...' : maintenance ? 'MAINTENANCE MODE' : 'LIVE'}
               </div>
             </div>
-            <div style={{ fontSize: 11, color: T.text4, fontFamily: 'monospace', marginTop: 4 }}>
-              {maintenance ? 'Site is offline — users see maintenance page.' : 'Site is fully operational.'}
+            <div style={{ fontSize: 11, color: maintenanceError ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
+              {maintenanceError ? `Redis not configured — add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to Vercel.` : maintenance ? 'Site is offline — users see maintenance page.' : 'Site is fully operational.'}
             </div>
           </div>
           <button
             onClick={toggleMaintenance}
-            disabled={maintenanceLoading || maintenanceToggling}
+            disabled={maintenanceLoading || maintenanceToggling || !!maintenanceError}
             style={{
               background: maintenanceLoading || maintenanceToggling
                 ? '#1a1d2e'

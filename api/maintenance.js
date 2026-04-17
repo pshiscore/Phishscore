@@ -1,10 +1,9 @@
 const { Redis } = require('@upstash/redis');
 const crypto = require('crypto');
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
@@ -32,6 +31,10 @@ function isAuthorized(req) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (!redis) {
+    return res.status(503).json({ error: 'Redis not configured', maintenance: false });
+  }
 
   if (req.method === 'GET') {
     const val = await redis.get(KEY);
