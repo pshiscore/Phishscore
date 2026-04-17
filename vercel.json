@@ -6,6 +6,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/beta", "destination": "/index.html" }
+    { "source": "/beta", "destination": "/index.html" },
+    { "source": "/devs", "destination": "/index.html" }
   ]
 }
