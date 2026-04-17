@@ -216,6 +216,7 @@ export default function DevDashboard() {
           onOpenRadar={() => window.location.href = '/?view=radar'}
           onOpenNews={() => window.location.href = '/?view=news'}
           T={T}
+          embedded
         />
       </div>
     </div>

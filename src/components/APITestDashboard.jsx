@@ -582,7 +582,7 @@ function APICard({ api, url, imageBase64, autoRun, T }) {
 }
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
-export default function APITestDashboard({ onClose, onOpenRadar, onOpenNews, T = {} }) {
+export default function APITestDashboard({ onClose, onOpenRadar, onOpenNews, T = {}, embedded = false }) {
   const [url, setUrl] = useState('');
   const [runAllId, setRunAllId] = useState(null);
   const [activeGroup, setActiveGroup] = useState('all');
@@ -597,7 +597,7 @@ export default function APITestDashboard({ onClose, onOpenRadar, onOpenNews, T =
     : API_GROUPS.filter(g => g.id === activeGroup);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: T.pageBg, zIndex: 9999, overflowY: 'auto', padding: 24 }}>
+    <div style={embedded ? { background: 'transparent', padding: 0 } : { position: 'fixed', inset: 0, background: T.pageBg, zIndex: 9999, overflowY: 'auto', padding: 24 }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Header */}
