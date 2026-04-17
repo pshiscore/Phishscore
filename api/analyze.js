@@ -318,12 +318,17 @@ module.exports = async function handler(req, res) {
       } catch (e) { console.error('Response injection error:', e); }
     }
 
+    // ── Parse final response once for training + admin notification ────────────
+    let parsedResult = null;
+    try {
+      const raw = data.content?.map(c => c.text || '').join('') || '';
+      if (raw.trim()) parsedResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch (e) { console.error('Response parse error:', e); }
+
     // ── Store training data if opted in ─────────────────────────────────────
     let trainingId = null;
-    if (req.body.trainAI === true) {
+    if (req.body.trainAI === true && parsedResult) {
       try {
-        const raw = data.content?.map(c => c.text || '').join('') || '';
-        const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
         const modality = (req.body.messages || []).some(m =>
           Array.isArray(m.content) && m.content.some(c => c.type === 'image')
         ) ? 'image' : 'text';
@@ -332,7 +337,7 @@ module.exports = async function handler(req, res) {
             ? m.content.filter(c => c.type === 'text').map(c => c.text)
             : [typeof m.content === 'string' ? m.content : '']
           ).join('\n').slice(0, 4000);
-        trainingId = await storeTrainingData(parsed, {
+        trainingId = await storeTrainingData(parsedResult, {
           modality,
           rawText,
           gsbFlagged,
@@ -344,11 +349,9 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Admin notification (fire and forget) ────────────────────────────────
-    try {
-      const raw = data.content?.map(c => c.text || '').join('') || '';
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      sendAdminSubmissionAlert(uniqueUrls, parsed, flaggedSources).catch(e => console.error('Admin alert error:', e));
-    } catch (e) { /* silent */ }
+    if (parsedResult) {
+      sendAdminSubmissionAlert(uniqueUrls, parsedResult, flaggedSources).catch(e => console.error('Admin alert error:', e));
+    }
 
     return res.status(200).json({ ...data, trainingId });
 
