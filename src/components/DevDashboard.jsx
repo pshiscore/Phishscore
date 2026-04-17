@@ -35,6 +35,9 @@ export default function DevDashboard() {
 
   const [alerts, setAlerts] = useState(false);
   const [alertsLoading, setAlertsLoading] = useState(true);
+
+  const [evalRunning, setEvalRunning] = useState(false);
+  const [evalStatus, setEvalStatus] = useState(null); // null | 'success' | 'error'
   const [alertsToggling, setAlertsToggling] = useState(false);
   const [alertsError, setAlertsError] = useState(null);
 
@@ -292,8 +295,69 @@ export default function DevDashboard() {
           embedded
         />
 
-        {/* ── Sentry Test ─────────────────────────────────────────────────────── */}
-        <div style={{ marginTop: 28, display: 'flex', justifyContent: 'flex-end' }}>
+        {/* ── Dev Tools ───────────────────────────────────────────────────────── */}
+        <div style={{ marginTop: 28, display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+
+          {/* Braintrust Eval */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            <button
+              onClick={async () => {
+                setEvalRunning(true);
+                setEvalStatus(null);
+                try {
+                  const res = await fetch('/api/evals/run-threat-eval', { method: 'POST' });
+                  const data = await res.json();
+                  setEvalStatus(res.ok && data.success ? 'success' : 'error');
+                } catch {
+                  setEvalStatus('error');
+                } finally {
+                  setEvalRunning(false);
+                }
+              }}
+              disabled={evalRunning}
+              style={{
+                background: evalRunning
+                  ? '#e5e7eb'
+                  : evalStatus === 'success'
+                    ? 'linear-gradient(135deg,#22c55e,#15803d)'
+                    : evalStatus === 'error'
+                      ? 'linear-gradient(135deg,#f43f5e,#be123c)'
+                      : 'linear-gradient(135deg,#7c3aed,#5b21b6)',
+                border: 'none',
+                color: evalRunning ? '#9ca3af' : '#fff',
+                padding: '10px 24px',
+                borderRadius: 10,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 2,
+                cursor: evalRunning ? 'default' : 'pointer',
+                fontFamily: 'monospace',
+                boxShadow: evalRunning ? 'none' : '0 4px 16px rgba(124,58,237,0.35)',
+                transition: 'all 0.2s',
+                minWidth: 220,
+              }}
+            >
+              {evalRunning
+                ? '⏳ RUNNING EVAL...'
+                : evalStatus === 'success'
+                  ? '✓ EVAL COMPLETE'
+                  : evalStatus === 'error'
+                    ? '✗ EVAL FAILED'
+                    : 'RUN THREAT ANALYSIS EVAL SUITE'}
+            </button>
+            {evalStatus === 'success' && (
+              <div style={{ fontSize: 10, color: '#22c55e', fontFamily: 'monospace', letterSpacing: 1 }}>
+                Check Braintrust Dashboard for results
+              </div>
+            )}
+            {evalStatus === 'error' && (
+              <div style={{ fontSize: 10, color: '#f43f5e', fontFamily: 'monospace', letterSpacing: 1 }}>
+                Eval failed — check Vercel logs
+              </div>
+            )}
+          </div>
+
+          {/* Sentry Test */}
           <button
             onClick={() => { throw new Error('Sentry test crash from PhishScore Command Center'); }}
             style={{
