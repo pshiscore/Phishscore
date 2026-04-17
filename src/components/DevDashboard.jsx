@@ -33,6 +33,11 @@ export default function DevDashboard() {
   const [maintenanceToggling, setMaintenanceToggling] = useState(false);
   const [maintenanceError, setMaintenanceError] = useState(null);
 
+  const [alerts, setAlerts] = useState(false);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsToggling, setAlertsToggling] = useState(false);
+  const [alertsError, setAlertsError] = useState(null);
+
   // Check for existing valid session on mount
   useEffect(() => {
     fetch('/api/auth-devs')
@@ -48,6 +53,14 @@ export default function DevDashboard() {
               setMaintenanceLoading(false);
             })
             .catch(() => { setMaintenanceError('Could not reach maintenance API.'); setMaintenanceLoading(false); });
+          fetch('/api/alerts-toggle')
+            .then(r => r.json())
+            .then(d => {
+              if (d.error) setAlertsError(d.error);
+              setAlerts(d.enabled || false);
+              setAlertsLoading(false);
+            })
+            .catch(() => { setAlertsError('Could not reach alerts API.'); setAlertsLoading(false); });
         } else {
           setAuthState('login');
         }
@@ -63,6 +76,17 @@ export default function DevDashboard() {
       if (res.ok) setMaintenance(data.maintenance);
     } finally {
       setMaintenanceToggling(false);
+    }
+  };
+
+  const toggleAlerts = async () => {
+    setAlertsToggling(true);
+    try {
+      const res = await fetch('/api/alerts-toggle', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) setAlerts(data.enabled);
+    } finally {
+      setAlertsToggling(false);
     }
   };
 
@@ -208,6 +232,55 @@ export default function DevDashboard() {
               : maintenance
                 ? 'RESTORE LIVE'
                 : 'KILL SWITCH'}
+          </button>
+        </div>
+
+        {/* ── Submission Alerts ───────────────────────────────────────────────── */}
+        <div style={{ marginBottom: 28, background: T.cardBg, border: `1px solid ${alerts ? '#5b6cf840' : T.cardBorder}`, borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 4, color: alerts ? '#5b6cf8' : T.text4, fontFamily: 'monospace', marginBottom: 6 }}>SUBMISSION ALERTS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: alerts ? '#5b6cf8' : T.text4, boxShadow: alerts ? '0 0 8px #5b6cf8' : 'none', flexShrink: 0 }} />
+              <div style={{ fontSize: 20, fontWeight: 800, color: T.text, fontFamily: 'monospace', letterSpacing: 1 }}>
+                {alertsLoading ? '...' : alerts ? 'ALERTS ON' : 'ALERTS OFF'}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: alertsError ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
+              {alertsError
+                ? 'Redis not configured — add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to Vercel.'
+                : alerts
+                  ? 'Email report sent to vkrasikov@gmail.com for every submission.'
+                  : 'No emails will be sent for submissions.'}
+            </div>
+          </div>
+          <button
+            onClick={toggleAlerts}
+            disabled={alertsLoading || alertsToggling || !!alertsError}
+            style={{
+              background: alertsLoading || alertsToggling
+                ? '#e5e7eb'
+                : alerts
+                  ? 'linear-gradient(135deg,#6b7280,#374151)'
+                  : 'linear-gradient(135deg,#5b6cf8,#4338ca)',
+              border: 'none',
+              color: alertsLoading || alertsToggling ? '#9ca3af' : '#fff',
+              padding: '14px 32px',
+              borderRadius: 12,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 2,
+              cursor: alertsLoading || alertsToggling ? 'default' : 'pointer',
+              fontFamily: 'monospace',
+              boxShadow: alertsLoading || alertsToggling
+                ? 'none'
+                : alerts
+                  ? '0 4px 20px rgba(107,114,128,0.3)'
+                  : '0 4px 20px rgba(91,108,248,0.4)',
+              minWidth: 160,
+              transition: 'all 0.2s',
+            }}
+          >
+            {alertsToggling ? 'UPDATING...' : alerts ? 'DISABLE' : 'ENABLE ALERTS'}
           </button>
         </div>
 
