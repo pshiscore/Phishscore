@@ -56,7 +56,7 @@ async function sendAdminSubmissionAlert(urls, parsed, flaggedSources) {
 
 // ── Store anonymized training data ────────────────────────────────────────────
 async function storeTrainingData(parsed, context = {}) {
-  const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+  const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   try {
