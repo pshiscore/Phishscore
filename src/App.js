@@ -127,6 +127,46 @@ function FeedItem({ s, i, T, isMobile }) {
   );
 }
 
+function DevsLoginModal({ onSubmit, onClose, error, loading, T = {} }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: T.cardBg || "#0d0f1a", border: "1px solid #f43f5e40", borderRadius: 16, padding: 32, width: "100%", maxWidth: 380, boxSizing: "border-box" }}>
+        <div style={{ fontSize: 10, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 6 }}>RESTRICTED ACCESS</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: T.text || "#f1f5f9", fontFamily: "monospace", marginBottom: 24 }}>COMMAND CENTER</div>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: T.text4 || "#475569", fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>USERNAME</div>
+          <input
+            value={username} onChange={e => setUsername(e.target.value)}
+            autoComplete="username"
+            style={{ width: "100%", background: T.inputBg || "#0a0c14", border: "1.5px solid #1e2235", borderRadius: 8, color: T.text || "#f1f5f9", padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+            onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = "#1e2235"}
+          />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, color: T.text4 || "#475569", fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>PASSWORD</div>
+          <input
+            type="password" value={password} onChange={e => setPassword(e.target.value)}
+            autoComplete="current-password"
+            onKeyDown={e => e.key === 'Enter' && onSubmit(username, password)}
+            style={{ width: "100%", background: T.inputBg || "#0a0c14", border: "1.5px solid #1e2235", borderRadius: 8, color: T.text || "#f1f5f9", padding: "10px 14px", fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
+            onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = "#1e2235"}
+          />
+        </div>
+        {error && <div style={{ fontSize: 11, color: "#f43f5e", fontFamily: "monospace", marginBottom: 14, padding: "8px 12px", background: "#f43f5e12", border: "1px solid #f43f5e30", borderRadius: 8 }}>{error}</div>}
+        <button
+          onClick={() => onSubmit(username, password)}
+          disabled={loading || !username || !password}
+          style={{ width: "100%", background: loading || !username || !password ? "#1a1d2e" : "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: loading || !username || !password ? "#334155" : "#fff", padding: "12px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: loading ? "default" : "pointer", fontFamily: "monospace", boxShadow: loading ? "none" : "0 4px 20px rgba(244,63,94,0.35)" }}>
+          {loading ? "VERIFYING..." : "ENTER"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [submissions, setSubmissions] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
@@ -149,12 +189,10 @@ export default function App() {
       return params.get("legal") === "privacy" ? "privacy" : "terms";
     } catch { return "terms"; }
   });
-  const [showDevTools, setShowDevTools] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("devmode") === "ps2026";
-    } catch { return false; }
-  });
+  const [showDevTools, setShowDevTools] = useState(false);
+  const [showDevsLogin, setShowDevsLogin] = useState(false);
+  const [devsLoginError, setDevsLoginError] = useState('');
+  const [devsLoginLoading, setDevsLoginLoading] = useState(false);
   const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
     try {
@@ -208,6 +246,22 @@ export default function App() {
 
   useEffect(() => { loadSubmissions(); }, []);
 
+  // On mount: if ?devmode in URL, check existing session cookie first, else show login
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('devmode')) {
+        fetch('/api/auth-devs')
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) { setShowDevTools(true); }
+            else { setShowDevsLogin(true); }
+          })
+          .catch(() => setShowDevsLogin(true));
+      }
+    } catch {}
+  }, []);
+
   const loadSubmissions = async () => {
     setDbLoading(true);
     try {
@@ -257,6 +311,27 @@ export default function App() {
       setSubmissions(prev => [{ ...newSub, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
       return null;
     }
+  };
+
+  const handleDevsLogin = async (username, password) => {
+    setDevsLoginLoading(true);
+    setDevsLoginError('');
+    try {
+      const res = await fetch('/api/auth-devs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (res.ok) {
+        setShowDevsLogin(false);
+        setShowDevTools(true);
+      } else {
+        setDevsLoginError('Invalid credentials. Access denied.');
+      }
+    } catch {
+      setDevsLoginError('Could not reach auth server.');
+    }
+    setDevsLoginLoading(false);
   };
 
   const total = submissions.length;
@@ -561,6 +636,7 @@ export default function App() {
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
       {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => switchView('radar')} onOpenNews={() => switchView('news')} T={T} />}
+      {showDevsLogin && <DevsLoginModal onSubmit={handleDevsLogin} onClose={() => { setShowDevsLogin(false); window.history.replaceState({}, '', '/'); }} error={devsLoginError} loading={devsLoginLoading} T={T} />}
       {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
