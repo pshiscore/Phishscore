@@ -17,6 +17,7 @@ module.exports = async function handler(req, res) {
     tier, email, message, story, contactInfo,
     originalScore, originalCategory,
     ivsScore, ivsLabel, ivsExplanation, entryPoint,
+    evidenceUrls,
   } = req.body;
 
   if (!tier || !email) return res.status(400).json({ error: 'tier and email required' });
@@ -52,6 +53,7 @@ module.exports = async function handler(req, res) {
         ivs_explanation: ivsExplanation || null,
         entry_point: entryPoint || 'unknown',
         payment_status: 'pending',
+        evidence_urls: Array.isArray(evidenceUrls) && evidenceUrls.length > 0 ? evidenceUrls : null,
       }),
     });
 

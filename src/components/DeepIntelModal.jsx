@@ -2,6 +2,51 @@ import { useState, useRef } from "react";
 import { PhishScoreLogo, ScoreRing } from "./Primitives";
 import { SUPPORT_EMAIL } from "../constants";
 
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL?.replace(/\/$/, '');
+const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+async function uploadEvidenceImages(images, email) {
+  if (!images.length || !SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  const folder = `${email.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`;
+  const urls = [];
+  for (const img of images) {
+    try {
+      // Strip data URL prefix and decode base64
+      const [header, b64] = img.data.split(',');
+      const mimeMatch = header.match(/data:([^;]+)/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const ext = mime.split('/')[1] || 'jpg';
+      const byteChars = atob(b64);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: mime });
+
+      const filename = `${folder}/${img.name || `evidence_${Date.now()}.${ext}`}`;
+      const res = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/evidence/${filename}`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': mime,
+            'x-upsert': 'true',
+          },
+          body: blob,
+        }
+      );
+      if (res.ok) {
+        urls.push(`${SUPABASE_URL}/storage/v1/object/public/evidence/${filename}`);
+      } else {
+        console.warn('Evidence upload failed for', img.name, res.status);
+      }
+    } catch (e) {
+      console.warn('Evidence upload error:', e);
+    }
+  }
+  return urls;
+}
+
 const TIERS = [
   {
     tier: 1,
@@ -119,6 +164,10 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
     }
     try {
       setCheckoutLoading(true);
+
+      // Upload evidence images to Supabase Storage before checkout
+      const evidenceUrls = await uploadEvidenceImages(images, email.trim());
+
       const res = await fetch("/api/polar-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,6 +183,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
           ivsLabel: ivs?.label,
           ivsExplanation: ivs?.explanation,
           entryPoint: isFreshEntry ? "fresh" : "scan",
+          evidenceUrls,
         })
       });
       const data = await res.json();

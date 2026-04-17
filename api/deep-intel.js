@@ -9,6 +9,83 @@ const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
 const { analyzeContactData } = require('../lib/ipqs');
 
+// ── Google Vision OCR & Logo Detection ───────────────────────────────────────
+
+async function analyzeImagesWithVision(imageUrls, telemetryLog) {
+  const apiKey = process.env.GOOGLE_VISION_API_KEY;
+  if (!apiKey || !Array.isArray(imageUrls) || imageUrls.length === 0) return null;
+
+  const results = [];
+
+  for (const url of imageUrls.slice(0, 3)) {
+    const started_at = new Date().toISOString();
+    const startMs = Date.now();
+    try {
+      const body = {
+        requests: [{
+          image: { source: { imageUri: url } },
+          features: [
+            { type: 'TEXT_DETECTION', maxResults: 1 },
+            { type: 'LOGO_DETECTION', maxResults: 5 },
+          ],
+        }],
+      };
+
+      const res = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+
+      const latency_ms = Date.now() - startMs;
+      const data = await res.json();
+      const annotation = data?.responses?.[0];
+
+      const extractedText = annotation?.fullTextAnnotation?.text
+        || annotation?.textAnnotations?.[0]?.description
+        || '';
+      const logos = (annotation?.logoAnnotations || []).map(l => l.description).filter(Boolean);
+
+      telemetryLog.push({
+        service: `Vision_OCR (${url.split('/').pop()})`,
+        started_at,
+        finished_at: new Date().toISOString(),
+        latency_ms,
+        status: res.status,
+        success: res.ok,
+        error: res.ok ? null : `HTTP ${res.status}`,
+        raw_response: { chars: extractedText.length, logos },
+      });
+
+      results.push({ url, text: extractedText.slice(0, 2000), logos });
+    } catch (err) {
+      telemetryLog.push({
+        service: `Vision_OCR (${url.split('/').pop()})`,
+        started_at,
+        finished_at: new Date().toISOString(),
+        latency_ms: Date.now() - startMs,
+        status: null,
+        success: false,
+        error: err.message,
+        raw_response: null,
+      });
+    }
+  }
+
+  if (results.length === 0) return null;
+
+  const lines = results.map((r, i) => {
+    const logoLine = r.logos.length > 0
+      ? `  Detected logos/brands: ${r.logos.join(', ')}`
+      : '  No logos detected.';
+    const textLine = r.text.trim()
+      ? `  Extracted text:\n${r.text.trim().replace(/^/gm, '    ')}`
+      : '  No text detected.';
+    return `Image ${i + 1}:\n${logoLine}\n${textLine}`;
+  });
+
+  return lines.join('\n\n');
+}
+
 // ── Telemetry wrapper ─────────────────────────────────────────────────────────
 
 async function fetchWithTelemetry(serviceName, url, options = {}, telemetryLog) {
@@ -315,7 +392,7 @@ function extractDomain(url) {
 
 // ── Claude Opus report generation ────────────────────────────────────────────
 
-async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, telemetryLog) {
+async function generateForensicReport(caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, visionData, telemetryLog) {
   const domainAge = whoisData?.domainAge;
   const ageWarning = domainAge && domainAge < 30
     ? `CRITICAL: Domain is only ${domainAge} days old — extremely common with scam infrastructure.`
@@ -369,6 +446,11 @@ Leaked in Breach: ${d.leaked ? 'YES' : 'No'}`;
     }
   }
 
+  // Build Vision OCR block if available
+  const visionBlock = visionData
+    ? `\nVISUAL EVIDENCE (Google Vision OCR & Logo Detection):\n${visionData}`
+    : '';
+
   // Build CNL context block if available
   let cnlBlock = '';
   if (cnlData) {
@@ -386,7 +468,7 @@ Note: Cross-reference the organizations listed above with the WHOIS and VirusTot
 
   const prompt = `You are PhishScore Deep Intel's forensic analyst. You have completed a full investigation of a suspected scam. Write a professional, specific case file report for the victim.
 
-ANALYST INSTRUCTION: If IPQS Forensic Data is provided below, explicitly reference the fraud score, line type (e.g., VOIP), domain age, or abuse flags in your report to substantiate your analysis. Do not omit this data — it is verified ground truth.
+ANALYST INSTRUCTION: If IPQS Forensic Data is provided below, explicitly reference the fraud score, line type (e.g., VOIP), domain age, or abuse flags in your report to substantiate your analysis. Do not omit this data — it is verified ground truth. If VISUAL EVIDENCE is provided, reference specific text extracted from the screenshots and any detected logos/brands to identify impersonation tactics.
 
 CASE DETAILS:
 Original PhishScore: ${caseRecord.original_score || 'N/A'}/100
@@ -395,6 +477,7 @@ What the victim reported: ${caseRecord.story || 'No story provided'}
 Original message: ${(caseRecord.original_message || '').slice(0, 1500)}
 ${ipqsBlock}
 ${cnlBlock}
+${visionBlock}
 
 FORENSIC FINDINGS:
 ${ageWarning}
@@ -416,6 +499,9 @@ EVIDENCE SUMMARY
 
 WHAT HAPPENED TO YOU
 Based on the victim's story, explain specifically what data or access the scammer may now have. Be specific and honest. If they clicked a link, what risk does that create. If they entered credentials, what should they assume is compromised.
+
+VISUAL EVIDENCE
+${visionData ? 'Analyze the Google Vision OCR results above. Identify any scam scripts, fake brand logos, spoofed interface elements, or deceptive text extracted from the screenshots. Explain what each piece of visual evidence reveals about the attack methodology.' : 'No screenshots were submitted with this case.'}
 
 CNL & PSYCHOLOGICAL TACTICS
 Break down the specific Cognitive Neurological Linguistics and psychological manipulation techniques used in this attack. Identify and name each tactic explicitly — for example: urgency and artificial time pressure, authority impersonation, fear-based compliance, social proof exploitation, reciprocity traps, scarcity triggers, or identity anchoring. For each tactic, explain how it was deployed in this specific message and why it is effective at bypassing rational decision-making. This section helps the victim understand they were targeted by deliberate psychological engineering, not personal gullibility.
@@ -581,8 +667,8 @@ module.exports = async function handler(req, res) {
       || extractContact(caseRecord.story || '')
       || extractContact(messageText);
 
-    // Run all external checks in parallel — CNL and IPQS run alongside URL checks
-    const [urlscanData, whoisData, vtData, cnlData, ipqsData] = await Promise.all([
+    // Run all external checks in parallel — CNL, IPQS, and Vision run alongside URL checks
+    const [urlscanData, whoisData, vtData, cnlData, ipqsData, visionData] = await Promise.all([
       url ? runURLScan(url, telemetryLog) : Promise.resolve(null),
       domain ? checkWhois(domain, telemetryLog) : Promise.resolve(null),
       url ? checkVirusTotal(url, telemetryLog) : Promise.resolve(null),
@@ -593,14 +679,20 @@ module.exports = async function handler(req, res) {
             return null;
           })
         : Promise.resolve(null),
+      caseRecord.evidence_urls
+        ? analyzeImagesWithVision(caseRecord.evidence_urls, telemetryLog).catch(err => {
+            console.warn('Vision analysis failed (non-fatal):', err.message);
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
 
     // Check IP from URLScan result
     const abuseData = urlscanData?.ip ? await checkAbuseIPDB(urlscanData.ip, telemetryLog) : null;
 
-    // Generate forensic report with Opus — includes CNL, IPQS, and telemetry
+    // Generate forensic report with Opus — includes CNL, IPQS, Vision, and telemetry
     const forensicReport = await generateForensicReport(
-      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, telemetryLog
+      caseRecord, urlscanData, abuseData, whoisData, vtData, cnlData, ipqsData, visionData, telemetryLog
     );
 
     // Save all results to Supabase
