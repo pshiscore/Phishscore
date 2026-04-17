@@ -15,75 +15,49 @@ async function analyzeImagesWithVision(imageUrls, telemetryLog) {
   const apiKey = process.env.GOOGLE_VISION_API_KEY;
   if (!apiKey || !Array.isArray(imageUrls) || imageUrls.length === 0) return null;
 
-  const results = [];
+  const urls = imageUrls.slice(0, 3);
+  const requests = urls.map(url => ({
+    image: { source: { imageUri: url } },
+    features: [
+      { type: 'TEXT_DETECTION' },
+      { type: 'LOGO_DETECTION' },
+    ],
+  }));
 
-  for (const url of imageUrls.slice(0, 3)) {
-    const started_at = new Date().toISOString();
-    const startMs = Date.now();
-    try {
-      const body = {
-        requests: [{
-          image: { source: { imageUri: url } },
-          features: [
-            { type: 'TEXT_DETECTION', maxResults: 1 },
-            { type: 'LOGO_DETECTION', maxResults: 5 },
-          ],
-        }],
-      };
+  const result = await fetchWithTelemetry(
+    'Google_Vision',
+    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests }),
+    },
+    telemetryLog
+  );
 
-      const res = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-      );
+  if (!result.ok || !result.data?.responses) return null;
 
-      const latency_ms = Date.now() - startMs;
-      const data = await res.json();
-      const annotation = data?.responses?.[0];
+  const lines = result.data.responses.map((annotation, i) => {
+    const extractedText = (
+      annotation?.fullTextAnnotation?.text ||
+      annotation?.textAnnotations?.[0]?.description ||
+      ''
+    ).slice(0, 2000);
+    const logos = (annotation?.logoAnnotations || [])
+      .map(l => l.description)
+      .filter(Boolean);
 
-      const extractedText = annotation?.fullTextAnnotation?.text
-        || annotation?.textAnnotations?.[0]?.description
-        || '';
-      const logos = (annotation?.logoAnnotations || []).map(l => l.description).filter(Boolean);
-
-      telemetryLog.push({
-        service: `Vision_OCR (${url.split('/').pop()})`,
-        started_at,
-        finished_at: new Date().toISOString(),
-        latency_ms,
-        status: res.status,
-        success: res.ok,
-        error: res.ok ? null : `HTTP ${res.status}`,
-        raw_response: { chars: extractedText.length, logos },
-      });
-
-      results.push({ url, text: extractedText.slice(0, 2000), logos });
-    } catch (err) {
-      telemetryLog.push({
-        service: `Vision_OCR (${url.split('/').pop()})`,
-        started_at,
-        finished_at: new Date().toISOString(),
-        latency_ms: Date.now() - startMs,
-        status: null,
-        success: false,
-        error: err.message,
-        raw_response: null,
-      });
-    }
-  }
-
-  if (results.length === 0) return null;
-
-  const lines = results.map((r, i) => {
-    const logoLine = r.logos.length > 0
-      ? `  Detected logos/brands: ${r.logos.join(', ')}`
+    const logoLine = logos.length > 0
+      ? `  Detected logos/brands: ${logos.join(', ')}`
       : '  No logos detected.';
-    const textLine = r.text.trim()
-      ? `  Extracted text:\n${r.text.trim().replace(/^/gm, '    ')}`
+    const textLine = extractedText.trim()
+      ? `  Extracted text:\n${extractedText.trim().replace(/^/gm, '    ')}`
       : '  No text detected.';
+
     return `Image ${i + 1}:\n${logoLine}\n${textLine}`;
   });
 
-  return lines.join('\n\n');
+  return lines.join('\n\n') || null;
 }
 
 // ── Telemetry wrapper ─────────────────────────────────────────────────────────
