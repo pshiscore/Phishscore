@@ -18,6 +18,7 @@ export const SCAM_CATEGORIES = [
   { id: "political", label: "Political Campaign", icon: "vote", color: "#f97316", description: "Fake fundraising, candidate impersonation, polling scams" },
   { id: "travel", label: "Travel & Vacation", icon: "plane", color: "#2dd4bf", description: "Fake hotels, airline scams, vacation rental fraud, bogus travel deals" },
   { id: "legal", label: "Legal & Compliance", icon: "legal", color: "#c084fc", description: "Fake court notices, debt collection scams, fake legal threats, compliance impersonation" },
+  { id: "health", label: "Health Scams", icon: "health", color: "#2dd4bf", description: "Fake cures, miracle treatments, counterfeit pharmaceuticals, medical fear-mongering" },
   { id: "other", label: "Unknown / AI Detect", icon: "other", color: "#94a3b8", description: "Don't know the type? AI will automatically detect and classify your submission" },
 ];
 

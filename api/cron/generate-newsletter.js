@@ -1,6 +1,6 @@
 module.exports.config = { maxDuration: 60 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;

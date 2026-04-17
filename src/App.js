@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
+import { getQsTaxonomy, QS_TAXONOMY } from "./utils/taxonomy";
 import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
@@ -79,7 +80,7 @@ function FeedItem({ s, i, T, isMobile }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const sc = getScoreColor(s.score), vis = s.visibility || "public", isHidden = vis === "private" || vis === "anonymous";
   const quickScanLabel = s._isQuickScan ? (s.preview || 'Private quick scan — content hidden.') : null;
-  const qsCatLabel = s._isQuickScan ? ({ phone: '📱 Phone Scan', email: '📧 Email Scan', url: '🔗 Link Scan', text: '📝 Text Scan' }[s.input_type] || '⚡ Quick Scan') : null;
+  const qsTaxon = s._isQuickScan ? getQsTaxonomy(s.input_type) : null;
   const cat = s._isQuickScan ? null : getCat(s.category);
   const qsTags = s._isQuickScan ? [s.category, ...(s.ai_tags || [])].filter(Boolean) : [];
   const summaryText = s.summary || s.preview || "";
@@ -91,7 +92,7 @@ function FeedItem({ s, i, T, isMobile }) {
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", gap: 4, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
           {s._isQuickScan ? (
-            <span style={{ background: "#38bdf812", border: "1px solid #38bdf840", color: "#38bdf8", fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1 }}>{qsCatLabel}</span>
+            <span style={{ background: `${qsTaxon.color}14`, border: `1px solid ${qsTaxon.color}40`, color: qsTaxon.color, fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1 }}>{qsTaxon.label}</span>
           ) : (
             <span style={{ background: `${cat.color}14`, border: `1px solid ${cat.color}35`, color: cat.color, fontSize: 9, padding: "1px 6px", borderRadius: 20, fontFamily: "monospace", letterSpacing: 1, display: "flex", alignItems: "center", gap: 4 }}><CatIconSvg icon={cat.icon} color={cat.color} size={10} />{cat.label}</span>
           )}
@@ -207,6 +208,7 @@ export default function App() {
     } catch { return null; }
   });
   const [filterCat, setFilterCat] = useState("all");
+  const [filterQsCat, setFilterQsCat] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterVis, setFilterVis] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
@@ -349,6 +351,7 @@ export default function App() {
   const FEED_CAP = 20, FEED_DEFAULT = 3;
   const allFiltered = submissions
     .filter(s => filterCat === "all" || s.category === filterCat)
+    .filter(s => filterQsCat === "all" || (s._isQuickScan && getQsTaxonomy(s.input_type).id === filterQsCat))
     .filter(s => filterStatus === "all" || (filterStatus === "scam" && s.score >= 75) || (filterStatus === "suspicious" && s.score >= 45 && s.score < 75) || (filterStatus === "safe" && s.score < 45))
     .filter(s => filterVis === "all" || (s.visibility || "public") === filterVis)
     .sort((a, b) => sortBy === "recent" ? new Date(b.created_at) - new Date(a.created_at) : b.score - a.score)
@@ -519,6 +522,15 @@ export default function App() {
                       })}
                       <span className="filter-divider" style={{ width: 1, height: 16, background: T.cardBorder, flexShrink: 0 }} />
                       <button onClick={() => setSortBy(s => s === "recent" ? "score" : "recent")} style={{ background: "none", border: `1px solid ${T.cardBorder}`, color: T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>{sortBy === "recent" ? "NEWEST" : "HIGHEST SCORE"}</button>
+                    </div>
+                    {/* Quick Scan taxonomy filter */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
+                      <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginRight: 2 }}>INTEL TYPE</span>
+                      <button onClick={() => handleFilterChange(setFilterQsCat, "all")} style={{ background: filterQsCat === "all" ? "#5b6cf818" : "none", border: `1px solid ${filterQsCat === "all" ? "#5b6cf8" : T.cardBorder}`, color: filterQsCat === "all" ? "#5b6cf8" : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.15s" }}>ALL</button>
+                      {QS_TAXONOMY.filter(t => t.id !== 'general').map(t => (
+                        <button key={t.id} onClick={() => handleFilterChange(setFilterQsCat, t.id)} style={{ background: filterQsCat === t.id ? `${t.color}18` : "none", border: `1px solid ${filterQsCat === t.id ? t.color : T.cardBorder}`, color: filterQsCat === t.id ? t.color : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.15s" }}>{t.label.toUpperCase()}</button>
+                      ))}
+                      <button onClick={() => handleFilterChange(setFilterQsCat, "general")} style={{ background: filterQsCat === "general" ? "#94a3b818" : "none", border: `1px solid ${filterQsCat === "general" ? "#94a3b8" : T.cardBorder}`, color: filterQsCat === "general" ? "#94a3b8" : T.text4, padding: "4px 10px", borderRadius: 20, fontSize: 9, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1, transition: "all 0.15s" }}>GENERAL INTEL</button>
                     </div>
                   </div>
                   {dbLoading ? (
