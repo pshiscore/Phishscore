@@ -62,6 +62,64 @@ async function fetchPrevious100() {
   return res.json();
 }
 
+async function fetchRecentWithRadarMetadata() {
+  const [subRes, qsRes] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/submissions?select=radar_metadata,score&order=created_at.desc&limit=50`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    }),
+    fetch(`${SUPABASE_URL}/rest/v1/quick_scans?select=radar_metadata,ai_score&order=created_at.desc&limit=50`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    }),
+  ]);
+  const subs = await subRes.json();
+  const qscans = await qsRes.json();
+  const subRows = Array.isArray(subs) ? subs.map(r => ({ meta: r.radar_metadata, score: r.score })) : [];
+  const qsRows = Array.isArray(qscans) ? qscans.map(r => ({ meta: r.radar_metadata, score: r.ai_score })) : [];
+  return [...subRows, ...qsRows];
+}
+
+function computeRadarMetrics(rows) {
+  const withMeta = rows.filter(r => r.meta);
+  if (!withMeta.length) return null;
+
+  // 1. AI pattern percentage
+  const aiCount = withMeta.filter(r => r.meta.shows_ai_patterns === true).length;
+  const ai_pct = Math.round((aiCount / withMeta.length) * 100);
+
+  // 2. Active brand impersonations (top 5 unique, non-null brands)
+  const brandCounts = {};
+  for (const r of withMeta) {
+    const b = r.meta.impersonated_brand;
+    if (b && typeof b === 'string') brandCounts[b] = (brandCounts[b] || 0) + 1;
+  }
+  const active_brands = Object.entries(brandCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  // 3. Live IOCs (unique, deduplicated, up to 10)
+  const iocSet = new Set();
+  for (const r of withMeta) {
+    if (Array.isArray(r.meta.extracted_iocs)) {
+      r.meta.extracted_iocs.forEach(ioc => ioc && iocSet.add(ioc));
+    }
+  }
+  const live_iocs = [...iocSet].slice(0, 10);
+
+  // 4. Threat matrix: vector × score-band counts
+  const vectors = ['email', 'sms', 'social', 'phone', 'web', 'other'];
+  const threat_matrix = {};
+  for (const v of vectors) {
+    const vRows = withMeta.filter(r => r.meta.vector === v);
+    if (!vRows.length) continue;
+    const avg = Math.round(vRows.reduce((s, r) => s + (r.score || 0), 0) / vRows.length);
+    const heat = avg >= 80 ? 'critical' : avg >= 65 ? 'high' : avg >= 45 ? 'moderate' : 'low';
+    threat_matrix[v] = { count: vRows.length, avg_score: avg, heat };
+  }
+
+  return { ai_pct, active_brands, live_iocs, threat_matrix };
+}
+
 // ── Aggregation helpers ────────────────────────────────────────────────────────
 
 function aggregate(submissions) {
@@ -269,10 +327,11 @@ module.exports = async function handler(req, res) {
   try {
     const month = new Date().getMonth() + 1;
 
-    // Parallel: current submissions + previous 100 for surge comparison
-    const [currentRaw, previousRaw] = await Promise.all([
+    // Parallel: current submissions + previous 100 for surge comparison + radar metadata
+    const [currentRaw, previousRaw, radarRows] = await Promise.all([
       fetchLast100(),
       fetchPrevious100(),
+      fetchRecentWithRadarMetadata(),
     ]);
 
     if (!Array.isArray(currentRaw)) throw new Error('Failed to fetch submissions');
@@ -293,6 +352,8 @@ module.exports = async function handler(req, res) {
       currentAgg, sectorWarnings, cnlInsights, month, currentRaw.length, surgeRatio
     ) || FALLBACK_INTELLIGENCE;
 
+    const radarMetrics = computeRadarMetrics(radarRows);
+
     const snapshot = {
       threat_level: intelligence.threatLevel,
       threat_warning: intelligence.threatWarning,
@@ -304,6 +365,7 @@ module.exports = async function handler(req, res) {
       cnl_top_categories: cnlInsights?.categories?.map(c => c.name).join(', ') || null,
       cnl_sentiment_level: cnlInsights?.sentiment?.urgencyLevel || null,
       recommended_action: intelligence.recommendedAction,
+      radar_metrics: radarMetrics,
     };
 
     await storeTrend(snapshot);

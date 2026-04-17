@@ -224,7 +224,7 @@ export default function App() {
     setDbLoading(false);
   };
 
-  const handleNewResult = async ({ category, text, result, source, visibility, classificationNote, summary, deliveryChannel }) => {
+  const handleNewResult = async ({ category, text, result, source, visibility, classificationNote, summary, deliveryChannel, radarMetadata }) => {
     const isAnon = visibility === "anonymous";
     const newSub = {
       category,
@@ -241,6 +241,7 @@ export default function App() {
       urlhaus_flagged: result.urlhausFlagged === true,
       // Always written — first-class submission field, not gated behind train_ai
       delivery_channel: deliveryChannel || 'other',
+      radar_metadata: radarMetadata || null,
     };
     try {
       const saved = await db.insertSubmission(newSub);

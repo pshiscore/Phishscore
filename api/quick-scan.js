@@ -78,7 +78,7 @@ Instructions: ${hasOsint
   : `Analyze the User Input for scam patterns, urgency tactics, impersonation, suspicious links, or social engineering. Score based on content alone.`}
 
 Return this exact JSON shape (no markdown, no explanation):
-{"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>"}
+{"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>", "shows_ai_patterns": <true if content shows LLM-generation patterns; false otherwise>, "impersonated_brand": "<primary brand/org being impersonated or null>", "extracted_iocs": ["<suspicious domains, URLs, or IPs; empty array if none>"], "vector": "<email|sms|social|phone|web|other>"}
 
 Category rules:
 - MUST be a specific, highly descriptive label — e.g. "Insurance Scam", "Delivery Phishing", "Tech Support Fraud", "Bank Impersonation", "Romance Scam", "Investment Fraud", "IRS Impersonation", "Suspicious URL"
@@ -112,7 +112,7 @@ Additional rules:
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -200,6 +200,12 @@ module.exports = async function handler(req, res) {
     ai_tags: aiResult.tags || [],
     visibility: 'private',
     created_at: new Date().toISOString(),
+    radar_metadata: {
+      shows_ai_patterns: aiResult.shows_ai_patterns ?? null,
+      impersonated_brand: aiResult.impersonated_brand ?? null,
+      extracted_iocs: Array.isArray(aiResult.extracted_iocs) ? aiResult.extracted_iocs : [],
+      vector: aiResult.vector ?? 'other',
+    },
   });
 
   return res.status(200).json({

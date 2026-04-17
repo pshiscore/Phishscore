@@ -20,59 +20,8 @@ const HEAT_COLORS = {
   none:     { bg: "transparent", border: "transparent", text: "#334155", label: "—" },
 };
 
-// Static threat matrix — updated manually or via future API field
-const THREAT_MATRIX = [
-  // [email, sms, social]
-  { sector: "Banking",  values: ["high", "critical", "moderate"] },
-  { sector: "Crypto",   values: ["moderate", "high", "critical"] },
-  { sector: "Retail",   values: ["high", "moderate", "low"] },
-  { sector: "Govt/IRS", values: ["critical", "moderate", "low"] },
-];
-
-const MATRIX_VECTORS = ["Email", "SMS", "Social"];
-
-// Derive spoofed brands from sector_warnings + static fallback
-function deriveBrands(data) {
-  const base = [
-    { name: "USPS / FedEx",   category: "delivery", trend: "+18%", up: true },
-    { name: "Chase / Wells",  category: "finance",  trend: "+12%", up: true },
-    { name: "Apple / Google", category: "tech",     trend: "+9%",  up: true },
-    { name: "IRS / SSA",      category: "government", trend: "-3%", up: false },
-    { name: "Amazon",         category: "retail",   trend: "+7%",  up: true },
-  ];
-  if (!data?.sector_warnings?.length) return base;
-  // Prioritise brands matching top sector warnings
-  const topCategories = (data.sector_warnings || []).map(w => w.category);
-  return base.sort((a, b) => {
-    const ai = topCategories.indexOf(a.category);
-    const bi = topCategories.indexOf(b.category);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-  });
-}
-
-// Derive AI generation % from threat level (placeholder formula until API provides field)
-function deriveAiPct(data) {
-  const base = 22 + (data?.threat_level || 1) * 6;
-  return Math.min(base, 68);
-}
-
-// Derive IOC rows from sector_warnings
-function deriveIOCs(data) {
-  const fallback = [
-    { ts: "2h ago",  type: "Domain", value: "secure-login-chase-verify.com" },
-    { ts: "4h ago",  type: "IP",     value: "185.220.101.47" },
-    { ts: "6h ago",  type: "Domain", value: "usps-tracking-update.net" },
-    { ts: "11h ago", type: "Domain", value: "apple-id-locked-alert.co" },
-    { ts: "14h ago", type: "IP",     value: "91.108.4.212" },
-  ];
-  if (!data?.sector_warnings?.length) return fallback;
-  const extras = (data.sector_warnings || []).slice(0, 2).map((w, i) => ({
-    ts: `${(i + 1) * 3}h ago`,
-    type: "Domain",
-    value: `${w.sector?.toLowerCase().replace(/\s+/, "-") || "alert"}-verify-${i + 1}.com`,
-  }));
-  return [...extras, ...fallback].slice(0, 6);
-}
+const MATRIX_VECTORS = ["Email", "SMS", "Social", "Phone", "Web", "Other"];
+const VECTOR_KEYS = ["email", "sms", "social", "phone", "web", "other"];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -132,83 +81,104 @@ function SectorWarning({ warning, T }) {
 
 function AiSignaturesCard({ pct, T }) {
   const color = pct >= 50 ? "#f43f5e" : pct >= 35 ? "#fb923c" : "#fbbf24";
+  const display = pct != null ? pct : "—";
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px" }}>
       <div style={{ fontSize: 9, letterSpacing: 3, color: "#a78bfa", fontFamily: "monospace", marginBottom: 10 }}>AI-GENERATION SIGNATURES</div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 10 }}>
-        <span style={{ fontSize: 32, fontWeight: 800, color, fontFamily: "monospace", lineHeight: 1 }}>{pct}%</span>
+        <span style={{ fontSize: 32, fontWeight: 800, color: pct != null ? color : T.text4, fontFamily: "monospace", lineHeight: 1 }}>{display}{pct != null ? "%" : ""}</span>
         <span style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", paddingBottom: 4 }}>of active threats show<br />LLM-generation patterns</span>
       </div>
-      <div style={{ background: T.ringTrack, borderRadius: 4, height: 6, overflow: "hidden", marginBottom: 8 }}>
-        <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, #a78bfa, ${color})`, width: `${pct}%`, transition: "width 1s ease", boxShadow: `0 0 8px ${color}66` }} />
-      </div>
-      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>Deepfake content, AI-crafted urgency, templated phishing</div>
+      {pct != null && (
+        <div style={{ background: T.ringTrack, borderRadius: 4, height: 6, overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg, #a78bfa, ${color})`, width: `${pct}%`, transition: "width 1s ease", boxShadow: `0 0 8px ${color}66` }} />
+        </div>
+      )}
+      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>Derived from community submissions — updated each Radar cycle</div>
     </div>
   );
 }
 
 function BrandLeaderboard({ brands, T }) {
+  if (!brands || !brands.length) {
+    return (
+      <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px" }}>
+        <div style={{ fontSize: 9, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12 }}>ACTIVE BRAND IMPERSONATIONS</div>
+        <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>No brand impersonation data yet.</div>
+      </div>
+    );
+  }
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px" }}>
       <div style={{ fontSize: 9, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 12 }}>ACTIVE BRAND IMPERSONATIONS</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {brands.map((b, i) => {
-          const cat = getCat(b.category);
-          return (
-            <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", width: 14, flexShrink: 0 }}>{i + 1}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.text, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
-                <div style={{ fontSize: 9, color: cat.color, fontFamily: "monospace" }}>{cat.label}</div>
-              </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: b.up ? "#f43f5e" : "#34d399", fontFamily: "monospace", flexShrink: 0 }}>
-                {b.up ? "↑" : "↓"} {b.trend}
-              </span>
+        {brands.map((b, i) => (
+          <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", width: 14, flexShrink: 0 }}>{i + 1}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.text, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
             </div>
-          );
-        })}
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: "monospace", flexShrink: 0 }}>
+              {b.count}×
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function ThreatMatrix({ T }) {
+function ThreatMatrix({ threatMatrix, T }) {
+  const hasData = threatMatrix && Object.keys(threatMatrix).length > 0;
+  const activeVectors = hasData ? VECTOR_KEYS.filter(k => threatMatrix[k]) : [];
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 9, letterSpacing: 3, color: "#fbbf24", fontFamily: "monospace", marginBottom: 12 }}>TARGETING MATRIX — SECTOR × VECTOR</div>
-      <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 4, minWidth: 280 }}>
-          <thead>
-            <tr>
-              <th style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "left" }}></th>
-              {MATRIX_VECTORS.map(v => (
-                <th key={v} style={{ fontSize: 9, color: T.text3, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "center" }}>{v.toUpperCase()}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {THREAT_MATRIX.map(row => (
-              <tr key={row.sector}>
-                <td style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", fontWeight: 700, padding: "4px 6px", whiteSpace: "nowrap" }}>{row.sector}</td>
-                {row.values.map((heat, ci) => {
-                  const h = HEAT_COLORS[heat] || HEAT_COLORS.none;
-                  return (
-                    <td key={ci} style={{ padding: "4px 6px", textAlign: "center" }}>
+      <div style={{ fontSize: 9, letterSpacing: 3, color: "#fbbf24", fontFamily: "monospace", marginBottom: 12 }}>THREAT MATRIX — DELIVERY VECTOR</div>
+      {!hasData ? (
+        <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>No vector data yet — collecting from submissions.</div>
+      ) : (
+        <div style={{ overflowX: "auto", width: "100%" }}>
+          <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 4, minWidth: 280 }}>
+            <thead>
+              <tr>
+                <th style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "left" }}>VECTOR</th>
+                <th style={{ fontSize: 9, color: T.text3, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "center" }}>REPORTS</th>
+                <th style={{ fontSize: 9, color: T.text3, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "center" }}>AVG SCORE</th>
+                <th style={{ fontSize: 9, color: T.text3, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 6px", textAlign: "center" }}>RISK</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeVectors.map(key => {
+                const row = threatMatrix[key];
+                const h = HEAT_COLORS[row.heat] || HEAT_COLORS.none;
+                return (
+                  <tr key={key}>
+                    <td style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", fontWeight: 700, padding: "4px 6px", whiteSpace: "nowrap", textTransform: "uppercase" }}>{key}</td>
+                    <td style={{ fontSize: 10, color: T.text3, fontFamily: "monospace", padding: "4px 6px", textAlign: "center" }}>{row.count}</td>
+                    <td style={{ fontSize: 10, color: T.text3, fontFamily: "monospace", padding: "4px 6px", textAlign: "center" }}>{row.avg_score}</td>
+                    <td style={{ padding: "4px 6px", textAlign: "center" }}>
                       <span style={{ display: "inline-block", background: h.bg, border: `1px solid ${h.border}`, color: h.text, fontSize: 8, fontWeight: 700, fontFamily: "monospace", letterSpacing: 1, padding: "3px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>{h.label}</span>
                     </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>Static baseline — refreshed with each Radar cycle</div>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>Derived from community submissions — updated each Radar cycle</div>
     </div>
   );
 }
 
-function IOCBoard({ iocs, T }) {
+function IOCBoard({ iocs: rawIocs, T }) {
+  const iocs = Array.isArray(rawIocs) && rawIocs.length
+    ? rawIocs.map((v, i) => ({
+        ts: `${(i + 1) * 2}h ago`,
+        type: /^\d{1,3}(\.\d{1,3}){3}$/.test(v) ? "IP" : "Domain",
+        value: v,
+      }))
+    : null;
   const [copied, setCopied] = useState(null);
   const copy = (val, i) => {
     navigator.clipboard.writeText(val).catch(() => {});
@@ -218,36 +188,40 @@ function IOCBoard({ iocs, T }) {
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 12, padding: "14px 16px" }}>
       <div style={{ fontSize: 9, letterSpacing: 3, color: "#06b6d4", fontFamily: "monospace", marginBottom: 12 }}>LIVE FORENSICS & IOCs</div>
-      <div style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 360 }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${T.innerBorder}` }}>
-              {["Time", "Type", "Indicator", ""].map(h => (
-                <th key={h} style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 8px", textAlign: "left" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {iocs.map((ioc, i) => (
-              <tr key={i} style={{ borderBottom: `1px solid ${T.innerBorder}20` }}>
-                <td style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", padding: "7px 8px", whiteSpace: "nowrap" }}>{ioc.ts}</td>
-                <td style={{ fontSize: 9, fontFamily: "monospace", padding: "7px 8px", whiteSpace: "nowrap" }}>
-                  <span style={{ color: ioc.type === "IP" ? "#fb923c" : "#a78bfa", background: ioc.type === "IP" ? "#fb923c12" : "#a78bfa12", border: `1px solid ${ioc.type === "IP" ? "#fb923c40" : "#a78bfa40"}`, padding: "2px 6px", borderRadius: 6 }}>{ioc.type}</span>
-                </td>
-                <td style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", padding: "7px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", wordBreak: "break-all" }}>{ioc.value}</td>
-                <td style={{ padding: "7px 8px" }}>
-                  <button onClick={() => copy(ioc.value, i)} title="Copy" style={{ background: "none", border: "none", cursor: "pointer", color: copied === i ? "#34d399" : T.text4, padding: 2, display: "flex", alignItems: "center" }}>
-                    {copied === i
-                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    }
-                  </button>
-                </td>
+      {!iocs ? (
+        <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>No IOC data yet — collecting from submissions.</div>
+      ) : (
+        <div style={{ overflowX: "auto", width: "100%", maxWidth: "100%" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 360 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${T.innerBorder}` }}>
+                {["Time", "Type", "Indicator", ""].map(h => (
+                  <th key={h} style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, padding: "4px 8px", textAlign: "left" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {iocs.map((ioc, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${T.innerBorder}20` }}>
+                  <td style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", padding: "7px 8px", whiteSpace: "nowrap" }}>{ioc.ts}</td>
+                  <td style={{ fontSize: 9, fontFamily: "monospace", padding: "7px 8px", whiteSpace: "nowrap" }}>
+                    <span style={{ color: ioc.type === "IP" ? "#fb923c" : "#a78bfa", background: ioc.type === "IP" ? "#fb923c12" : "#a78bfa12", border: `1px solid ${ioc.type === "IP" ? "#fb923c40" : "#a78bfa40"}`, padding: "2px 6px", borderRadius: 6 }}>{ioc.type}</span>
+                  </td>
+                  <td style={{ fontSize: 10, color: T.text2, fontFamily: "monospace", padding: "7px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", wordBreak: "break-all" }}>{ioc.value}</td>
+                  <td style={{ padding: "7px 8px" }}>
+                    <button onClick={() => copy(ioc.value, i)} title="Copy" style={{ background: "none", border: "none", cursor: "pointer", color: copied === i ? "#34d399" : T.text4, padding: 2, display: "flex", alignItems: "center" }}>
+                      {copied === i
+                        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      }
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 8 }}>Derived from community submissions — not verified threat feeds</div>
     </div>
   );
@@ -475,15 +449,15 @@ export function RadarPanel({ T = {}, onClose }) {
 
               {/* Row 1: AI Signatures + Brand Leaderboard */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-                <AiSignaturesCard pct={deriveAiPct(data)} T={T} />
-                <BrandLeaderboard brands={deriveBrands(data)} T={T} />
+                <AiSignaturesCard pct={data.radar_metrics?.ai_pct ?? null} T={T} />
+                <BrandLeaderboard brands={data.radar_metrics?.active_brands ?? null} T={T} />
               </div>
 
               {/* Row 2: Threat Matrix */}
-              <ThreatMatrix T={T} />
+              <ThreatMatrix threatMatrix={data.radar_metrics?.threat_matrix ?? null} T={T} />
 
               {/* Row 3: IOC Board */}
-              <IOCBoard iocs={deriveIOCs(data)} T={T} />
+              <IOCBoard iocs={data.radar_metrics?.live_iocs ?? null} T={T} />
 
               {/* Collapse button on mobile */}
               {isMobile && isReportExpanded && (
