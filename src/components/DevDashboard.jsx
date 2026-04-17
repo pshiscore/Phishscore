@@ -2,22 +2,22 @@ import { useState, useEffect } from 'react';
 import APITestDashboard from './APITestDashboard';
 
 const T = {
-  pageBg:      '#060810',
-  cardBg:      '#0d0f1a',
-  cardBorder:  '#1e2235',
-  inputBg:     '#0a0c14',
-  inputBorder: '#1e2235',
-  text:        '#f1f5f9',
-  text2:       '#cbd5e1',
-  text3:       '#94a3b8',
-  text4:       '#475569',
-  ringTrack:   '#1e2235',
-  innerBg:     '#111827',
-  innerBorder: '#1e293b',
-  tagBg:       '#1e2235',
-  tagColor:    '#94a3b8',
-  scrollTrack: '#0d0f1a',
-  scrollThumb: '#1e2235',
+  pageBg:      '#f8f6f2',
+  cardBg:      '#ffffff',
+  cardBorder:  '#e8e4de',
+  inputBg:     '#ffffff',
+  inputBorder: '#e8e4de',
+  text:        '#111827',
+  text2:       '#374151',
+  text3:       '#6b7280',
+  text4:       '#9ca3af',
+  ringTrack:   '#e5e7eb',
+  innerBg:     '#f3f0eb',
+  innerBorder: '#e8e4de',
+  tagBg:       '#f3f0eb',
+  tagColor:    '#6b7280',
+  scrollTrack: '#f0ede8',
+  scrollThumb: '#c8c4bc',
 };
 
 export default function DevDashboard() {
@@ -115,7 +115,7 @@ export default function DevDashboard() {
               autoComplete="username"
               placeholder="admin"
               style={{ width: '100%', background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
-              onFocus={e => e.target.style.borderColor = '#f43f5e55'}
+              onFocus={e => e.target.style.borderColor = '#f43f5e'}
               onBlur={e => e.target.style.borderColor = T.inputBorder}
             />
           </div>
@@ -129,7 +129,7 @@ export default function DevDashboard() {
               autoComplete="current-password"
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
               style={{ width: '100%', background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
-              onFocus={e => e.target.style.borderColor = '#f43f5e55'}
+              onFocus={e => e.target.style.borderColor = '#f43f5e'}
               onBlur={e => e.target.style.borderColor = T.inputBorder}
             />
           </div>
@@ -143,7 +143,7 @@ export default function DevDashboard() {
           <button
             onClick={handleLogin}
             disabled={submitting || !username || !password}
-            style={{ width: '100%', background: submitting || !username || !password ? '#1a1d2e' : 'linear-gradient(135deg,#f43f5e,#be123c)', border: 'none', color: submitting || !username || !password ? '#334155' : '#fff', padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: submitting ? 'default' : 'pointer', fontFamily: 'monospace', boxShadow: submitting ? 'none' : '0 4px 20px rgba(244,63,94,0.35)' }}>
+            style={{ width: '100%', background: submitting || !username || !password ? '#e5e7eb' : 'linear-gradient(135deg,#f43f5e,#be123c)', border: 'none', color: submitting || !username || !password ? '#9ca3af' : '#fff', padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: submitting ? 'default' : 'pointer', fontFamily: 'monospace', boxShadow: submitting ? 'none' : '0 4px 20px rgba(244,63,94,0.35)' }}>
             {submitting ? 'VERIFYING...' : 'ENTER'}
           </button>
         </div>
@@ -181,12 +181,12 @@ export default function DevDashboard() {
             disabled={maintenanceLoading || maintenanceToggling || !!maintenanceError}
             style={{
               background: maintenanceLoading || maintenanceToggling
-                ? '#1a1d2e'
+                ? '#e5e7eb'
                 : maintenance
                   ? 'linear-gradient(135deg,#22c55e,#15803d)'
                   : 'linear-gradient(135deg,#f43f5e,#be123c)',
               border: 'none',
-              color: maintenanceLoading || maintenanceToggling ? '#334155' : '#fff',
+              color: maintenanceLoading || maintenanceToggling ? '#9ca3af' : '#fff',
               padding: '14px 32px',
               borderRadius: 12,
               fontSize: 12,
