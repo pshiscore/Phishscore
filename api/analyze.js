@@ -1,3 +1,5 @@
+const { checkRateLimit } = require('./_utils/rateLimit');
+
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 
@@ -104,24 +106,6 @@ async function storeTrainingData(parsed, context = {}) {
   }
 }
 
-// ── In-memory rate limiter ────────────────────────────────────────────────────
-const ipWindows = new Map();
-
-function isRateLimited(ip) {
-  const now = Date.now();
-  const MINUTE = 60 * 1000;
-  const HOUR = 60 * MINUTE;
-  if (!ipWindows.has(ip)) {
-    ipWindows.set(ip, { minuteCount: 0, minuteStart: now, hourCount: 0, hourStart: now });
-  }
-  const w = ipWindows.get(ip);
-  if (now - w.minuteStart > MINUTE) { w.minuteCount = 0; w.minuteStart = now; }
-  if (now - w.hourStart > HOUR) { w.hourCount = 0; w.hourStart = now; }
-  w.minuteCount++;
-  w.hourCount++;
-  if (w.minuteCount > 5 || w.hourCount > 20) return true;
-  return false;
-}
 
 // ── reCAPTCHA v3 verification ─────────────────────────────────────────────────
 async function verifyRecaptcha(token, minScore = 0.5) {
@@ -199,7 +183,8 @@ module.exports = async function handler(req, res) {
 
   const ip = (req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown').split(',')[0].trim();
 
-  if (isRateLimited(ip)) {
+  const { allowed } = await checkRateLimit(ip);
+  if (!allowed) {
     return res.status(429).json({
       error: 'rate_limited',
       message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again."
