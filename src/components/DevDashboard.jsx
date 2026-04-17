@@ -291,6 +291,28 @@ export default function DevDashboard() {
           T={T}
           embedded
         />
+
+        {/* ── Sentry Test ─────────────────────────────────────────────────────── */}
+        <div style={{ marginTop: 28, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => { throw new Error('Sentry test crash from PhishScore Command Center'); }}
+            style={{
+              background: 'linear-gradient(135deg,#dc2626,#991b1b)',
+              border: 'none',
+              color: '#fff',
+              padding: '10px 24px',
+              borderRadius: 10,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 2,
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+              opacity: 0.7,
+            }}
+          >
+            TRIGGER SENTRY TEST CRASH
+          </button>
+        </div>
       </div>
     </div>
   );

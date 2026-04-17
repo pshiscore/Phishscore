@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@sentry/react": "^10.49.0",
     "@upstash/redis": "^1.37.0",
     "cohere-ai": "^8.0.0",
     "google-auth-library": "^10.6.2",
@@ -15,7 +16,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build"
+    "build": "react-scripts build && sentry-cli sourcemaps inject ./build && sentry-cli sourcemaps upload --release=$npm_package_version ./build"
   },
   "browserslist": {
     "production": [
@@ -26,5 +27,8 @@
     "development": [
       "last 1 chrome version"
     ]
+  },
+  "devDependencies": {
+    "@sentry/cli": "^3.3.5"
   }
 }
