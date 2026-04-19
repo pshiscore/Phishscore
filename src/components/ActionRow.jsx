@@ -89,6 +89,32 @@ const TAG_EXPLANATIONS = {
       "If you received it in a message, the message itself is likely malicious.",
     ],
   },
+  parked_domain: {
+    header: "Parked Domain",
+    body: "This link points to a parked or inactive domain. Scammers frequently buy cheap parked domains to host temporary, disposable phishing sites.",
+    subhead: "Next Steps:",
+    bullets: [
+      "Do not click the link or enter any credentials.",
+      "Close the page immediately.",
+    ],
+  },
+  spam_domain: {
+    header: "Known Spam Domain",
+    body: "This domain has a verified history of sending aggressive spam or malicious emails.",
+    subhead: "Next Steps:",
+    bullets: [
+      "Mark the sender as spam.",
+      "Do not reply or click unsubscribe links, as this confirms your email is active.",
+    ],
+  },
+  inactive_contact: {
+    header: "Invalid or Inactive Contact",
+    body: "This email address or phone number is flagged as disconnected or unable to receive messages (hard bounce).",
+    subhead: "Next Steps:",
+    bullets: [
+      "This is likely a spoofed sender ID. Do not attempt to reply.",
+    ],
+  },
 };
 
 // Map OSINT pill keys to explanation IDs
@@ -414,6 +440,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
               {/* OSINT pills */}
               {result.osint && (() => {
                 const isVoip = result.osint.line_type === 'VOIP';
+                const isInactive = result.osint.active === false || result.osint.valid === false;
                 const clickablePills = [
                   result.osint.recent_abuse && { key: 'recent_abuse', label: 'RECENT ABUSE' },
                   result.osint.disposable && { key: 'disposable_email', label: 'DISPOSABLE EMAIL' },
@@ -422,6 +449,9 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                   result.osint.phishing && { key: 'phishing', label: 'PHISHING' },
                   result.osint.malware && { key: 'malware', label: 'MALWARE' },
                   result.osint.unsafe && { key: 'unsafe_url', label: 'UNSAFE URL' },
+                  result.osint.parking && { key: 'parked_domain', label: 'PARKED DOMAIN' },
+                  result.osint.spamming && { key: 'spam_domain', label: 'SPAM DOMAIN' },
+                  isInactive && { key: 'inactive_contact', label: 'INACTIVE CONTACT' },
                 ].filter(Boolean);
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -434,9 +464,15 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                       {result.osint.spam_trap && <OsintPill label="SPAM TRAP" value="YES" color={accentRed} T={T} />}
                       {result.osint.line_type && <OsintPill label="LINE TYPE" value={result.osint.line_type} color={isVoip ? accentRed : T.text3} T={T} />}
                       {result.osint.carrier && <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />}
+                      {result.osint.name && <OsintPill label="NAME" value={result.osint.name} color={T.text3} T={T} />}
+                      {result.osint.active === false && <OsintPill label="ACTIVE" value="NO" color="#fb923c" T={T} />}
+                      {result.osint.premium && <OsintPill label="PREMIUM LINE" value="YES" color="#fb923c" T={T} />}
+                      {result.osint.valid === false && <OsintPill label="VALID INBOX" value="NO" color="#fb923c" T={T} />}
                       {result.osint.phishing && <OsintPill label="PHISHING" value="DETECTED" color={accentRed} T={T} />}
                       {result.osint.malware && <OsintPill label="MALWARE" value="DETECTED" color={accentRed} T={T} />}
                       {result.osint.unsafe && <OsintPill label="UNSAFE URL" value="YES" color="#fb923c" T={T} />}
+                      {result.osint.parking && <OsintPill label="PARKED DOMAIN" value="YES" color="#fb923c" T={T} />}
+                      {result.osint.spamming && <OsintPill label="SPAM DOMAIN" value="YES" color={accentRed} T={T} />}
                       {result.osint.risk_score !== null && result.osint.type === 'url' && (
                         <OsintPill label="URL RISK" value={`${result.osint.risk_score}/100`} color={result.osint.risk_score > 50 ? accentRed : '#34d399'} T={T} />
                       )}

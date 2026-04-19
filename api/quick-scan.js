@@ -32,6 +32,7 @@ OSINT DATA — We extracted the email "${entity}" and found:
   Spam Trap: ${d.spam_trap}
   Honeypot: ${d.honeypot}
   Leaked in Breach: ${d.leaked}
+  Valid Inbox: ${d.valid}
   Domain: ${d.domain || 'N/A'}`;
   }
 
@@ -43,7 +44,10 @@ OSINT DATA — We extracted the phone number "${entity}" and found:
   Carrier: ${d.carrier || 'Unknown'}
   Recent Abuse: ${d.recent_abuse}
   Spammer Listed: ${d.spammer}
-  Risky: ${d.risky}`;
+  Risky: ${d.risky}
+  Active Status: ${d.active}
+  Registered Name: ${d.name || 'Unknown'}
+  Premium/Toll Rate: ${d.premium}`;
   }
 
   if (ipqsData.type === 'url') {
@@ -54,6 +58,8 @@ OSINT DATA — We scanned the URL "${entity}" and found:
   Malware: ${d.malware}
   Unsafe: ${d.unsafe}
   Suspicious: ${d.suspicious}
+  Parked Domain: ${d.parking}
+  Known Spammer: ${d.spamming}
   Domain Age: ${d.domain_age ? JSON.stringify(d.domain_age) : 'Unknown'}
   Category: ${d.category || 'N/A'}`;
   }
@@ -101,6 +107,8 @@ Additional rules:
 - Fraud score ≥ 75 from IPQS = score ≥ 70
 - Disposable or honeypot email = score ≥ 65
 - Phishing or malware flag from URL scan = score ≥ 85
+- Parked domain = score ≥ 75
+- Valid Inbox = false or Active Status = false AND content claims to be from a legitimate org = score ≥ 85 (spoofed/dead-drop sender)
 - Be concise and objective`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -222,14 +230,20 @@ module.exports = async function handler(req, res) {
           // email
           disposable: ipqsData.data?.disposable ?? null,
           spam_trap: ipqsData.data?.spam_trap ?? null,
+          valid: ipqsData.data?.valid ?? null,
           // phone
           line_type: ipqsData.data?.line_type ?? null,
           carrier: ipqsData.data?.carrier ?? null,
+          active: ipqsData.data?.active ?? null,
+          name: ipqsData.data?.name ?? null,
+          premium: ipqsData.data?.premium ?? null,
           // url
           phishing: ipqsData.data?.phishing ?? null,
           malware: ipqsData.data?.malware ?? null,
           unsafe: ipqsData.data?.unsafe ?? null,
           risk_score: ipqsData.data?.risk_score ?? null,
+          parking: ipqsData.data?.parking ?? null,
+          spamming: ipqsData.data?.spamming ?? null,
         }
       : null,
   });
