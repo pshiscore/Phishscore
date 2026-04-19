@@ -115,6 +115,15 @@ const TAG_EXPLANATIONS = {
       "This is likely a spoofed sender ID. Do not attempt to reply.",
     ],
   },
+  premium_rate: {
+    header: "Premium / Toll Rate Number",
+    body: "This is a premium-rate phone number. Scammers use these to artificially inflate traffic or charge you massive per-minute fees just for calling or texting them back.",
+    subhead: "Next Steps:",
+    bullets: [
+      "Do not call or text this number back under any circumstances.",
+      "Check your phone bill for unauthorized international or premium charges.",
+    ],
+  },
 };
 
 // Map OSINT pill keys to explanation IDs
@@ -452,6 +461,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                   result.osint.parking && { key: 'parked_domain', label: 'PARKED DOMAIN' },
                   result.osint.spamming && { key: 'spam_domain', label: 'SPAM DOMAIN' },
                   isInactive && { key: 'inactive_contact', label: 'INACTIVE CONTACT' },
+                  result.osint.premium && { key: 'premium_rate', label: 'PREMIUM LINE' },
                 ].filter(Boolean);
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
