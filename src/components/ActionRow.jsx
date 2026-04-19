@@ -413,7 +413,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
 
               {/* OSINT pills — clickable where explanations exist */}
               {result.osint && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                   {result.osint.fraud_score !== null && (
                     <OsintPill label="IPQS FRAUD" value={`${result.osint.fraud_score}/100`} color={result.osint.fraud_score > 50 ? accentRed : '#34d399'} explanationKey={result.osint.fraud_score <= 50 && result.osint.leaked ? 'compromised_email' : null} activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />
                   )}
@@ -457,28 +457,33 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
 function OsintPill({ label, value, color, explanationKey, activeExplanation, setActiveExplanation, T }) {
   const isActive = activeExplanation === explanationKey;
   const isClickable = !!explanationKey && !!setActiveExplanation;
-  const Tag = isClickable ? 'button' : 'div';
   return (
-    <Tag
-      onClick={isClickable ? () => setActiveExplanation(isActive ? null : explanationKey) : undefined}
-      style={{
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+      <div style={{
         display: 'flex', alignItems: 'center', gap: 5,
         background: isActive ? `${color}22` : `${color}10`,
         border: `1px solid ${isActive ? color : `${color}30`}`,
         borderRadius: 6, padding: '3px 10px',
-        cursor: isClickable ? 'pointer' : 'default',
-        fontFamily: 'inherit',
         transition: 'all 0.15s',
-      }}
-      onMouseEnter={isClickable ? e => { e.currentTarget.style.background = `${color}22`; e.currentTarget.style.borderColor = color; } : undefined}
-      onMouseLeave={isClickable ? e => { if (!isActive) { e.currentTarget.style.background = `${color}10`; e.currentTarget.style.borderColor = `${color}30`; } } : undefined}
-    >
-      <span style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: 1, color: T.text3 }}>{label}</span>
-      <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color }}>{value}</span>
+      }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: 1, color: T.text3 }}>{label}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color }}>{value}</span>
+      </div>
       {isClickable && (
-        <span style={{ fontFamily: 'monospace', fontSize: 8, color, marginLeft: 2, opacity: 0.7 }}>?</span>
+        <button
+          onClick={() => setActiveExplanation(isActive ? null : explanationKey)}
+          style={{
+            background: 'none', border: 'none', padding: '0 2px',
+            cursor: 'pointer', fontFamily: 'monospace', fontSize: 9,
+            color: isActive ? color : T.text4,
+            letterSpacing: 0.5, textDecoration: 'underline',
+            textUnderlineOffset: 2,
+          }}
+        >
+          {isActive ? 'close ↑' : 'what does this mean?'}
+        </button>
       )}
-    </Tag>
+    </div>
   );
 }
 
