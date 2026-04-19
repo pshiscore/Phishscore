@@ -411,25 +411,65 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                 </div>
               )}
 
-              {/* OSINT pills — clickable where explanations exist */}
-              {result.osint && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  {result.osint.fraud_score !== null && (
-                    <OsintPill label="IPQS FRAUD" value={`${result.osint.fraud_score}/100`} color={result.osint.fraud_score > 50 ? accentRed : '#34d399'} explanationKey={result.osint.fraud_score <= 50 && result.osint.leaked ? 'compromised_email' : null} activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />
-                  )}
-                  {result.osint.recent_abuse && <OsintPill label="RECENT ABUSE" value="FLAGGED" color={accentRed} explanationKey="recent_abuse" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.disposable && <OsintPill label="DISPOSABLE EMAIL" value="YES" color="#fb923c" explanationKey="disposable_email" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.spam_trap && <OsintPill label="SPAM TRAP" value="YES" color={accentRed} explanationKey="spam_trap" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.line_type && <OsintPill label="LINE TYPE" value={result.osint.line_type} color={result.osint.line_type === 'VOIP' ? accentRed : T.text3} explanationKey={result.osint.line_type === 'VOIP' ? 'voip_line' : null} activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.carrier && <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />}
-                  {result.osint.phishing && <OsintPill label="PHISHING" value="DETECTED" color={accentRed} explanationKey="phishing" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.malware && <OsintPill label="MALWARE" value="DETECTED" color={accentRed} explanationKey="malware" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.unsafe && <OsintPill label="UNSAFE URL" value="YES" color="#fb923c" explanationKey="unsafe_url" activeExplanation={activeExplanation} setActiveExplanation={setActiveExplanation} T={T} />}
-                  {result.osint.risk_score !== null && result.osint.type === 'url' && (
-                    <OsintPill label="URL RISK" value={`${result.osint.risk_score}/100`} color={result.osint.risk_score > 50 ? accentRed : '#34d399'} T={T} />
-                  )}
-                </div>
-              )}
+              {/* OSINT pills */}
+              {result.osint && (() => {
+                const isVoip = result.osint.line_type === 'VOIP';
+                const clickablePills = [
+                  result.osint.recent_abuse && { key: 'recent_abuse', label: 'RECENT ABUSE' },
+                  result.osint.disposable && { key: 'disposable_email', label: 'DISPOSABLE EMAIL' },
+                  result.osint.spam_trap && { key: 'spam_trap', label: 'SPAM TRAP' },
+                  isVoip && { key: 'voip_line', label: 'LINE TYPE VOIP' },
+                  result.osint.phishing && { key: 'phishing', label: 'PHISHING' },
+                  result.osint.malware && { key: 'malware', label: 'MALWARE' },
+                  result.osint.unsafe && { key: 'unsafe_url', label: 'UNSAFE URL' },
+                ].filter(Boolean);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {result.osint.fraud_score !== null && (
+                        <OsintPill label="IPQS FRAUD" value={`${result.osint.fraud_score}/100`} color={result.osint.fraud_score > 50 ? accentRed : '#34d399'} T={T} />
+                      )}
+                      {result.osint.recent_abuse && <OsintPill label="RECENT ABUSE" value="FLAGGED" color={accentRed} T={T} />}
+                      {result.osint.disposable && <OsintPill label="DISPOSABLE EMAIL" value="YES" color="#fb923c" T={T} />}
+                      {result.osint.spam_trap && <OsintPill label="SPAM TRAP" value="YES" color={accentRed} T={T} />}
+                      {result.osint.line_type && <OsintPill label="LINE TYPE" value={result.osint.line_type} color={isVoip ? accentRed : T.text3} T={T} />}
+                      {result.osint.carrier && <OsintPill label="CARRIER" value={result.osint.carrier} color={T.text3} T={T} />}
+                      {result.osint.phishing && <OsintPill label="PHISHING" value="DETECTED" color={accentRed} T={T} />}
+                      {result.osint.malware && <OsintPill label="MALWARE" value="DETECTED" color={accentRed} T={T} />}
+                      {result.osint.unsafe && <OsintPill label="UNSAFE URL" value="YES" color="#fb923c" T={T} />}
+                      {result.osint.risk_score !== null && result.osint.type === 'url' && (
+                        <OsintPill label="URL RISK" value={`${result.osint.risk_score}/100`} color={result.osint.risk_score > 50 ? accentRed : '#34d399'} T={T} />
+                      )}
+                    </div>
+
+                    {/* "What does this mean?" buttons — one per explainable flag */}
+                    {clickablePills.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {clickablePills.map(({ key, label }) => (
+                          <button
+                            key={key}
+                            onClick={() => setActiveExplanation(activeExplanation === key ? null : key)}
+                            style={{
+                              background: activeExplanation === key ? 'rgba(244,63,94,0.08)' : 'none',
+                              border: `1px solid ${activeExplanation === key ? '#f43f5e60' : T.cardBorder}`,
+                              borderRadius: 6,
+                              padding: '4px 10px',
+                              cursor: 'pointer',
+                              fontFamily: 'monospace',
+                              fontSize: 9,
+                              letterSpacing: 1,
+                              color: activeExplanation === key ? accentRed : T.text3,
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {activeExplanation === key ? '✕ close' : `? what is ${label}?`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Explanation flyout */}
               {activeExplanation && TAG_EXPLANATIONS[activeExplanation] && (
@@ -454,35 +494,15 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
   );
 }
 
-function OsintPill({ label, value, color, explanationKey, activeExplanation, setActiveExplanation, T }) {
-  const isActive = activeExplanation === explanationKey;
-  const isClickable = !!explanationKey && !!setActiveExplanation;
+function OsintPill({ label, value, color, T }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        background: isActive ? `${color}22` : `${color}10`,
-        border: `1px solid ${isActive ? color : `${color}30`}`,
-        borderRadius: 6, padding: '3px 10px',
-        transition: 'all 0.15s',
-      }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: 1, color: T.text3 }}>{label}</span>
-        <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color }}>{value}</span>
-      </div>
-      {isClickable && (
-        <button
-          onClick={() => setActiveExplanation(isActive ? null : explanationKey)}
-          style={{
-            background: 'none', border: 'none', padding: '0 2px',
-            cursor: 'pointer', fontFamily: 'monospace', fontSize: 9,
-            color: isActive ? color : T.text4,
-            letterSpacing: 0.5, textDecoration: 'underline',
-            textUnderlineOffset: 2,
-          }}
-        >
-          {isActive ? 'close ↑' : 'what does this mean?'}
-        </button>
-      )}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 5,
+      background: `${color}10`, border: `1px solid ${color}30`,
+      borderRadius: 6, padding: '3px 10px',
+    }}>
+      <span style={{ fontFamily: 'monospace', fontSize: 9, letterSpacing: 1, color: T.text3 }}>{label}</span>
+      <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color }}>{value}</span>
     </div>
   );
 }
