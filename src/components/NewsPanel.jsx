@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { PhishScoreLogo } from "./Primitives";
 
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
-const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 const SOURCES = [
   'all',
@@ -193,16 +191,8 @@ export function NewsPanel({ T = {}, onClose }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/threat_news?select=*&order=published_at.desc&limit=60`,
-          {
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        );
-        if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+        const res = await fetch('/api/get-news');
+        if (!res.ok) throw new Error(`Failed to load news: ${res.status}`);
         const data = await res.json();
         setArticles(Array.isArray(data) ? data : []);
       } catch (err) {
