@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { PhishScoreLogo } from "./Primitives";
 
 
+// TEMP: hidden for production simplification — do not remove code
+const SHOW_WEEKLY_BRIEF = false;
+
 const SOURCES = [
   'all',
   'BleepingComputer',
@@ -259,15 +262,17 @@ export function NewsPanel({ T = {}, onClose }) {
             </button>
           );
         })}
-        <button
-          onClick={() => setShowSubscribe(true)}
-          style={{ marginLeft: "auto", background: "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: "#fff", padding: "5px 14px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}
-        >
-          📬 GET THE WEEKLY BRIEF
-        </button>
+        {SHOW_WEEKLY_BRIEF && (
+          <button
+            onClick={() => setShowSubscribe(true)}
+            style={{ marginLeft: "auto", background: "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: "#fff", padding: "5px 14px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", flexShrink: 0 }}
+          >
+            📬 GET THE WEEKLY BRIEF
+          </button>
+        )}
       </div>
 
-      {showSubscribe && <SubscribeModal T={T} onClose={() => setShowSubscribe(false)} />}
+      {SHOW_WEEKLY_BRIEF && showSubscribe && <SubscribeModal T={T} onClose={() => setShowSubscribe(false)} />}
 
       {/* Body */}
       {loading ? (

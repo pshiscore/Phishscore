@@ -92,19 +92,11 @@ const FAQ_SECTIONS = [
     items: [
       {
         q: "What is PhishScore Deep Intel?",
-        a: "PhishScore Deep Intel is a premium investigation service currently in beta. When a scam scores above 75 and you need to go further — whether to recover from fraud, protect your accounts, or understand exactly what happened — Deep Intel conducts a full forensic investigation combining multiple threat intelligence databases and AI analysis into a professional case file report."
+        a: "PhishScore Deep Intel is a forensic investigation service for confirmed scams. It combines multiple threat intelligence databases and AI analysis into a professional case file — including an evidence summary, recovery checklist, and recommended next steps. Deep Intel is currently available by request only. Email contact@phishscore.ai to enquire."
       },
       {
-        q: "What does a Deep Intel investigation include?",
-        a: "A Deep Intel report pulls data from URLScan.io (live screenshot and page analysis), VirusTotal (verdicts from 70+ security engines), AbuseIPDB (IP history and victim reports), and WhoisXML (domain ownership and age (most scam domains are under 30 days old)). Claude AI synthesizes all of this with your personal account of what happened to produce a structured case file with an evidence summary, a specific recovery checklist tailored to your situation, and recommended next steps."
-      },
-      {
-        q: "What service tiers will Deep Intel offer?",
-        a: "Deep Intel will launch with multiple tiers to match different situations and levels of urgency. The entry tier delivers a fully automated AI forensic report. Higher tiers add a human Sanity Check review for complex or subtle cases, and an expert OSINT investigation for serious incidents requiring manual research and a custom recovery strategy. Pricing has not been announced. Contact contact@phishscore.ai to be notified at launch or to request early access."
-      },
-      {
-        q: "How do I access Deep Intel?",
-        a: "After any scan that returns a score above 75, you will see an Uncover This Scam — PhishScore Deep Intel button above the Report to FTC button on your results screen. You can also access it from the magnifying glass icon in the navigation bar. The service is currently in closed beta. Clicking either entry point will show you a preview of the upcoming launch and how to join the waitlist."
+        q: "How do I get access to Deep Intel?",
+        a: "Deep Intel is not self-serve at this time. Email contact@phishscore.ai with a brief description of your situation. We'll follow up within 1–2 business days."
       },
       {
         q: "What is PhishScore Mini?",

@@ -36,6 +36,8 @@ export default function DevDashboard() {
   const [alerts, setAlerts] = useState(false);
   const [alertsLoading, setAlertsLoading] = useState(true);
 
+  const [deepIntelProtected, setDeepIntelProtected] = useState(() => localStorage.getItem('deepIntelProtected') !== 'false');
+
   const [evalRunning, setEvalRunning] = useState(false);
   const [evalStatus, setEvalStatus] = useState(null); // null | 'success' | 'error'
   const [alertsToggling, setAlertsToggling] = useState(false);
@@ -284,6 +286,52 @@ export default function DevDashboard() {
             }}
           >
             {alertsToggling ? 'UPDATING...' : alerts ? 'DISABLE' : 'ENABLE ALERTS'}
+          </button>
+        </div>
+
+        {/* ── Deep Intel Protection ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: 28, background: T.cardBg, border: `1px solid ${deepIntelProtected ? '#a78bfa40' : T.cardBorder}`, borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: 4, color: deepIntelProtected ? '#a78bfa' : T.text4, fontFamily: 'monospace', marginBottom: 6 }}>DEEP INTEL GATE</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: deepIntelProtected ? '#a78bfa' : T.text4, boxShadow: deepIntelProtected ? '0 0 8px #a78bfa' : 'none', flexShrink: 0 }} />
+              <div style={{ fontSize: 20, fontWeight: 800, color: T.text, fontFamily: 'monospace', letterSpacing: 1 }}>
+                {deepIntelProtected ? 'GATED' : 'OPEN'}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: T.text4, fontFamily: 'monospace', marginTop: 4 }}>
+              {deepIntelProtected
+                ? 'Deep Intel entry points are greyed out — routes to contact email.'
+                : 'Deep Intel entry points are fully enabled.'}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const next = !deepIntelProtected;
+              setDeepIntelProtected(next);
+              localStorage.setItem('deepIntelProtected', String(next));
+            }}
+            style={{
+              background: deepIntelProtected
+                ? 'linear-gradient(135deg,#6b7280,#374151)'
+                : 'linear-gradient(135deg,#a78bfa,#7c3aed)',
+              border: 'none',
+              color: '#fff',
+              padding: '14px 32px',
+              borderRadius: 12,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 2,
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+              boxShadow: deepIntelProtected
+                ? '0 4px 20px rgba(107,114,128,0.3)'
+                : '0 4px 20px rgba(167,139,250,0.4)',
+              minWidth: 160,
+              transition: 'all 0.2s',
+            }}
+          >
+            {deepIntelProtected ? 'UNGATE' : 'GATE IT'}
           </button>
         </div>
 

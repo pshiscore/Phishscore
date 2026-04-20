@@ -359,8 +359,12 @@ export default function App() {
             </Tooltip>
 
             {/* Deep Intel */}
-            <Tooltip text="PhishScore Deep Intel" T={T}>
-              <button onClick={() => isMobile ? setIsDeepIntelOpen(true) : switchView(activeView === 'deep-intel' ? 'dashboard' : 'deep-intel')} className="nav-btn" style={{ background: activeView === 'deep-intel' ? "#a78bfa18" : "none", border: `1px solid ${activeView === 'deep-intel' ? "#a78bfa" : T.headerBorder}`, color: activeView === 'deep-intel' ? "#a78bfa" : T.text3, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap" }}>
+            <Tooltip text="PhishScore Deep Intel — available by request" T={T}>
+              <button
+                onClick={() => { window.location.href = `mailto:contact@phishscore.ai?subject=Deep%20Intel%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20access%20to%20PhishScore%20Deep%20Intel.`; }}
+                className="nav-btn"
+                style={{ background: "none", border: `1px solid ${T.headerBorder}`, color: T.text4, height: 40, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "0 12px", whiteSpace: "nowrap", opacity: 0.5 }}
+              >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
