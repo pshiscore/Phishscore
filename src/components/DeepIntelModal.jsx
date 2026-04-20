@@ -101,6 +101,9 @@ const IVS_CONFIG = {
   CRITICAL: { color: "#f43f5e", bg: "#f43f5e12", border: "#f43f5e30", label: "CRITICAL VALUE" },
 };
 
+// TEMP: set to true to gate Deep Intel behind a contact-us overlay
+const DEEP_INTEL_GATED = true;
+
 // ── Shared Deep Intel content — used both inline and inside the modal ─────────
 export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
   // Steps: intake → scoring → tiers → checkout → confirm
@@ -199,7 +202,33 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
   const ivsConfig = ivs ? (IVS_CONFIG[ivs.label] || IVS_CONFIG.MODERATE) : null;
 
   return (
-    <>
+    <div style={{ position: "relative" }}>
+      {/* ── Gated overlay ── */}
+      {DEEP_INTEL_GATED && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: 16, backdropFilter: "blur(6px)", background: "rgba(0,0,0,0.65)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: "#a78bfa", fontFamily: "monospace", marginBottom: 10 }}>PHISHSCORE DEEP INTEL</div>
+          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", color: "#fff", letterSpacing: 0.5, marginBottom: 12 }}>Available by Request Only</div>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontFamily: "Georgia, serif", lineHeight: 1.7, margin: "0 0 24px", maxWidth: 380 }}>
+            Deep Intel is a forensic investigation service that uncovers the full story behind a scam — combining live threat intelligence, domain analysis, and AI case-file generation. We're currently onboarding users by request.
+          </p>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=Deep%20Intel%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20access%20to%20PhishScore%20Deep%20Intel.`}
+            style={{ display: "inline-block", background: "linear-gradient(135deg,#a78bfa,#7c3aed)", color: "#fff", padding: "12px 28px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 2, fontFamily: "monospace", textDecoration: "none", boxShadow: "0 4px 20px rgba(167,139,250,0.45)", marginBottom: 14 }}
+          >
+            REQUEST ACCESS →
+          </a>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: "monospace", letterSpacing: 1 }}>
+            {SUPPORT_EMAIL}
+          </div>
+        </div>
+      )}
+
+      {/* ── Interface (blurred behind overlay when gated) ── */}
+      <div style={DEEP_INTEL_GATED ? { pointerEvents: "none", userSelect: "none", opacity: 0.3 } : {}}>
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
@@ -374,7 +403,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
         {/* ── STEP: TIERS ── */}
         {step === "tiers" && (
           <>
-            {/* Email at top */}
+            {/* Email at top — report delivered here */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR EMAIL — REPORT DELIVERED HERE <span style={{ color: "#f43f5e" }}>*</span></div>
               <input
@@ -448,7 +477,8 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
             </div>
           </>
         )}
-    </>
+      </div>
+    </div>
   );
 }
 

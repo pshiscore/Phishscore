@@ -602,19 +602,21 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
             </div>
             {result.score >= 75 && (
               <>
-                {/* Deep Intel teaser — available by request only */}
-                <button onClick={() => { window.location.href = `mailto:contact@phishscore.ai?subject=Deep%20Intel%20Request&body=Hi%2C%20I%27d%20like%20to%20request%20access%20to%20PhishScore%20Deep%20Intel.`; }} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "none", border: "1px solid #a78bfa30", borderRadius: 10, padding: "13px 16px", marginBottom: 10, cursor: "pointer", textDecoration: "none", transition: "all 0.15s", opacity: 0.6 }}>
+                {/* Deep Intel teaser — only shown on confirmed scams */}
+                <button onClick={() => onDeepIntel({ message: text, score: result.score, category: result.finalCategory })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "linear-gradient(135deg, #1a0a2e, #0d0520)", border: "1px solid #a78bfa50", borderRadius: 10, padding: "13px 16px", marginBottom: 10, cursor: "pointer", textDecoration: "none", transition: "all 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "#a78bfa"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "#a78bfa50"}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                       <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
                     </svg>
                     <div style={{ textAlign: "left" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", fontFamily: "monospace", letterSpacing: 1 }}>PHISHSCORE DEEP INTEL</div>
-                      <div style={{ fontSize: 10, color: "#7c5cbf", fontFamily: "Georgia, serif", marginTop: 2 }}>Available by request only — click to contact us</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", fontFamily: "monospace", letterSpacing: 1 }}>UNCOVER THIS SCAM — PHISHSCORE DEEP INTEL</div>
+                      <div style={{ fontSize: 10, color: "#7c5cbf", fontFamily: "Georgia, serif", marginTop: 2 }}>Forensic report, recovery plan, human & expert review — coming soon</div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 9, color: "#9ca3af", border: "1px solid #9ca3af40", background: "none", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>REQUEST</span>
+                  <span style={{ fontSize: 9, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace", letterSpacing: 1, flexShrink: 0 }}>BETA</span>
                 </button>
                 <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", marginBottom: 20, textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#1a1400"} onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
                   <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
