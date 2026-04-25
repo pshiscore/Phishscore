@@ -333,7 +333,7 @@ export function RadarPanel({ T = {}, onClose }) {
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
               <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>{refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}</div>
-              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates every 48h</div>
+              <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", marginTop: 2 }}>Updates weekly</div>
             </div>
           </div>
         </div>

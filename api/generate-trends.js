@@ -318,9 +318,11 @@ async function storeTrend(payload) {
 module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const expectedSecret = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
-  if (req.headers['x-internal-secret'] !== expectedSecret) {
+  const cronAuth = req.headers['authorization'] === `Bearer ${expectedSecret}`;
+  const manualAuth = req.headers['x-internal-secret'] === expectedSecret;
+  if (!cronAuth && !manualAuth) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

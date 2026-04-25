@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/fetch-news",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 */48 * * *"
+    },
+    {
+      "path": "/api/generate-trends",
+      "schedule": "0 13 * * 5"
     },
     {
       "path": "/api/devs/weekly-report/trigger",
