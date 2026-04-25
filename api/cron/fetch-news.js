@@ -1,4 +1,5 @@
 const Parser = require('rss-parser');
+const { logUsage } = require('../_utils/logUsage');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -77,6 +78,7 @@ Snippet: ${snippet || '(no snippet available)'}`;
     data = await callClaude('claude-haiku-4-5-20251001');
   }
 
+  logUsage({ endpoint: 'fetch-news', model: data.model || 'claude-sonnet-4-6', input_tokens: data?.usage?.input_tokens, output_tokens: data?.usage?.output_tokens }).catch(() => {});
   const raw = data?.content?.[0]?.text || '';
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('No JSON found in Claude response: ' + raw.slice(0, 100));

@@ -1,4 +1,5 @@
 const { checkRateLimit } = require('./_utils/rateLimit');
+const { logUsage } = require('./_utils/logUsage');
 const { Redis } = require('@upstash/redis');
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
@@ -290,6 +291,14 @@ module.exports = async function handler(req, res) {
     }
 
     const data = await response.json();
+
+    // ── Log token usage (fire-and-forget) ───────────────────────────────────
+    logUsage({
+      endpoint: 'analyze',
+      model: data.model || 'claude-sonnet-4-6',
+      input_tokens: data.usage?.input_tokens,
+      output_tokens: data.usage?.output_tokens,
+    }).catch(() => {});
 
     // ── Step 3: Extract URLs for threat checks ──────────────────────────────
     const content = JSON.stringify(req.body.messages || []);

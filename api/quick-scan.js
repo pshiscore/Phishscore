@@ -1,4 +1,5 @@
 const { analyzeContactData } = require('../lib/ipqs');
+const { logUsage } = require('./_utils/logUsage');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -127,6 +128,7 @@ Additional rules:
 
   if (!res.ok) throw new Error(`Claude error [${res.status}]`);
   const data = await res.json();
+  logUsage({ endpoint: 'quick-scan', model: 'claude-haiku-4-5-20251001', input_tokens: data?.usage?.input_tokens, output_tokens: data?.usage?.output_tokens }).catch(() => {});
   const text = data?.content?.map(c => c.text || '').join('').trim();
 
   // Parse JSON — strip any accidental markdown fences

@@ -1,4 +1,5 @@
 module.exports.config = { maxDuration: 60 };
+const { logUsage } = require('../_utils/logUsage');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -115,6 +116,7 @@ ${submissionSummary}`;
   }
 
   const data = await res.json();
+  logUsage({ endpoint: 'generate-newsletter', model: 'sonar-pro', input_tokens: data?.usage?.prompt_tokens, output_tokens: data?.usage?.completion_tokens }).catch(() => {});
   return data?.choices?.[0]?.message?.content || '';
 }
 
