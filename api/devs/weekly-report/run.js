@@ -1,8 +1,6 @@
 // POST /api/devs/weekly-report/run
 // The async 5-phase CTO report pipeline. Called by trigger.js in the background.
-// Auth: x-cron-secret header only (never called directly from browser).
-
-module.exports.config = { maxDuration: 120 };
+// Auth: x-cron-secret header only (never called directly from browser.
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL?.replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -491,11 +489,9 @@ async function runPipeline(report_id, weekStart, weekEnd) {
   }
 }
 
-module.exports = { runPipeline };
-
 // ── HTTP handler (kept for direct invocation if needed) ────────────────────────
 
-module.exports.handler = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (req.headers['x-cron-secret'] !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -504,4 +500,8 @@ module.exports.handler = async function handler(req, res) {
 
   res.status(202).json({ ok: true, report_id });
   await runPipeline(report_id, week_start, week_end);
-};
+}
+
+handler.config = { maxDuration: 120 };
+module.exports = handler;
+module.exports.runPipeline = runPipeline;
