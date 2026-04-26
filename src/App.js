@@ -9,7 +9,6 @@ import { FAQContent } from "./components/FAQPage";
 import { GlossaryContent } from "./components/GlossaryPage";
 import TransparencyPage from "./components/TransparencyPage";
 import LegalPage from "./components/LegalPage";
-import APITestDashboard from "./components/APITestDashboard";
 import { RadarPanel } from "./components/RadarModal";
 import { NewsPanel } from "./components/NewsPanel";
 import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
@@ -151,8 +150,7 @@ export default function App() {
       return params.get("legal") === "privacy" ? "privacy" : "terms";
     } catch { return "terms"; }
   });
-  const [showDevTools, setShowDevTools] = useState(false);
-  const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
+const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -570,8 +568,7 @@ export default function App() {
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
-      {showDevTools && <APITestDashboard onClose={() => { setShowDevTools(false); window.history.replaceState({}, '', '/'); }} onOpenRadar={() => switchView('radar')} onOpenNews={() => switchView('news')} T={T} />}
-      {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
+{reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
       <InvestigatorChat />

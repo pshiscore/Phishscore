@@ -5,9 +5,62 @@ const { Redis } = require('@upstash/redis');
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 
-const _alertsRedis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+const _redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
   ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
   : null;
+
+// Kept for backwards-compat references below
+const _alertsRedis = _redis;
+
+// ── Per-URL threat check with Redis caching (6h TTL) ─────────────────────────
+async function checkUrlThreat(url, wrKey, cfKey) {
+  const cacheKey = `threat:v1:${Buffer.from(url).toString('base64').slice(0, 48)}`;
+
+  if (_redis) {
+    const cached = await _redis.get(cacheKey).catch(() => null);
+    if (cached) return cached;
+  }
+
+  const [gsb, radar, urlhaus] = await Promise.all([
+    (async () => {
+      if (!wrKey) return false;
+      try {
+        const r = await fetch(
+          `https://webrisk.googleapis.com/v1/uris:search?key=${wrKey}&threatTypes=MALWARE&threatTypes=SOCIAL_ENGINEERING&threatTypes=UNWANTED_SOFTWARE&uri=${encodeURIComponent(url)}`
+        );
+        const d = await r.json();
+        return !!d.threat;
+      } catch { return false; }
+    })(),
+    (async () => {
+      if (!cfKey) return false;
+      try {
+        const r = await fetch('https://api.cloudflare.com/client/v4/radar/url_scanner/scans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfKey}` },
+          body: JSON.stringify({ url, visibility: 'Public' }),
+        });
+        const d = await r.json();
+        return !!(d.success && d.result?.scan?.verdicts?.malicious);
+      } catch { return false; }
+    })(),
+    (async () => {
+      try {
+        const r = await fetch('https://urlhaus-api.abuse.ch/v1/url/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `url=${encodeURIComponent(url)}`,
+        });
+        const d = await r.json();
+        return d.query_status === 'is_listed' && d.url_status === 'online';
+      } catch { return false; }
+    })(),
+  ]);
+
+  const result = { gsb, radar, urlhaus };
+  if (_redis) _redis.set(cacheKey, result, { ex: 21600 }).catch(() => {});
+  return result;
+}
 
 async function isAlertsEnabled() {
   if (!_alertsRedis) return false;
@@ -311,68 +364,19 @@ module.exports = async function handler(req, res) {
     let urlhausFlagged = false;
     const flaggedSources = [];
 
-    // ── Step 4: External threat checks in parallel ──────────────────────────
-    await Promise.all([
-
-      // Google Web Risk (replaces Safe Browsing — broader threat types, 100k free/month)
-      (async () => {
-        const wrKey = process.env.GOOGLE_WEB_RISK_KEY;
-        if (!wrKey || uniqueUrls.length === 0) return;
-        try {
-          for (const url of uniqueUrls.slice(0, 3)) {
-            const encoded = encodeURIComponent(url);
-            const r = await fetch(
-              `https://webrisk.googleapis.com/v1/uris:search?key=${wrKey}&threatTypes=MALWARE&threatTypes=SOCIAL_ENGINEERING&threatTypes=UNWANTED_SOFTWARE&uri=${encoded}`
-            );
-            const d = await r.json();
-            if (d.threat) {
-              gsbFlagged = true; // reuse existing flag for backwards compat
-              if (!flaggedSources.includes("Google Web Risk")) flaggedSources.push("Google Web Risk");
-            }
-          }
-        } catch (e) { console.error('Web Risk error:', e); }
-      })(),
-
-      // Cloudflare Radar
-      (async () => {
-        const cfKey = process.env.CLOUDFLARE_RADAR_KEY;
-        if (!cfKey || uniqueUrls.length === 0) return;
-        try {
-          for (const url of uniqueUrls.slice(0, 2)) {
-            const r = await fetch('https://api.cloudflare.com/client/v4/radar/url_scanner/scans', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfKey}` },
-              body: JSON.stringify({ url, visibility: 'Public' })
-            });
-            const d = await r.json();
-            if (d.success && d.result?.scan?.verdicts?.malicious) {
-              radarFlagged = true;
-              if (!flaggedSources.includes("Cloudflare Radar")) flaggedSources.push("Cloudflare Radar");
-            }
-          }
-        } catch (e) { console.error('Cloudflare Radar error:', e); }
-      })(),
-
-      // URLhaus
-      (async () => {
-        if (uniqueUrls.length === 0) return;
-        try {
-          for (const url of uniqueUrls.slice(0, 3)) {
-            const r = await fetch('https://urlhaus-api.abuse.ch/v1/url/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: `url=${encodeURIComponent(url)}`
-            });
-            const d = await r.json();
-            if (d.query_status === "is_listed" && d.url_status === "online") {
-              urlhausFlagged = true;
-              if (!flaggedSources.includes("URLhaus")) flaggedSources.push("URLhaus");
-            }
-          }
-        } catch (e) { console.error('URLhaus error:', e); }
-      })()
-
-    ]);
+    // ── Step 4: Parallel threat checks per URL (cached in Redis for 6h) ──────
+    if (uniqueUrls.length > 0) {
+      const wrKey = process.env.GOOGLE_WEB_RISK_KEY;
+      const cfKey = process.env.CLOUDFLARE_RADAR_KEY;
+      const threatResults = await Promise.all(
+        uniqueUrls.slice(0, 3).map(url => checkUrlThreat(url, wrKey, cfKey).catch(() => ({ gsb: false, radar: false, urlhaus: false })))
+      );
+      for (const r of threatResults) {
+        if (r.gsb) { gsbFlagged = true; if (!flaggedSources.includes('Google Web Risk')) flaggedSources.push('Google Web Risk'); }
+        if (r.radar) { radarFlagged = true; if (!flaggedSources.includes('Cloudflare Radar')) flaggedSources.push('Cloudflare Radar'); }
+        if (r.urlhaus) { urlhausFlagged = true; if (!flaggedSources.includes('URLhaus')) flaggedSources.push('URLhaus'); }
+      }
+    }
 
     // ── Step 5: Inject threat results into response ─────────────────────────
     if ((gsbFlagged || radarFlagged || urlhausFlagged) && data.content) {
@@ -404,6 +408,13 @@ module.exports = async function handler(req, res) {
       if (raw.trim()) parsedResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
     } catch (e) { console.error('Response parse error:', e); }
 
+    // ── Extract raw text once for training + admin alert ────────────────────
+    const rawText = (req.body.messages || [])
+      .flatMap(m => Array.isArray(m.content)
+        ? m.content.filter(c => c.type === 'text').map(c => c.text)
+        : [typeof m.content === 'string' ? m.content : '']
+      ).join('\n').slice(0, 4000);
+
     // ── Store training data if opted in ─────────────────────────────────────
     let trainingId = null;
     if (req.body.trainAI === true && parsedResult) {
@@ -411,11 +422,6 @@ module.exports = async function handler(req, res) {
         const modality = (req.body.messages || []).some(m =>
           Array.isArray(m.content) && m.content.some(c => c.type === 'image')
         ) ? 'image' : 'text';
-        const rawText = (req.body.messages || [])
-          .flatMap(m => Array.isArray(m.content)
-            ? m.content.filter(c => c.type === 'text').map(c => c.text)
-            : [typeof m.content === 'string' ? m.content : '']
-          ).join('\n').slice(0, 4000);
         trainingId = await storeTrainingData(parsedResult, {
           modality,
           rawText,
@@ -429,12 +435,7 @@ module.exports = async function handler(req, res) {
 
     // ── Admin notification (fire and forget) ────────────────────────────────
     if (parsedResult) {
-      const alertRawText = (req.body.messages || [])
-        .flatMap(m => Array.isArray(m.content)
-          ? m.content.filter(c => c.type === 'text').map(c => c.text)
-          : [typeof m.content === 'string' ? m.content : '']
-        ).join('\n').slice(0, 800);
-      sendAdminSubmissionAlert(alertRawText, uniqueUrls, parsedResult, flaggedSources).catch(e => console.error('Admin alert error:', e));
+      sendAdminSubmissionAlert(rawText.slice(0, 800), uniqueUrls, parsedResult, flaggedSources).catch(e => console.error('Admin alert error:', e));
     }
 
     return res.status(200).json({ ...data, trainingId });

@@ -222,7 +222,7 @@ async function runURLScan(url, telemetryLog) {
     let pollSuccess = false;
 
     for (let i = 0; i < 6; i++) {
-      await new Promise(r => setTimeout(r, 5000));
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // 1s, 2s, 4s, 8s, 16s, 32s
       try {
         const r = await fetch(`https://urlscan.io/api/v1/result/${uuid}/`);
         if (r.status === 200) {

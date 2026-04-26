@@ -2,7 +2,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from "./constants";
 
 const db = {
   async getSubmissions() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=1000`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=200`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     });
     return res.json();
