@@ -214,13 +214,10 @@ async function analyzeWithClaude(metrics, costAudit, health, sentryErrors, weekS
     throw new Error(`Payload too large: ~${estimatedInputTokens} estimated tokens exceeds cap of ${MAX_INPUT_TOKENS}`);
   }
 
-  const systemPrompt = `You are the CTO of PhishScore.ai, a community-driven scam intelligence platform.
+  const staticSystemPrompt = `You are the CTO of PhishScore.ai, a community-driven scam intelligence platform.
 Analyze the weekly operational data below and return a structured JSON report.
-PII has been redacted (${piiCount} items). Do not attempt to infer redacted values.
-Return ONLY valid JSON — no markdown, no explanation.`;
-
-  const userPrompt = `Weekly operational data:
-${scrubbed}
+PII items have been redacted. Do not attempt to infer redacted values.
+Return ONLY valid JSON — no markdown, no explanation.
 
 Return this exact JSON shape:
 {
@@ -240,6 +237,11 @@ Return this exact JSON shape:
   "cost_optimization": "<one cost reduction suggestion>"
 }`;
 
+  const userPrompt = `PII redacted: ${piiCount} items.
+
+Weekly operational data:
+${scrubbed}`;
+
   const start = Date.now();
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -247,11 +249,12 @@ Return this exact JSON shape:
       'Content-Type': 'application/json',
       'x-api-key': ANTHROPIC_KEY,
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
-      system: systemPrompt,
+      system: [{ type: 'text', text: staticSystemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userPrompt }],
     }),
   });

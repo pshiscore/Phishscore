@@ -273,9 +273,9 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setLoading(true);
     try {
       const categoryList = "publishing, delivery, retail, telecom, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, health, other";
-      // CHANGE: summary trimmed to 1 sentence; whatToDo explicitly banned from including any URLs
       const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<ONE plain-English sentence describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action sentence — NEVER include any URLs, domain names, or web addresses of any kind, not even official ones. Say 'go to the official website' or 'contact your bank directly' instead>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>,"shows_ai_patterns":<true if the content shows signs of AI-generated text such as unnatural fluency, templated structure, or LLM-style phrasing; false otherwise>,"impersonated_brand":"<the primary brand/org being impersonated, e.g. 'USPS', 'Chase Bank', 'IRS', 'Apple'; null if none>","extracted_iocs":["<suspicious domains, URLs, or IPs found in the content — empty array if none>"],"vector":"<primary delivery vector: email | sms | social | phone | web | other>"}`;
-      const systemInstruction = `You are PhishScore.ai. Analyze this content for scam indicators.\nUser selected category: "${cat.label}" (id: "${category}") - ${cat.description}\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n4. For category "health": apply relevant sub-tags from — "Fake Research Claims", "Miracle Cure / Panacea", "Medical Fear-mongering", "Counterfeit Pharmaceuticals".\n5. For radar fields: shows_ai_patterns should be true if the text feels LLM-generated; impersonated_brand should be the exact brand name impersonated or null; extracted_iocs should list any suspicious domains or IPs visible in the content; vector should be the delivery channel the scam arrived through.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}`;
+      // Static system prompt — cached across all analyze calls
+      const staticSystem = `You are PhishScore.ai. Analyze submitted content for scam indicators and return only valid JSON.\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n4. For category "health": apply relevant sub-tags from — "Fake Research Claims", "Miracle Cure / Panacea", "Medical Fear-mongering", "Counterfeit Pharmaceuticals".\n5. For radar fields: shows_ai_patterns should be true if the text feels LLM-generated; impersonated_brand should be the exact brand name impersonated or null; extracted_iocs should list any suspicious domains or IPs visible in the content; vector should be the delivery channel the scam arrived through.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}`;
 
       // Build content array dynamically — image + text can coexist
       const content = [];
@@ -303,7 +303,8 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       if (text.trim()) {
         content.push({ type: "text", text: `User Message:\n${text}` });
       }
-      content.push({ type: "text", text: systemInstruction });
+      // Per-request context appended as volatile user content
+      content.push({ type: "text", text: `User selected category: "${cat.label}" (id: "${category}") - ${cat.description}` });
 
       const messages = [{ role: "user", content }];
       // Get reCAPTCHA v3 token before submitting
@@ -322,7 +323,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         }
       } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
 
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {

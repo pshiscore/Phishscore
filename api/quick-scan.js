@@ -72,19 +72,9 @@ async function scoreWithClaude(rawInput, inputType, ipqsData) {
   const osintBlock = buildOsintBlock(ipqsData);
   const hasOsint = osintBlock.length > 0;
 
-  const prompt = `You are a cyber threat analyst. Analyze the following and return a JSON object only — no explanation, no markdown.
+  const staticSystem = `You are a cyber threat analyst. Analyze submitted inputs and return a JSON object only — no explanation, no markdown.
 
-User Input (what the user submitted):
-"${rawInput}"
-
-Input Type: ${inputType}
-${hasOsint ? osintBlock : 'OSINT DATA: No entity extracted or OSINT unavailable for this input type.'}
-
-Instructions: ${hasOsint
-  ? `Analyze the contextual claims in the User Input against the technical reality of the OSINT Data. If the text claims to be from a legitimate organization (e.g., a bank, government agency) but the OSINT shows a VOIP line, high fraud score, disposable email, or phishing flag — treat that mismatch as a severe threat indicator and raise the score significantly.`
-  : `Analyze the User Input for scam patterns, urgency tactics, impersonation, suspicious links, or social engineering. Score based on content alone.`}
-
-Return this exact JSON shape (no markdown, no explanation):
+Return this exact JSON shape:
 {"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>", "shows_ai_patterns": <true if content shows LLM-generation patterns; false otherwise>, "impersonated_brand": "<primary brand/org being impersonated or null>", "extracted_iocs": ["<suspicious domains, URLs, or IPs; empty array if none>"], "vector": "<email|sms|social|phone|web|other>"}
 
 Category rules:
@@ -112,17 +102,27 @@ Additional rules:
 - Valid Inbox = false or Active Status = false AND content claims to be from a legitimate org = score ≥ 85 (spoofed/dead-drop sender)
 - Be concise and objective`;
 
+  const userMessage = `User Input: "${rawInput}"
+Input Type: ${inputType}
+${hasOsint ? osintBlock : 'OSINT DATA: No entity extracted or OSINT unavailable for this input type.'}
+
+Instructions: ${hasOsint
+  ? `Analyze the contextual claims in the User Input against the technical reality of the OSINT Data. If the text claims to be from a legitimate organization (e.g., a bank, government agency) but the OSINT shows a VOIP line, high fraud score, disposable email, or phishing flag — treat that mismatch as a severe threat indicator and raise the score significantly.`
+  : `Analyze the User Input for scam patterns, urgency tactics, impersonation, suspicious links, or social engineering. Score based on content alone.`}`;
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': ANTHROPIC_KEY,
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
+      system: [{ type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: userMessage }],
     }),
   });
 

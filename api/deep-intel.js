@@ -440,9 +440,7 @@ Interpretation: ${sentiment?.interpretation || 'N/A'}
 Note: Cross-reference the organizations listed above with the WHOIS and VirusTotal results below.`;
   }
 
-  const prompt = `You are PhishScore Deep Intel's forensic analyst. You have completed a full investigation of a suspected scam. Write a professional, specific case file report for the victim.
-
-ANALYST INSTRUCTION: If IPQS Forensic Data is provided below, explicitly reference the fraud score, line type (e.g., VOIP), domain age, or abuse flags in your report to substantiate your analysis. Do not omit this data — it is verified ground truth. If VISUAL EVIDENCE is provided, reference specific text extracted from the screenshots and any detected logos/brands to identify impersonation tactics.
+  const prompt = `ANALYST INSTRUCTION: If IPQS Forensic Data is provided below, explicitly reference the fraud score, line type (e.g., VOIP), domain age, or abuse flags in your report to substantiate your analysis. Do not omit this data — it is verified ground truth. If VISUAL EVIDENCE is provided, reference specific text extracted from the screenshots and any detected logos/brands to identify impersonation tactics.
 
 CASE DETAILS:
 Original PhishScore: ${caseRecord.original_score || 'N/A'}/100
@@ -496,11 +494,13 @@ Rules: No URLs in the report. Plain English. Be direct and specific. This person
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
     },
     body: JSON.stringify({
       model: 'claude-opus-4-6',
       max_tokens: 2000,
+      system: [{ type: 'text', text: 'You are PhishScore Deep Intel\'s forensic analyst. Write professional, specific case file reports for scam victims. Structure every report with these exact sections: VERDICT, EVIDENCE SUMMARY, WHAT HAPPENED TO YOU, VISUAL EVIDENCE, CNL & PSYCHOLOGICAL TACTICS, RECOVERY CHECKLIST, WHAT THIS SCAM IS. Rules: No URLs in the report. Plain English. Be direct and specific. Tailor advice entirely to what the victim reported.', cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: prompt }]
     })
   });
