@@ -433,26 +433,11 @@ async function sendEmail(html, weekStart, weekEnd) {
   return res.ok;
 }
 
-// ── Main handler ───────────────────────────────────────────────────────────────
+// ── Shared pipeline — called by trigger.js inline and by HTTP handler ──────────
 
-module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (req.headers['x-cron-secret'] !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { report_id } = req.body || {};
-  if (!report_id) return res.status(400).json({ error: 'report_id required' });
-
-  // Acknowledge immediately — the heavy work runs after this response
-  res.status(202).json({ ok: true, report_id });
-
-  // ── Async pipeline ────────────────────────────────────────────────────────
+async function runPipeline(report_id, weekStart, weekEnd) {
   try {
     await setStatus(report_id, 'running');
-
-    // Fetch report row for week bounds
-    const rows = await sbGet(`weekly_reports?id=eq.${report_id}&select=week_start_date,week_end_date&limit=1`);
-    if (!Array.isArray(rows) || rows.length === 0) throw new Error('Report row not found');
-    const { week_start_date: weekStart, week_end_date: weekEnd } = rows[0];
 
     // Phase 1 + 2 + 3 in parallel
     const [metrics, costAudit, health, sentryErrors] = await Promise.all([
@@ -476,7 +461,6 @@ module.exports = async function handler(req, res) {
       reportCost = result.costUsd;
     } catch (err) {
       console.error('[run] Claude analysis error:', err.message);
-      // Degrade gracefully — still deliver partial report
       analysis = {
         executive_summary: `Analysis unavailable: ${err.message}`,
         wins: [], risks: [], recommendations: [],
@@ -488,7 +472,6 @@ module.exports = async function handler(req, res) {
     const html = buildEmailHtml({ weekStart, weekEnd, metrics, analysis, costAudit, sentryErrors, reportCost });
     const emailSent = await sendEmail(html, weekStart, weekEnd);
 
-    // Persist completed report
     await sbPatch(report_id, {
       status: 'completed',
       analysis_markdown: html,
@@ -503,4 +486,19 @@ module.exports = async function handler(req, res) {
     console.error('[weekly-report/run] fatal:', err.message);
     await setFailed(report_id, err.message).catch(() => {});
   }
+}
+
+module.exports = { runPipeline };
+
+// ── HTTP handler (kept for direct invocation if needed) ────────────────────────
+
+module.exports.handler = async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.headers['x-cron-secret'] !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { report_id, week_start, week_end } = req.body || {};
+  if (!report_id || !week_start || !week_end) return res.status(400).json({ error: 'report_id, week_start, week_end required' });
+
+  res.status(202).json({ ok: true, report_id });
+  await runPipeline(report_id, week_start, week_end);
 };

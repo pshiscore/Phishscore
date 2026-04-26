@@ -49,7 +49,15 @@ export default function DevDashboard() {
 
   const pollStatus = (id) => {
     stopPoll();
+    const startedAt = Date.now();
+    const TIMEOUT_MS = 3 * 60 * 1000; // give up after 3 minutes
     pollRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > TIMEOUT_MS) {
+        stopPoll();
+        setReportState('failed');
+        setReportError('Report timed out — check Vercel logs for details.');
+        return;
+      }
       try {
         const r = await fetch(`/api/devs/weekly-report/status?id=${id}`);
         const data = await r.json();

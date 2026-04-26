@@ -11,7 +11,7 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const CRON_SECRET   = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
 
-module.exports.config = { maxDuration: 10 };
+module.exports.config = { maxDuration: 120 };
 
 // Reuse same HMAC logic as auth-devs.js
 const SESSION_TOKEN = crypto
@@ -113,18 +113,14 @@ module.exports = async function handler(req, res) {
     const report = Array.isArray(rows) ? rows[0] : rows;
     const report_id = report.id;
 
-    // Fire background run — don't await
-    const runUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/devs/weekly-report/run`;
-    fetch(runUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-cron-secret': CRON_SECRET,
-      },
-      body: JSON.stringify({ report_id }),
-    }).catch(err => console.error('[trigger] background run failed to launch:', err.message));
+    // Respond immediately so the client can start polling, then run the pipeline
+    res.status(200).json({ ok: true, report_id, week_start, week_end });
 
-    return res.status(200).json({ ok: true, report_id, week_start, week_end });
+    // Run pipeline inline — Vercel keeps the function alive until this resolves (maxDuration: 120)
+    const { runPipeline } = require('./run');
+    await runPipeline(report_id, week_start, week_end).catch(err =>
+      console.error('[trigger] pipeline error:', err.message)
+    );
   } catch (err) {
     console.error('[weekly-report/trigger] error:', err.message);
     return res.status(500).json({ error: err.message });
