@@ -42,6 +42,7 @@ module.exports = async function handler(req, res) {
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(404).json({ error: 'Report not found' });
     }
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json(rows[0]);
   } catch (err) {
     return res.status(500).json({ error: err.message });

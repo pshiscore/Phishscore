@@ -47,52 +47,28 @@ export default function DevDashboard() {
 
   const stopPoll = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
 
-  const pollStatus = (id) => {
-    stopPoll();
-    const startedAt = Date.now();
-    const TIMEOUT_MS = 3 * 60 * 1000; // give up after 3 minutes
-    pollRef.current = setInterval(async () => {
-      if (Date.now() - startedAt > TIMEOUT_MS) {
-        stopPoll();
-        setReportState('failed');
-        setReportError('Report timed out — check Vercel logs for details.');
-        return;
-      }
-      try {
-        const r = await fetch(`/api/devs/weekly-report/status?id=${id}`);
-        const data = await r.json();
-        if (data.status === 'completed') {
-          setReportState('completed');
-          setReportCompletedAt(data.completed_at);
-          stopPoll();
-        } else if (data.status === 'failed') {
-          setReportState('failed');
-          setReportError(data.error_message || 'Report generation failed.');
-          stopPoll();
-        }
-      } catch { /* network blip — keep polling */ }
-    }, 3000);
-  };
-
   const triggerReport = async () => {
-    setReportState('triggering');
+    setReportState('running');
     setReportError(null);
     try {
-      const r = await fetch('/api/devs/weekly-report/trigger', { method: 'POST' });
+      // Trigger blocks until the full pipeline completes (up to 120s).
+      // A single fetch gives us the definitive result — no polling needed.
+      const r = await fetch('/api/devs/weekly-report/trigger', {
+        method: 'POST',
+        signal: AbortSignal.timeout(130_000), // 130s — slightly above server maxDuration
+      });
       const data = await r.json();
       if (r.status === 409) {
-        // Already running — attach to existing
-        setReportId(data.report_id);
-        setReportState('running');
-        pollStatus(data.report_id);
+        setReportError('A report for this week is already in progress.');
+        setReportState('failed');
         return;
       }
       if (!r.ok) throw new Error(data.error || 'Trigger failed');
       setReportId(data.report_id);
-      setReportState('running');
-      pollStatus(data.report_id);
+      setReportState('completed');
+      setReportCompletedAt(new Date().toISOString());
     } catch (err) {
-      setReportError(err.message);
+      setReportError(err.name === 'TimeoutError' ? 'Request timed out — check Vercel logs.' : err.message);
       setReportState('failed');
     }
   };

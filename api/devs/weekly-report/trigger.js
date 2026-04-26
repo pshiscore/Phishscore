@@ -1,7 +1,7 @@
 // POST /api/devs/weekly-report/trigger
 // Auth-gated: requires valid devs_session cookie or x-cron-secret header.
-// Inserts a weekly_reports row (status=pending), runs the pipeline inline,
-// returns {report_id} immediately so the client can begin polling /status.
+// Inserts a weekly_reports row, runs the full pipeline synchronously, then responds.
+// maxDuration: 120 keeps the Vercel function alive for the full pipeline run.
 
 const crypto = require('crypto');
 
@@ -11,7 +11,6 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const CRON_SECRET   = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
 
-// Reuse same HMAC logic as auth-devs.js
 const SESSION_TOKEN = crypto
   .createHmac('sha256', ADMIN_PASSWORD || 'fallback')
   .update(ADMIN_USERNAME || 'admin')
@@ -27,9 +26,7 @@ function parseCookies(header = '') {
 }
 
 function isAuthed(req) {
-  // Cron path: signed header
   if (req.headers['x-cron-secret'] === CRON_SECRET) return { ok: true, actor: 'cron' };
-  // Admin dashboard path: session cookie
   const cookies = parseCookies(req.headers.cookie || '');
   if (ADMIN_PASSWORD && cookies['devs_session'] === SESSION_TOKEN) {
     return { ok: true, actor: `manual:${ADMIN_USERNAME || 'admin'}` };
@@ -39,7 +36,7 @@ function isAuthed(req) {
 
 function getWeekBounds() {
   const now = new Date();
-  const dayOfWeek = now.getUTCDay(); // 0=Sun
+  const dayOfWeek = now.getUTCDay();
   const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const monday = new Date(now);
   monday.setUTCDate(now.getUTCDate() - daysToMonday);
@@ -89,7 +86,6 @@ async function handler(req, res) {
   }
 
   try {
-    // Guard: prevent double-trigger for current week
     const existing = await checkRunning();
     if (existing) {
       return res.status(409).json({
@@ -101,7 +97,6 @@ async function handler(req, res) {
 
     const { week_start, week_end } = getWeekBounds();
 
-    // Insert pending row
     const rows = await sbPost('weekly_reports', {
       week_start_date: week_start,
       week_end_date:   week_end,
@@ -111,23 +106,18 @@ async function handler(req, res) {
     const report = Array.isArray(rows) ? rows[0] : rows;
     const report_id = report.id;
 
-    // Send report_id to client immediately so polling can begin.
-    // Then run the pipeline — Vercel keeps the function alive (maxDuration: 120)
-    // as long as we're still awaiting inside the handler.
-    res.status(200).json({ ok: true, report_id, week_start, week_end });
-
+    // Run the full pipeline synchronously — Vercel keeps this function alive
+    // for up to maxDuration seconds. We respond AFTER completion so the client
+    // gets a definitive success/fail instead of relying on polling.
     const { runPipeline } = require('./run');
-    await runPipeline(report_id, week_start, week_end).catch(err =>
-      console.error('[trigger] pipeline error:', err.message)
-    );
+    await runPipeline(report_id, week_start, week_end);
+
+    return res.status(200).json({ ok: true, report_id, week_start, week_end });
   } catch (err) {
     console.error('[weekly-report/trigger] error:', err.message);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: err.message });
-    }
+    return res.status(500).json({ error: err.message });
   }
 }
 
-// Config must be on the exported function itself — not a prior module.exports assignment
 handler.config = { maxDuration: 120 };
 module.exports = handler;
