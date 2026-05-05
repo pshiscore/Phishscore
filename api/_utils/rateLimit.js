@@ -1,31 +1,23 @@
-const { Redis } = require('@upstash/redis');
+// In-memory sliding-window rate limiter (no Redis dependency).
+// Resets per serverless cold start — sufficient for abuse protection.
+const counts = new Map();
 
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
-
-/**
- * IP-based sliding-window rate limiter backed by Redis.
- * Falls back to allowing the request if Redis is not configured.
- *
- * @param {string} ip
- * @param {number} maxRequests  max requests per window (default 5)
- * @param {number} windowSeconds  window size in seconds (default 60)
- * @returns {Promise<{ allowed: boolean, count?: number }>}
- */
 async function checkRateLimit(ip, maxRequests = 5, windowSeconds = 60) {
-  if (!redis) return { allowed: true };
+  const now = Date.now();
+  const windowMs = windowSeconds * 1000;
+  const key = ip;
 
-  const key = `rate_limit:${ip}`;
-  const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, windowSeconds);
+  const entry = counts.get(key);
+  if (!entry || now - entry.start > windowMs) {
+    counts.set(key, { start: now, count: 1 });
+    return { allowed: true, count: 1 };
   }
 
-  if (count > maxRequests) {
-    return { allowed: false, count };
+  entry.count += 1;
+  if (entry.count > maxRequests) {
+    return { allowed: false, count: entry.count };
   }
-  return { allowed: true, count };
+  return { allowed: true, count: entry.count };
 }
 
 module.exports = { checkRateLimit };

@@ -1,9 +1,4 @@
-const { Redis } = require('@upstash/redis');
 const crypto = require('crypto');
-
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
@@ -12,7 +7,9 @@ const SESSION_TOKEN = crypto
   .update(ADMIN_USERNAME || 'admin')
   .digest('hex');
 const COOKIE_NAME = 'devs_session';
-const KEY = 'maintenance_mode';
+
+// In-memory state — resets on cold start (maintenance mode is never "stuck on")
+let maintenanceOn = false;
 
 function parseCookies(cookieHeader) {
   return Object.fromEntries(
@@ -32,23 +29,16 @@ function isAuthorized(req) {
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  if (!redis) {
-    return res.status(503).json({ error: 'Redis not configured', maintenance: false });
-  }
-
   if (req.method === 'GET') {
-    const val = await redis.get(KEY);
-    return res.status(200).json({ maintenance: val === true || val === 'true' });
+    return res.status(200).json({ maintenance: maintenanceOn });
   }
 
   if (req.method === 'POST') {
     if (!isAuthorized(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const current = await redis.get(KEY);
-    const next = !(current === true || current === 'true');
-    await redis.set(KEY, next);
-    return res.status(200).json({ maintenance: next });
+    maintenanceOn = !maintenanceOn;
+    return res.status(200).json({ maintenance: maintenanceOn });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

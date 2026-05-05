@@ -1,26 +1,11 @@
 const { checkRateLimit } = require('./_utils/rateLimit');
 const { logUsage } = require('./_utils/logUsage');
-const { Redis } = require('@upstash/redis');
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 
-const _redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-  ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
-  : null;
-
-// Kept for backwards-compat references below
-const _alertsRedis = _redis;
-
-// ── Per-URL threat check with Redis caching (6h TTL) ─────────────────────────
+// ── Per-URL threat check (no cache) ──────────────────────────────────────────
 async function checkUrlThreat(url, wrKey, cfKey) {
-  const cacheKey = `threat:v1:${Buffer.from(url).toString('base64').slice(0, 48)}`;
-
-  if (_redis) {
-    const cached = await _redis.get(cacheKey).catch(() => null);
-    if (cached) return cached;
-  }
-
   const [gsb, radar, urlhaus] = await Promise.all([
     (async () => {
       if (!wrKey) return false;
@@ -57,15 +42,11 @@ async function checkUrlThreat(url, wrKey, cfKey) {
     })(),
   ]);
 
-  const result = { gsb, radar, urlhaus };
-  if (_redis) _redis.set(cacheKey, result, { ex: 21600 }).catch(() => {});
-  return result;
+  return { gsb, radar, urlhaus };
 }
 
 async function isAlertsEnabled() {
-  if (!_alertsRedis) return false;
-  const val = await _alertsRedis.get('submission_alerts_enabled');
-  return val === true || val === 'true';
+  return false;
 }
 
 async function sendAdminSubmissionAlert(rawText, urls, parsed, flaggedSources) {

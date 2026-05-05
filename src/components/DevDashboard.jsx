@@ -239,7 +239,7 @@ export default function DevDashboard() {
               </div>
             </div>
             <div style={{ fontSize: 11, color: maintenanceError ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
-              {maintenanceError ? `Redis not configured — add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to Vercel.` : maintenance ? 'Site is offline — users see maintenance page.' : 'Site is fully operational.'}
+              {maintenanceError ? maintenanceError : maintenance ? 'Site is offline — users see maintenance page.' : 'Site is fully operational.'}
             </div>
           </div>
           <button
@@ -289,7 +289,7 @@ export default function DevDashboard() {
             </div>
             <div style={{ fontSize: 11, color: alertsError ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
               {alertsError
-                ? 'Redis not configured — add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to Vercel.'
+                ? alertsError
                 : alerts
                   ? 'Email report sent to vkrasikov@gmail.com for every submission.'
                   : 'No emails will be sent for submissions.'}
