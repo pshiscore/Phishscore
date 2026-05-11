@@ -109,7 +109,7 @@ async function insertArticle(record) {
 module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const secret = req.headers['x-internal-secret'] || req.query.secret;
   if (secret !== (INTERNAL_SECRET || 'phiscore-radara-2026')) {
