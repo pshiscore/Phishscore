@@ -234,6 +234,8 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [deliveryChannel, setDeliveryChannel] = useState("other");
   const [caseId, setCaseId] = useState(null);
   const [trainingId, setTrainingId] = useState(null);
+  const [ipqsData, setIpqsData] = useState(null);
+  const [extracting, setExtracting] = useState(false);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -252,6 +254,34 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setTrainAI(false); setDeliveryChannel("other");
     setCaseId(null);
     setTrainingId(null);
+    setIpqsData(null);
+    setExtracting(false);
+  };
+
+  const runExtraction = async (pastedText) => {
+    if (!pastedText || pastedText.trim().length < 20) return;
+    setExtracting(true);
+    try {
+      const res = await fetch('/api/extract-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: pastedText }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.sender) setSource(data.sender);
+      if (data.body && !pastedText.trim()) setText(data.body);
+      if (data.ipqs) setIpqsData(data.ipqs);
+      if (data.ipqs?.type === 'email' && data.ipqs?.data?.domain) {
+        const domain = data.ipqs.data.domain;
+        if (!deliveryChannel || deliveryChannel === 'other') setDeliveryChannel('email');
+        console.log('[extract-email] IPQS domain:', domain, 'fraud_score:', data.ipqs.data?.fraud_score);
+      }
+    } catch (err) {
+      console.warn('[extract-email] extraction failed:', err.message);
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -370,6 +400,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         impersonated_brand: parsed.impersonated_brand ?? null,
         extracted_iocs: Array.isArray(parsed.extracted_iocs) ? parsed.extracted_iocs : [],
         vector: parsed.vector ?? deliveryChannel ?? 'other',
+        ipqs: ipqsData ?? null,
       };
       const savedId = await onNewResult({ category: finalCategory, text: image && !text.trim() ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel, radarMetadata });
       setCaseId(savedId || null);
@@ -435,7 +466,8 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
             <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? 16 : 12, marginBottom: 0 }}>
               {/* Text input */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <textarea value={text} onChange={e => { setText(e.target.value); if (!source.trim()) { const t = e.target.value, atIdx = t.indexOf("@"); if (atIdx > 0) { const start = t.slice(0, atIdx).replace(/.*\s/, ""), end = t.slice(atIdx + 1).replace(/\s.*/, ""); if (start && end && end.includes(".")) setSource(start + "@" + end.split(".").slice(0, 2).join(".")); } } }}
+                <textarea value={text} onChange={e => setText(e.target.value)}
+                  onPaste={e => { const pasted = e.clipboardData?.getData('text') || ''; if (pasted.trim().length >= 20) runExtraction(pasted); }}
                   placeholder="Paste the full suspicious message here. Include sender address, subject line, and all body text for best results."
                   style={{ width: "100%", minHeight: 144, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 10, color: T.text, padding: 16, fontSize: 13, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.7 }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
@@ -487,11 +519,21 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
 
             {visibility !== "anonymous" && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2, marginBottom: 6 }}>SENDER / SOURCE (optional)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>SENDER / SOURCE (optional)</div>
+                  {extracting && <div style={{ fontSize: 9, color: '#38bdf8', fontFamily: 'monospace', letterSpacing: 1, animation: 'pulse 1s infinite' }}>AI EXTRACTING...</div>}
+                  {!extracting && ipqsData?.data?.fraud_score != null && (
+                    <div style={{ fontSize: 9, fontFamily: 'monospace', letterSpacing: 1, color: ipqsData.data.fraud_score >= 75 ? '#f43f5e' : ipqsData.data.fraud_score >= 40 ? '#fb923c' : '#22c55e' }}>
+                      IPQS {ipqsData.data.fraud_score}/100
+                    </div>
+                  )}
+                </div>
                 <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
                   style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
-                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>Helps identify scam origins for the community</div>
+                <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>
+                  {!extracting && ipqsData?.data?.recent_abuse ? 'Recent abuse detected on this sender.' : 'Helps identify scam origins for the community'}
+                </div>
               </div>
             )}
             {visibility === "anonymous" && (
