@@ -675,15 +675,20 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 8 }}>WHAT TO DO</div>
               <p style={{ color: "#86efac", fontSize: 13, margin: 0, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>{result.whatToDo}</p>
             </div>
-            {result.score >= 75 && (
-              <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", marginBottom: 20, textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#1a1400"} onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
-                <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
-              </a>
-            )}
             <div>
               <ShareCard result={result} category={result.finalCategory || category} T={T} />
-              <div style={{ marginTop: 12 }}>
-                <AccuracyFeedback caseId={caseId} trainingId={trainingId} T={T} />
+              <div style={{ display: "flex", flexDirection: isDesktop && result.score >= 75 ? "row" : "column", gap: 10, marginTop: 12, alignItems: "stretch" }}>
+                <div style={{ flex: 1 }}>
+                  <AccuracyFeedback caseId={caseId} trainingId={trainingId} T={T} />
+                </div>
+                {result.score >= 75 && (
+                  <a href="https://reportfraud.ftc.gov/#/" target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#0d0a00", border: "1px solid #fbbf2440", borderRadius: 10, padding: "12px 16px", textDecoration: "none", color: "#fbbf24", fontSize: 11, fontFamily: "monospace", letterSpacing: 1, fontWeight: 700, transition: "all 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#1a1400"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#0d0a00"}>
+                    <CatIconSvg icon="gov" color="#fbbf24" size={14} /> REPORT THIS SCAM TO THE FTC
+                  </a>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button onClick={resetForm} style={{ flex: 1, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
