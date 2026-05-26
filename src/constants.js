@@ -7,6 +7,7 @@ export const SCAM_CATEGORIES = [
   { id: "delivery", label: "Package & Delivery", icon: "package", color: "#fb923c", description: "FedEx, UPS, USPS, DHL fake notices" },
   { id: "retail", label: "Retail & Shopping", icon: "cart", color: "#34d399", description: "Amazon, eBay, online store scams" },
   { id: "telecom", label: "Phone & Telecom", icon: "phone", color: "#38bdf8", description: "T-Mobile, Verizon, AT&T points/rewards scams" },
+  { id: "voip", label: "VOIP Fraud", icon: "voip", color: "#f43f5e", description: "Scam calls from VOIP lines, spoofed numbers, robocall fraud" },
   { id: "traffic", label: "Traffic & Tolls", icon: "car", color: "#f43f5e", description: "Fake speeding tickets, toll violations, parking" },
   { id: "social", label: "Social Media", icon: "chat", color: "#e879f9", description: "Instagram, Facebook, TikTok, Twitter scams" },
   { id: "finance", label: "Banking & Finance", icon: "bank", color: "#facc15", description: "Bank alerts, crypto, investment scams" },
