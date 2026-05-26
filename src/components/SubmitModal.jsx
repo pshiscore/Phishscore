@@ -231,6 +231,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [errorState, setErrorState] = useState(null);
   const [trainAI, setTrainAI] = useState(false);
   const [showTrainInfo, setShowTrainInfo] = useState(false);
+  const [showAllFlags, setShowAllFlags] = useState(false);
   const [deliveryChannel, setDeliveryChannel] = useState("other");
   const [caseId, setCaseId] = useState(null);
   const [trainingId, setTrainingId] = useState(null);
@@ -259,6 +260,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setIpqsData(null);
     setIpqsType(null);
     setExtracting(false);
+    setShowAllFlags(false);
   };
 
   const runExtraction = async (pastedText) => {
@@ -663,21 +665,25 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
             {result.redFlags?.length > 0 && (
               <div style={{ background: "#160810", border: "1px solid #f43f5e25", borderRadius: 10, padding: 16, marginBottom: 16 }}>
                 <div style={{ fontSize: 10, letterSpacing: 3, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>RED FLAGS ({result.redFlags.length})</div>
-                {result.redFlags.map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < result.redFlags.length - 1 ? 8 : 0 }}>
+                {(showAllFlags ? result.redFlags : result.redFlags.slice(0, 2)).map((f, i, arr) => (
+                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < arr.length - 1 ? 8 : 0 }}>
                     <span style={{ color: "#f43f5e", flexShrink: 0 }}>!</span>
                     <span style={{ color: "#fca5a5", fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.5 }}>{f}</span>
                   </div>
                 ))}
+                {result.redFlags.length > 2 && (
+                  <button onClick={() => setShowAllFlags(v => !v)} style={{ marginTop: 10, background: "none", border: "none", color: "#f43f5e", fontFamily: "monospace", fontSize: 10, letterSpacing: 1, cursor: "pointer", padding: 0 }}>
+                    {showAllFlags ? "▲ SHOW LESS" : `▼ READ MORE (${result.redFlags.length - 2} more)`}
+                  </button>
+                )}
               </div>
             )}
-            <div style={{ background: "#081410", border: "1px solid #34d39925", borderRadius: 10, padding: 16, marginBottom: result.score >= 75 ? 12 : 20 }}>
+            <div style={{ background: "#081410", border: "1px solid #34d39925", borderRadius: 10, padding: 16, marginBottom: 16 }}>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#34d399", fontFamily: "monospace", marginBottom: 8 }}>WHAT TO DO</div>
               <p style={{ color: "#86efac", fontSize: 13, margin: 0, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>{result.whatToDo}</p>
             </div>
             <div>
-              <ShareCard result={result} category={result.finalCategory || category} T={T} />
-              <div style={{ display: "flex", flexDirection: isDesktop && result.score >= 75 ? "row" : "column", gap: 10, marginTop: 12, alignItems: "stretch" }}>
+              <div style={{ display: "flex", flexDirection: isDesktop && result.score >= 75 ? "row" : "column", gap: 10, marginBottom: 8, alignItems: "stretch" }}>
                 <div style={{ flex: 1 }}>
                   <AccuracyFeedback caseId={caseId} trainingId={trainingId} T={T} />
                 </div>
@@ -690,10 +696,11 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
                   </a>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <button onClick={resetForm} style={{ flex: 1, background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, padding: "10px 12px", borderRadius: 10, fontSize: 10, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>CHECK ANOTHER</button>
                 <button onClick={onClose} style={{ flex: 1, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "10px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>VIEW DASHBOARD</button>
               </div>
+              <ShareCard result={result} category={result.finalCategory || category} T={T} />
             </div>
           </div>
         )}
