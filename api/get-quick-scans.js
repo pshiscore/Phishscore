@@ -1,6 +1,37 @@
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+// Map free-text ai_category labels → SCAM_CATEGORIES ids so dashboard counts work.
+// Quick-scan Claude outputs prose labels ("VOIP Fraud", "Tech Support Fraud") not ids.
+const CAT_PATTERNS = [
+  { id: 'voip',       pattern: /voip|robocall|spoofed.*(call|number)|internet.*call/i },
+  { id: 'tech',       pattern: /tech.?support|microsoft|apple.*support|virus.?alert|fake.*support/i },
+  { id: 'finance',    pattern: /bank|crypto|invest|financial|wire.?fraud|ponzi/i },
+  { id: 'government', pattern: /irs|social.?security|medicare|dmv|government|federal/i },
+  { id: 'delivery',   pattern: /fedex|ups|usps|dhl|package|parcel|delivery/i },
+  { id: 'prize',      pattern: /prize|lottery|sweepstake|you.?ve.?won|gift.?card/i },
+  { id: 'romance',    pattern: /romance|dating|relationship|friendship.?scam/i },
+  { id: 'job',        pattern: /job|employ|work.?from.?home|pyramid|recruit/i },
+  { id: 'retail',     pattern: /amazon|ebay|shopif|retail|shopping|order.?confirm/i },
+  { id: 'telecom',    pattern: /t.?mobile|verizon|at&t|carrier|telecom|phone.?plan|reward.*point/i },
+  { id: 'traffic',    pattern: /toll|speeding|traffic|parking.?ticket|dmv.?fine/i },
+  { id: 'social',     pattern: /instagram|facebook|tiktok|twitter|social.?media/i },
+  { id: 'travel',     pattern: /hotel|airline|vacation|travel|airbnb/i },
+  { id: 'legal',      pattern: /court|lawsuit|debt.?collect|legal.?threat|compliance/i },
+  { id: 'health',     pattern: /medicare|health|pharma|cure|medical|supplement/i },
+  { id: 'political',  pattern: /political|campaign|candidate|fundrais|election/i },
+  { id: 'publishing', pattern: /publish|literary|agent|vanity.?press|manuscript/i },
+];
+
+function normalizeCatId(aiCategory) {
+  if (!aiCategory) return 'other';
+  const str = aiCategory.trim();
+  for (const { id, pattern } of CAT_PATTERNS) {
+    if (pattern.test(str)) return id;
+  }
+  return str.toLowerCase().replace(/\s+/g, '_');
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -27,7 +58,7 @@ module.exports = async function handler(req, res) {
       id: `qs_${q.id}`,
       _isQuickScan: true,
       score: q.ai_score,
-      category: q.ai_category,
+      category: normalizeCatId(q.ai_category),
       visibility: 'private',
       input_type: q.input_type,
       preview: `Private ${q.input_type || 'quick'} scan — OSINT details hidden.`,
