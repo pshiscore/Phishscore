@@ -235,7 +235,9 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [caseId, setCaseId] = useState(null);
   const [trainingId, setTrainingId] = useState(null);
   const [ipqsData, setIpqsData] = useState(null);
+  const [ipqsType, setIpqsType] = useState(null);
   const [extracting, setExtracting] = useState(false);
+  const sourceDebounceRef = useRef(null);
   const fileRef = useRef();
   // CHANGE: double-submit prevention — hard lock at function level
   const isSubmitting = useRef(false);
@@ -255,6 +257,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     setCaseId(null);
     setTrainingId(null);
     setIpqsData(null);
+    setIpqsType(null);
     setExtracting(false);
   };
 
@@ -271,17 +274,46 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       const data = await res.json();
       if (data.sender) setSource(data.sender);
       if (data.body && !pastedText.trim()) setText(data.body);
-      if (data.ipqs) setIpqsData(data.ipqs);
+      if (data.ipqs) { setIpqsData(data.ipqs); setIpqsType(data.ipqsType || data.ipqs?.type || null); }
       if (data.ipqs?.type === 'email' && data.ipqs?.data?.domain) {
-        const domain = data.ipqs.data.domain;
         if (!deliveryChannel || deliveryChannel === 'other') setDeliveryChannel('email');
-        console.log('[extract-email] IPQS domain:', domain, 'fraud_score:', data.ipqs.data?.fraud_score);
+      }
+      if (data.ipqs?.type === 'phone') {
+        if (!deliveryChannel || deliveryChannel === 'other') setDeliveryChannel('sms');
       }
     } catch (err) {
       console.warn('[extract-email] extraction failed:', err.message);
     } finally {
       setExtracting(false);
     }
+  };
+
+  const handleSourceChange = (val) => {
+    setSource(val);
+    setIpqsData(null);
+    setIpqsType(null);
+    if (sourceDebounceRef.current) clearTimeout(sourceDebounceRef.current);
+    const trimmed = val.trim();
+    const isEmail = trimmed.includes('@') && /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(trimmed);
+    const isPhone = !isEmail && trimmed.replace(/\D/g, '').length >= 7 && /^[\d\s\-().+]{7,}$/.test(trimmed);
+    if (!isEmail && !isPhone) return;
+    sourceDebounceRef.current = setTimeout(async () => {
+      setExtracting(true);
+      try {
+        const res = await fetch('/api/extract-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText: trimmed }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ipqs) { setIpqsData(data.ipqs); setIpqsType(data.ipqsType || data.ipqs?.type || null); }
+      } catch (err) {
+        console.warn('[source-ipqs] failed:', err.message);
+      } finally {
+        setExtracting(false);
+      }
+    }, 600);
   };
 
   const handleImageUpload = (e) => {
@@ -353,7 +385,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         }
       } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
 
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility, ipqs: ipqsData ?? null }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {
@@ -524,11 +556,11 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
                   {extracting && <div style={{ fontSize: 9, color: '#38bdf8', fontFamily: 'monospace', letterSpacing: 1, animation: 'pulse 1s infinite' }}>AI EXTRACTING...</div>}
                   {!extracting && ipqsData?.data?.fraud_score != null && (
                     <div style={{ fontSize: 9, fontFamily: 'monospace', letterSpacing: 1, color: ipqsData.data.fraud_score >= 75 ? '#f43f5e' : ipqsData.data.fraud_score >= 40 ? '#fb923c' : '#22c55e' }}>
-                      IPQS {ipqsData.data.fraud_score}/100
+                      IPQS {ipqsType ? ipqsType.toUpperCase() : ''} {ipqsData.data.fraud_score}/100
                     </div>
                   )}
                 </div>
-                <input value={source} onChange={e => setSource(e.target.value)} placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
+                <input value={source} onChange={e => handleSourceChange(e.target.value)} placeholder="e.g. scammer@gmail.com or +91 98765 43210 or unknown"
                   style={{ width: "100%", background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 14px", fontSize: 12, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = "#f43f5e55"} onBlur={e => e.target.style.borderColor = T.inputBorder} />
                 <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", marginTop: 4 }}>

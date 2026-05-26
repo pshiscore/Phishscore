@@ -260,10 +260,51 @@ function injectPiiScrubbing(messages) {
   });
 }
 
+// ── Build IPQS context block for Claude injection ─────────────────────────────
+function buildIpqsContext(ipqs) {
+  if (!ipqs?.data || ipqs.type === 'unknown') return null;
+  const d = ipqs.data;
+  const score = d.fraud_score ?? d.risk_score ?? null;
+  if (score == null) return null;
+
+  const type = ipqs.type; // 'email' | 'phone' | 'url'
+  const flags = [];
+  if (d.recent_abuse)  flags.push('recent abuse');
+  if (d.disposable)    flags.push('disposable address');
+  if (d.spam_trap)     flags.push('spam trap');
+  if (d.honeypot)      flags.push('honeypot');
+  if (d.leaked)        flags.push('leaked credentials');
+  if (d.spammer)       flags.push('known spammer');
+  if (d.risky)         flags.push('risky');
+  if (d.phishing)      flags.push('phishing');
+  if (d.malware)       flags.push('malware');
+
+  let line = `[IPQS PRE-SCORE] The sender's ${type} was evaluated by IPQualityScore and returned a fraud risk score of ${score}/100.`;
+  if (flags.length) line += ` Flags: ${flags.join(', ')}.`;
+  if (type === 'phone' && d.line_type) line += ` Line type: ${d.line_type}.`;
+  if (type === 'phone' && d.carrier)   line += ` Carrier: ${d.carrier}.`;
+  line += ' Factor this into your analysis.';
+  return line;
+}
+
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
   // Strip fields that are not valid Claude API params
-  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ...claudeBody } = body;
+  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ipqs, ...claudeBody } = body;
+
+  // Inject IPQS context as an additional user message content block
+  if (ipqs && Array.isArray(claudeBody.messages)) {
+    const context = buildIpqsContext(ipqs);
+    if (context) {
+      claudeBody.messages = claudeBody.messages.map((msg, i) => {
+        if (i !== claudeBody.messages.length - 1) return msg;
+        const content = Array.isArray(msg.content)
+          ? [...msg.content, { type: 'text', text: context }]
+          : [{ type: 'text', text: typeof msg.content === 'string' ? msg.content : '' }, { type: 'text', text: context }];
+        return { ...msg, content };
+      });
+    }
+  }
 
   if (visibility === 'public' && Array.isArray(claudeBody.messages)) {
     claudeBody.messages = injectPiiScrubbing(claudeBody.messages);

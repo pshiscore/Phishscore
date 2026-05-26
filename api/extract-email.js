@@ -70,18 +70,20 @@ module.exports = async function handler(req, res) {
   const { sender = '', subject = '', body = '' } = parsed;
 
   // Phase B — IPQS scoring on sender (best-effort, never blocks response)
+  // analyzeContactData auto-detects email vs phone via lib/ipqs.js
   let ipqs = null;
-  if (sender && sender.includes('@')) {
+  const isEmail = sender && sender.includes('@');
+  const isPhone = !isEmail && sender && /[\d\s\-().+]{7,}/.test(sender) && sender.replace(/\D/g, '').length >= 7;
+  if (isEmail || isPhone) {
     try {
-      const result = await analyzeContactData(sender);
-      ipqs = result;
+      ipqs = await analyzeContactData(sender);
+      if (ipqs?.type === 'unknown') ipqs = null;
     } catch (err) {
       console.warn('[extract-email] IPQS failed:', err.message);
-      // Non-fatal — return null so frontend still gets parsed fields
     }
   }
 
-  return res.status(200).json({ sender, subject, body, ipqs });
+  return res.status(200).json({ sender, subject, body, ipqs, ipqsType: ipqs?.type ?? null });
 };
 
 module.exports.config = { api: { bodyParser: { sizeLimit: '1mb' } } };
