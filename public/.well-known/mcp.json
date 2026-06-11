@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.org/",
+  "name": "PhishScore.ai",
+  "description": "Community-driven threat intelligence platform for phishing and scam detection. Provides AI-powered risk scoring for emails, text messages, phone numbers, and links, plus a live feed of community-reported scam intelligence.",
+  "url": "https://phishscore.ai/",
+  "documentation": "https://phishscore.ai/llms.txt",
+  "contact": "contact@phishscore.ai",
+  "resources": [
+    {
+      "name": "Threat Glossary",
+      "description": "Definitions, red flags, and structured data (FAQPage/Article JSON-LD) for major scam categories.",
+      "url": "https://phishscore.ai/glossary",
+      "type": "text/html"
+    },
+    {
+      "name": "Sitemap",
+      "description": "XML sitemap of all public pages.",
+      "url": "https://phishscore.ai/sitemap.xml",
+      "type": "application/xml"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Quick Scan",
+      "description": "Submit a suspicious email, text message, phone number, or link and receive an AI-generated risk score, scam category, and red-flag breakdown.",
+      "method": "POST",
+      "url": "https://phishscore.ai/api/quick-scan",
+      "requestBody": {
+        "type": "application/json",
+        "schema": {
+          "input": "string — the email, message, phone number, or URL to analyze"
+        }
+      },
+      "response": {
+        "type": "application/json",
+        "schema": {
+          "score": "number — risk score from 0-100",
+          "category": "string — detected scam category",
+          "flags": "array — red flags identified in the input"
+        }
+      }
+    },
+    {
+      "name": "Recent Quick Scans",
+      "description": "Read-only feed of recent community quick-scan results.",
+      "method": "GET",
+      "url": "https://phishscore.ai/api/get-quick-scans",
+      "response": { "type": "application/json" }
+    },
+    {
+      "name": "Threat Trends",
+      "description": "Aggregated trend data on top targeted sectors and threat levels.",
+      "method": "GET",
+      "url": "https://phishscore.ai/api/get-trends",
+      "response": { "type": "application/json" }
+    }
+  ]
+}

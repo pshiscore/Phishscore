@@ -7,9 +7,94 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="description" content="PhishScore.ai — AI-powered scam and phishing detection. Paste any suspicious email or message and get an instant risk score." />
     <title>PhishScore.ai — Phishing & Scam Detection</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://phishscore.ai/#organization",
+            "name": "PhishScore.ai",
+            "url": "https://phishscore.ai/",
+            "logo": "https://phishscore.ai/favicon.svg",
+            "description": "PhishScore.ai is a community-driven threat intelligence platform that detects phishing, scam, and fraud attempts using AI-powered analysis.",
+            "email": "contact@phishscore.ai"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://phishscore.ai/#website",
+            "url": "https://phishscore.ai/",
+            "name": "PhishScore.ai",
+            "description": "AI-powered scam and phishing detection. Paste any suspicious email, text message, phone number, or link to get an instant risk score.",
+            "publisher": { "@id": "https://phishscore.ai/#organization" },
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://phishscore.ai/#webapp",
+            "name": "PhishScore.ai Quick Scan",
+            "url": "https://phishscore.ai/",
+            "applicationCategory": "SecurityApplication",
+            "operatingSystem": "Any",
+            "description": "Paste a suspicious email, text message, phone number, or link and get an instant AI-generated risk score, scam category, and red-flag breakdown.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "isPartOf": { "@id": "https://phishscore.ai/#website" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <header>
+        <p style="font:11px monospace;letter-spacing:3px;color:#f43f5e;">PHISHSCORE.AI &mdash; LIVE INTELLIGENCE</p>
+      </header>
+      <main>
+        <h1>PhishScore.ai &mdash; Phishing &amp; Scam Detection</h1>
+        <p>
+          PhishScore.ai is a community scam intelligence dashboard. Paste any suspicious email,
+          text message, phone number, or link to get an instant AI-powered risk score, scam
+          category, and red-flag breakdown &mdash; for free.
+        </p>
+        <h2>What you can do here</h2>
+        <ul>
+          <li><strong>Quick Scan</strong>: get an instant risk score for an email, message, phone number, or link.</li>
+          <li><strong>Analyze Threat</strong>: run a deeper AI investigation into a suspected scam.</li>
+          <li><strong>PhishScore Radar</strong>: view live, community-reported scam intelligence and trending threats.</li>
+          <li><strong>Threat Glossary</strong>: browse definitions and red flags for common scam categories.</li>
+        </ul>
+        <h2>Common scam categories tracked</h2>
+        <ul>
+          <li>Publishing &amp; Literary scams (fake agents, vanity presses, contest mills)</li>
+          <li>Package &amp; Delivery scams (FedEx, UPS, USPS, DHL fake notices)</li>
+          <li>Retail &amp; Shopping scams (Amazon, eBay, online store scams)</li>
+          <li>Phone &amp; Telecom scams (carrier rewards/points scams)</li>
+          <li>VOIP fraud and spoofed robocalls</li>
+          <li>Banking &amp; Finance scams (bank alerts, crypto, investment fraud)</li>
+          <li>Government &amp; IRS impersonation scams</li>
+          <li>Prize &amp; Lottery scams</li>
+          <li>Romance scams</li>
+          <li>Job &amp; Employment scams</li>
+          <li>Tech Support scams</li>
+        </ul>
+        <nav aria-label="Site sections">
+          <h2>More resources</h2>
+          <ul>
+            <li><a href="/glossary">Threat Glossary &amp; Schemas</a></li>
+            <li><a href="/faq">FAQ &amp; How It Works</a></li>
+            <li><a href="/privacy.html">Privacy Policy</a></li>
+            <li><a href="/terms.html">Terms of Service</a></li>
+          </ul>
+        </nav>
+      </main>
+      <footer>
+        <p style="font:11px monospace;color:#9ca3af;">&copy; PhishScore.ai &mdash; contact@phishscore.ai</p>
+      </footer>
+    </div>
   </body>
 </html>

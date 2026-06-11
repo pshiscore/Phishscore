@@ -264,9 +264,9 @@ export function GlossaryContent({ T = {}, onScanClick }) {
         <p style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", margin: "0 0 10px" }}>
           THREAT INTELLIGENCE
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "monospace", letterSpacing: 1, margin: "0 0 12px", lineHeight: 1.2 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 800, color: T.text, fontFamily: "monospace", letterSpacing: 1, margin: "0 0 12px", lineHeight: 1.2 }}>
           PHISHSCORE <span style={{ color: "#f43f5e" }}>THREAT</span> GLOSSARY
-        </h1>
+        </h2>
         <p style={{ fontSize: 15, color: T.text2, fontFamily: "Georgia, serif", lineHeight: 1.8, margin: "0 0 20px", maxWidth: 700 }}>
           A comprehensive reference covering all major scam and phishing categories tracked by the PhishScore community intelligence engine. Each entry includes a threat definition, behavioral red flags, and enterprise security implications — structured for both human readers and AI search engines.
         </p>

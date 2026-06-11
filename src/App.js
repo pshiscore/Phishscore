@@ -306,10 +306,12 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#f43f5e", boxShadow: "0 0 8px #f43f5e", animation: "blink 2s infinite" }} />
               <span style={{ fontSize: 9, color: "#f43f5e", letterSpacing: 4, fontFamily: "monospace" }}>LIVE INTELLIGENCE</span>
             </div>
-            <PhishScoreLogo T={T} size={22} dotSize={13} />
+            <h1 style={{ margin: 0, fontWeight: 800, fontFamily: "monospace", letterSpacing: 1, fontSize: 22 }}>
+              <PhishScoreLogo T={T} size={22} dotSize={13} />
+            </h1>
             <div style={{ fontSize: 9, color: T.text4, letterSpacing: 3, fontFamily: "monospace" }}>COMMUNITY SCAM INTELLIGENCE DASHBOARD</div>
           </div>
-          <div className="nav-scroll-wrapper no-scrollbar" style={{ display: "flex", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
+          <nav aria-label="Main navigation" className="nav-scroll-wrapper no-scrollbar" style={{ display: "flex", alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           <div className="nav-buttons" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "nowrap" }}>
 
             {/* Home */}
@@ -385,13 +387,23 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
             </Tooltip>
 
           </div>
-          </div>
+          </nav>
         </header>
 
         <main className="site-main" style={{ padding: "28px", maxWidth: 1300, margin: "0 auto", overflowX: "hidden", boxSizing: "border-box" }}>
 
+          {/* FRESHNESS */}
+          {submissions[0]?.created_at && (
+            <p style={{ margin: "0 0 14px", fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>
+              LAST UPDATED:{" "}
+              <time dateTime={new Date(submissions[0].created_at).toISOString()}>
+                {new Date(submissions[0].created_at).toUTCString()}
+              </time>
+            </p>
+          )}
+
           {/* STATS */}
-          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 26 }}>
+          <ul className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, listStyle: "none", margin: 0, marginBottom: 26, padding: 0 }}>
             {[
               { label: "TOTAL REPORTS", key: "total", value: total, accent: "#5b6cf8" },
               { label: "CONFIRMED SCAMS", key: "scams", value: scams, accent: "#f43f5e", sub: `${total > 0 ? Math.round(scams / total * 100) : 0}% rate` },
@@ -400,13 +412,13 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
               { label: "⚡ QUICK SCANS", key: "qs", value: quickScanCount, accent: "#d97706" },
               { label: "🔬 ANALYZE THREAT", key: "at", value: analyzeThreatCount, accent: "#818cf8" },
             ].map(s => (
-              <div key={s.key} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "14px 16px", borderTop: `3px solid ${s.accent}` }}>
+              <li key={s.key} className="stat-card" style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: "14px 16px", borderTop: `3px solid ${s.accent}` }}>
                 <div className="stat-label" style={{ fontSize: 9, color: T.text3, letterSpacing: 3, marginBottom: 8, fontFamily: "monospace", whiteSpace: "normal" }}>{s.label}</div>
                 <div className="stat-value" style={{ fontSize: 30, fontWeight: 800, color: s.accent, fontFamily: "monospace" }}>{s.value}</div>
                 {s.sub && <div className="stat-sub" style={{ fontSize: 10, color: T.text4, marginTop: 3, fontFamily: "monospace" }}>{s.sub}</div>}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
 
           {/* ACTION ROW + OMNI-BOX */}
           <ActionRow
