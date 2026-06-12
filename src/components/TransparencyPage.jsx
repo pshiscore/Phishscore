@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { SCAM_CATEGORIES } from "../constants";
 import { CatIconSvg, PhishScoreLogo } from "./Primitives";
 
@@ -18,95 +17,15 @@ export default function TransparencyPage({ onClose, submissions, T = {} }) {
     .filter(c => c.count > 0).sort((a, b) => b.count - a.count);
   const month = new Date().toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "America/New_York" });
 
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailValue, setEmailValue] = useState("");
-  const [emailStatus, setEmailStatus] = useState(null); // null | "sending" | "success" | "error"
-
-  const handleSendReport = async () => {
-    if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
-      setEmailStatus("error");
-      return;
-    }
-    setEmailStatus("sending");
-    try {
-      const res = await fetch("/api/send-transparency-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: emailValue,
-          reportData: { total, scams, safe, scamRate, pubCount, privCount, anonCount, autoCount, reclassCount, catBreakdown, month },
-        }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      setEmailStatus("success");
-      setTimeout(() => {
-        setEmailOpen(false);
-        setEmailValue("");
-        setEmailStatus(null);
-      }, 4000);
-    } catch {
-      setEmailStatus("error");
-    }
-  };
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(14px)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 300, padding: 16, overflowY: "auto" }}>
       <div style={{ background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, width: "100%", maxWidth: 680, padding: 40, position: "relative", margin: "20px 0" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>x</button>
 
-        <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>TRANSPARENCY REPORT</div>
-            <PhishScoreLogo T={T} size={22} dotSize={13} />
-            <p style={{ color: T.text3, fontFamily: "monospace", fontSize: 11, margin: "6px 0 0" }}>Live data as of {month}. Updated in real time.</p>
-          </div>
-          {/* Export Report button — mirrors RadarModal */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-            <button
-              onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
-              title="Export transparency report by email"
-              style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, borderRadius: 9999, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontSize: 11, fontFamily: "monospace", fontWeight: 600, letterSpacing: 0.5 }}
-            >
-              Export Report
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
-              </svg>
-            </button>
-            {emailOpen && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end" }}>
-                {emailStatus === "success" ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#34d399", fontFamily: "monospace" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Report sent!
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="email"
-                      value={emailValue}
-                      onChange={e => setEmailValue(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleSendReport()}
-                      placeholder="your@email.com"
-                      style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: 160, outline: "none" }}
-                    />
-                    <button
-                      onClick={handleSendReport}
-                      disabled={emailStatus === "sending"}
-                      style={{ fontSize: 9, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 6, cursor: emailStatus === "sending" ? "default" : "pointer", opacity: emailStatus === "sending" ? 0.7 : 1 }}
-                    >
-                      {emailStatus === "sending" ? "SENDING..." : "SEND REPORT"}
-                    </button>
-                    {emailStatus === "error" && (
-                      <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>
-                    )}
-                    <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center", marginTop: 12 }}>
-                      Subscription reports coming soon.
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 10, letterSpacing: 4, color: "#f43f5e", fontFamily: "monospace", marginBottom: 10 }}>TRANSPARENCY REPORT</div>
+          <PhishScoreLogo T={T} size={22} dotSize={13} />
+          <p style={{ color: T.text3, fontFamily: "monospace", fontSize: 11, margin: "6px 0 0" }}>Live data as of {month}. Updated in real time.</p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 24 }}>

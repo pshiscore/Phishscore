@@ -233,9 +233,6 @@ export function RadarPanel({ T = {}, onClose }) {
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailValue, setEmailValue] = useState("");
-  const [emailStatus, setEmailStatus] = useState(null);
   const [isReportExpanded, setIsReportExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
@@ -263,17 +260,6 @@ export function RadarPanel({ T = {}, onClose }) {
     }
   };
 
-  const handleSendReport = async () => {
-    if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) { setEmailStatus("error"); return; }
-    setEmailStatus("sending");
-    try {
-      const res = await fetch("/api/send-radar-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: emailValue, radarData: data }) });
-      if (!res.ok) throw new Error("Failed");
-      setEmailStatus("success");
-      setTimeout(() => { setEmailOpen(false); setEmailValue(""); setEmailStatus(null); }, 4000);
-    } catch { setEmailStatus("error"); }
-  };
-
   const formatLastUpdated = (iso) => {
     if (!iso) return "Never";
     const d = new Date(iso);
@@ -297,39 +283,6 @@ export function RadarPanel({ T = {}, onClose }) {
             <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>COMMUNITY THREAT INTELLIGENCE</div>
           </div>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <button
-                onClick={() => { setEmailOpen(o => !o); setEmailStatus(null); }}
-                title="Export radar report by email"
-                style={{ background: T.innerBg, border: `1px solid ${T.cardBorder}`, color: T.text3, borderRadius: 9999, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0, fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}
-              >
-                Export Report
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
-                </svg>
-              </button>
-              {emailOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-end" }}>
-                  {emailStatus === "success" ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "#34d399", fontFamily: "monospace" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      Report sent!
-                    </div>
-                  ) : (
-                    <>
-                      <input type="email" value={emailValue} onChange={e => setEmailValue(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSendReport()} placeholder="your@email.com"
-                        style={{ fontSize: 10, fontFamily: "monospace", background: T.innerBg, border: `1px solid ${emailStatus === "error" ? "#f43f5e" : T.innerBorder}`, color: T.text, padding: "5px 8px", borderRadius: 6, width: "min(160px, 100%)", outline: "none" }} />
-                      <button onClick={handleSendReport} disabled={emailStatus === "sending"}
-                        style={{ fontSize: 9, fontFamily: "monospace", letterSpacing: 1.5, fontWeight: 700, background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 6, cursor: emailStatus === "sending" ? "default" : "pointer", opacity: emailStatus === "sending" ? 0.7 : 1 }}>
-                        {emailStatus === "sending" ? "SENDING..." : "SEND REPORT"}
-                      </button>
-                      {emailStatus === "error" && <div style={{ fontSize: 9, color: "#f43f5e", fontFamily: "monospace" }}>Failed — try again</div>}
-                      <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", textAlign: "center", marginTop: 4 }}>Subscription reports coming soon.</div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 1 }}>LAST UPDATED</div>
               <div style={{ fontSize: 11, color: refreshing ? "#fbbf24" : T.text3, fontFamily: "monospace" }}>{refreshing ? "REFRESHING..." : formatLastUpdated(data?.created_at)}</div>

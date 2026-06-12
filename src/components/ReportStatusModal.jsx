@@ -56,9 +56,9 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
     try {
       let url;
       if (token) {
-        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?report_token=eq.${token}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`;
+        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?report_token=eq.${token}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email,report_token`;
       } else {
-        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email_sent_at,email,report_token`;
+        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email,report_token`;
       }
 
       const res = await fetch(url, {
@@ -199,8 +199,8 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
                     </div>
                     <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
                       {isReportReady
-                        ? `Your forensic case file has been emailed to ${caseData.email}. Check your inbox — including spam folder.`
-                        : `Our AI agent is running forensic checks now. Your report will be emailed to ${caseData.email} within a few minutes. This page updates automatically.`}
+                        ? `Your forensic case file is ready. Use the link below to view it online — save it for future reference.`
+                        : `Our AI agent is running forensic checks now. Your report will be ready in a few minutes. This page updates automatically.`}
                     </p>
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
                   </div>
                 </div>
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #a78bfa30", fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>
-                  In the meantime, your AI Forensic Report has already been emailed to you. Questions? <a href={`mailto:contact@phishscore.ai?subject=Case ${caseData.id.slice(0,8).toUpperCase()} Human Review`} style={{ color: "#a78bfa", textDecoration: "none", fontWeight: 700 }}>contact@phishscore.ai</a>
+                  In the meantime, your AI Forensic Report is already available online{caseData.report_token ? <> at <a href={`https://phishscore.ai/report?token=${caseData.report_token}`} style={{ color: "#a78bfa", textDecoration: "none", fontWeight: 700 }}>phishscore.ai/report</a></> : ""}. Questions? <a href={`mailto:contact@phishscore.ai?subject=Case ${caseData.id.slice(0,8).toUpperCase()} Human Review`} style={{ color: "#a78bfa", textDecoration: "none", fontWeight: 700 }}>contact@phishscore.ai</a>
                 </div>
               </div>
             )}

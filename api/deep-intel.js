@@ -4,8 +4,6 @@
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const RESEND_KEY = process.env.RESEND_API_KEY;
-const ADMIN_EMAIL = 'vkrasikov@gmail.com';
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
 const { analyzeContactData } = require('../lib/ipqs');
 
@@ -102,103 +100,6 @@ async function fetchWithTelemetry(serviceName, url, options = {}, telemetryLog) 
     entry.error = err.message;
     telemetryLog.push(entry);
     return { ok: false, status: null, data: null };
-  }
-}
-
-// ── Admin email alert ─────────────────────────────────────────────────────────
-
-async function sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog = [], ipqsData = null) {
-  if (!RESEND_KEY) return;
-  const verdict = urlscanData?.verdict || 'N/A';
-  const abuseScore = abuseData?.abuseScore ?? 'N/A';
-  const verdictColor = verdict === 'malicious' ? '#dc2626' : verdict === 'clean' ? '#059669' : '#d97706';
-  const summary = (forensicReport || '').slice(0, 400).replace(/\n/g, ' ');
-
-  const telemetryRows = telemetryLog.map(entry => `
-    <tr>
-      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;">
-        ${entry.success ? '✅' : '❌'} ${entry.service}
-      </td>
-      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#6b7280;border-bottom:1px solid #f3f4f6;">
-        ${entry.latency_ms != null ? entry.latency_ms + 'ms' : '—'}
-      </td>
-      <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:${entry.success ? '#059669' : '#dc2626'};border-bottom:1px solid #f3f4f6;">
-        ${entry.error || (entry.success ? 'OK' : `HTTP ${entry.status}`)}
-      </td>
-    </tr>
-  `).join('');
-
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'PhishScore Alerts <reports@phishscore.ai>',
-        to: ADMIN_EMAIL,
-        subject: `[PhishScore] Deep Intel Complete — Case #${caseId.slice(0, 8).toUpperCase()}`,
-        html: `
-          <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;background:#fff;padding:32px;">
-            <div style="margin-bottom:20px;">
-              <span style="font-family:monospace;font-size:18px;font-weight:800;">PHISH</span><span style="font-family:monospace;font-size:18px;font-weight:800;color:#dc2626;">SCORE</span><span style="font-family:monospace;font-size:11px;color:#9ca3af;">.ai</span>
-              <p style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#6b7280;margin:4px 0 0;">DEEP INTEL ANALYSIS COMPLETE</p>
-            </div>
-            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#9ca3af;margin:0 0 4px;">CASE ID</p>
-              <p style="font-family:monospace;font-size:14px;font-weight:700;color:#111;margin:0;">#${caseId.slice(0, 8).toUpperCase()}</p>
-            </div>
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 6px;">URL ANALYZED</p>
-              <p style="font-family:monospace;font-size:12px;color:#111;margin:0;word-break:break-all;">${url || 'No URL extracted'}</p>
-            </div>
-
-            <!-- API Telemetry Health Check -->
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 10px;">API TELEMETRY HEALTH CHECK</p>
-              <table style="width:100%;border-collapse:collapse;">
-                <thead>
-                  <tr>
-                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">SERVICE</th>
-                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">LATENCY</th>
-                    <th style="padding:4px 10px;font-family:monospace;font-size:9px;letter-spacing:1px;color:#9ca3af;text-align:left;border-bottom:2px solid #e5e7eb;">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>${telemetryRows}</tbody>
-              </table>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;border-top:3px solid ${verdictColor};">
-                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">URLSCAN VERDICT</p>
-                <p style="font-family:monospace;font-size:14px;font-weight:700;color:${verdictColor};margin:0;text-transform:uppercase;">${verdict}</p>
-              </div>
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;">
-                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">IP ABUSE SCORE</p>
-                <p style="font-family:monospace;font-size:14px;font-weight:700;color:#374151;margin:0;">${abuseScore}${typeof abuseScore === 'number' ? '%' : ''}</p>
-              </div>
-            </div>
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">KEY FINDINGS SUMMARY</p>
-              <p style="font-family:Georgia,serif;font-size:13px;color:#374151;line-height:1.7;margin:0;">${summary}${forensicReport && forensicReport.length > 400 ? '…' : ''}</p>
-            </div>
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">IPQS OSINT ENRICHMENT</p>
-              ${ipqsData?.data ? `
-                <h3 style="font-family:monospace;font-size:11px;color:#374151;margin:0 0 8px;">IPQS Forensic Background Check</h3>
-                <ul style="font-family:monospace;font-size:11px;color:#374151;margin:0;padding-left:16px;line-height:1.8;">
-                  <li><b>Target:</b> ${ipqsData.input} (${ipqsData.type})</li>
-                  <li><b>Fraud Score:</b> ${ipqsData.data.fraud_score ?? 'N/A'}/100</li>
-                  <li><b>Recent Abuse:</b> ${ipqsData.data.recent_abuse ? 'Yes' : 'No'}</li>
-                  <li><b>Extra Meta:</b> ${ipqsData.type === 'email' ? (ipqsData.data.spam_trap ? 'Spam Trap Detected' : 'No Spam Trap') + ' · Disposable: ' + (ipqsData.data.disposable ? 'Yes' : 'No') : (ipqsData.data.line_type || 'Unknown') + ' Line Type · Carrier: ' + (ipqsData.data.carrier || 'N/A')}</li>
-                </ul>
-              ` : `<i style="font-family:monospace;font-size:11px;color:#9ca3af;">IPQS OSINT Enrichment: N/A (No contact provided or API timeout)</i>`}
-            </div>
-            <p style="font-family:monospace;font-size:10px;color:#9ca3af;margin:0;">Timestamp: ${new Date().toISOString()}</p>
-          </div>
-        `,
-      }),
-    });
-  } catch (e) {
-    console.error('Admin deep intel alert error:', e);
   }
 }
 
@@ -526,81 +427,6 @@ Rules: No URLs in the report. Plain English. Be direct and specific. This person
   return data?.content?.map(c => c.text || '').join('') || 'Report generation failed.';
 }
 
-// ── Email delivery via Resend ─────────────────────────────────────────────────
-
-async function sendReportEmail(email, caseId, reportToken, report, urlscanData, caseRecord) {
-  const reportUrl = `https://phishscore.ai/report?token=${reportToken}`;
-  const screenshotSection = urlscanData?.screenshot
-    ? `<p><strong>Evidence Screenshot:</strong><br><img src="${urlscanData.screenshot}" style="max-width:100%;border-radius:8px;margin-top:8px;" alt="URLScan screenshot"/></p>`
-    : `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin-bottom:24px;">
-        <p style="font-family:monospace;font-size:10px;letter-spacing:2px;color:#9ca3af;margin:0 0 4px;">VISUAL EVIDENCE</p>
-        <p style="font-family:monospace;font-size:12px;color:#6b7280;margin:0;">Vision API Analysis: N/A — No visual evidence provided</p>
-       </div>`;
-
-  // Format report as HTML
-  const reportHtml = report
-    .split('\n')
-    .map(line => {
-      if (line.match(/^[A-Z\s]{4,}$/) && line.trim().length > 3) {
-        return `<h3 style="color:#dc2626;font-family:monospace;font-size:13px;letter-spacing:2px;margin:24px 0 8px;">${line}</h3>`;
-      }
-      if (line.match(/^\d+\./)) {
-        return `<p style="margin:4px 0;padding-left:16px;">• ${line.replace(/^\d+\./, '').trim()}</p>`;
-      }
-      return line ? `<p style="margin:6px 0;">${line}</p>` : '<br>';
-    })
-    .join('');
-
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from: 'PhishScore Deep Intel <reports@phishscore.ai>',
-      to: email,
-      cc: 'contact@phishscore.ai',
-      subject: `Your PhishScore Deep Intel Case File — Case #${caseId.slice(0, 8).toUpperCase()}`,
-      html: `
-        <div style="font-family:Georgia,serif;max-width:640px;margin:0 auto;background:#fff;padding:32px;">
-          <div style="margin-bottom:24px;">
-            <span style="font-family:monospace;font-size:20px;font-weight:800;">PHISH</span><span style="font-family:monospace;font-size:20px;font-weight:800;color:#dc2626;">SCORE</span><span style="font-family:monospace;font-size:13px;color:#9ca3af;">.ai</span>
-            <p style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#6b7280;margin:4px 0 0;">DEEP INTEL — FORENSIC CASE FILE</p>
-          </div>
-
-          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin-bottom:24px;">
-            <p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#dc2626;margin:0 0 4px;">CASE ID</p>
-            <p style="font-family:monospace;font-size:14px;font-weight:700;color:#111;margin:0;">#${caseId.slice(0, 8).toUpperCase()}</p>
-          </div>
-
-          ${screenshotSection}
-
-          <div style="color:#374151;font-size:14px;line-height:1.8;">
-            ${reportHtml}
-          </div>
-
-          <div style="margin-top:32px;padding-top:24px;border-top:1px solid #e5e7eb;">
-            <p style="font-size:12px;color:#6b7280;font-family:monospace;">
-              View your case file online: <a href="${reportUrl}" style="color:#dc2626;">${reportUrl}</a>
-            </p>
-            <div style="margin-top:16px;padding:14px 16px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;">
-              <p style="font-size:11px;font-weight:700;color:#92400e;font-family:monospace;letter-spacing:1px;margin:0 0 6px;">BETA NOTICE: AI-GENERATED REPORT</p>
-              <p style="font-size:11px;color:#78350f;font-family:Georgia,serif;line-height:1.7;margin:0;">
-                This forensic analysis was generated by the PhishScore Deep Intel AI engine. While highly accurate in identifying scam patterns, AI can occasionally misinterpret complex data. This report should be treated as a guided starting point for your recovery process. Please verify all entity names, bank details, and URLs independently or with a human investigator before taking legal action.
-              </p>
-            </div>
-            <p style="font-size:11px;color:#9ca3af;font-family:monospace;margin-top:12px;">
-              PhishScore Deep Intel — AI-powered forensic scam investigation<br>
-              Questions? contact@phishscore.ai
-            </p>
-          </div>
-        </div>
-      `
-    })
-  });
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -693,40 +519,7 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    // Admin notification
-    try {
-      await sendAdminDeepIntelAlert(url, caseId, forensicReport, urlscanData, abuseData, telemetryLog, ipqsData);
-      console.log("Admin telemetry alert sent.");
-    } catch (e) {
-      console.error('Admin deep intel alert error:', e);
-    }
-
-    // Send email
-    await sendReportEmail(
-      caseRecord.email,
-      caseId,
-      caseRecord.report_token,
-      forensicReport,
-      urlscanData,
-      caseRecord
-    );
-
-    // Mark email sent
-    await fetch(`${SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}`, {
-      method: 'PATCH',
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
-      },
-      body: JSON.stringify({
-        email_sent_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-    });
-
-    console.log(`Deep Intel case ${caseId} complete — report emailed to ${caseRecord.email}`);
+    console.log(`Deep Intel case ${caseId} complete — report available at https://phishscore.ai/report?token=${caseRecord.report_token}`);
     return res.status(200).json({ success: true });
 
   } catch (err) {

@@ -4,7 +4,6 @@ const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const RESEND_KEY = process.env.RESEND_API_KEY;
 const POLAR_WEBHOOK_SECRET = process.env.POLAR_WEBHOOK_SECRET;
 
 // Svix signature verification (used by Polar)
@@ -97,29 +96,10 @@ module.exports = async function handler(req, res) {
 
   console.log(`polar-webhook: case ${caseId} marked paid (tier ${tier})`);
 
-  // T2/T3: notify admin — T1 frontend polls and triggers /api/deep-intel itself
+  // T2/T3: T1 frontend polls and triggers /api/deep-intel itself
   if (Number(tier) >= 2) {
     const customerEmail = order.customer?.email || 'unknown';
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'PhishScore Deep Intel <reports@phishscore.ai>',
-        to: 'vkrasikov@gmail.com',
-        subject: `New Tier ${tier} Case — #${caseId.slice(0, 8).toUpperCase()}`,
-        html: `
-          <p>A new Tier ${tier} Deep Intel case has been paid.</p>
-          <p><strong>Case ID:</strong> ${caseId}</p>
-          <p><strong>Customer:</strong> ${customerEmail}</p>
-          <p><strong>Report token:</strong> <code>${reportToken}</code></p>
-          <p><strong>Polar order:</strong> ${order.id}</p>
-        `,
-      }),
-    });
-    console.log(`polar-webhook: T${tier} notification sent for case ${caseId}`);
+    console.log(`polar-webhook: T${tier} case ${caseId} paid by ${customerEmail} — manual follow-up required (order ${order.id})`);
   }
 
   return res.status(200).json({ received: true });

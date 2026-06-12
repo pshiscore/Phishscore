@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/weekly_reports?id=eq.${id}&select=id,status,week_start_date,week_end_date,triggered_by,cost_usd,error_message,completed_at,email_sent_at&limit=1`,
+      `${SUPABASE_URL}/rest/v1/weekly_reports?id=eq.${id}&select=id,status,week_start_date,week_end_date,triggered_by,cost_usd,error_message,completed_at&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     const rows = await r.json();

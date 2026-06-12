@@ -1,9 +1,6 @@
 const { checkRateLimit } = require('./_utils/rateLimit');
 const { logUsage } = require('./_utils/logUsage');
 
-const RESEND_KEY = process.env.RESEND_API_KEY;
-const ADMIN_EMAIL = 'vkrasikov@gmail.com';
-
 // ── Per-URL threat check (no cache) ──────────────────────────────────────────
 async function checkUrlThreat(url, wrKey, cfKey) {
   const [gsb, radar, urlhaus] = await Promise.all([
@@ -43,119 +40,6 @@ async function checkUrlThreat(url, wrKey, cfKey) {
   ]);
 
   return { gsb, radar, urlhaus };
-}
-
-async function isAlertsEnabled() {
-  return false;
-}
-
-async function sendAdminSubmissionAlert(rawText, urls, parsed, flaggedSources) {
-  if (!RESEND_KEY) return;
-  if (!(await isAlertsEnabled())) return;
-
-  const score = parsed?.score ?? 'N/A';
-  const category = parsed?.detectedCategory || 'Unknown';
-  const tags = (parsed?.tags || []);
-  const redFlags = (parsed?.redFlags || []);
-  const scoreColor = score >= 75 ? '#dc2626' : score >= 45 ? '#d97706' : '#059669';
-
-  const API_CHECKS = [
-    { label: 'Google Web Risk',   hit: parsed?.safeBrowsingFlagged === true },
-    { label: 'Cloudflare Radar',  hit: parsed?.radarFlagged === true },
-    { label: 'URLhaus',           hit: parsed?.urlhausFlagged === true },
-  ];
-
-  const apiRowsHtml = API_CHECKS.map(({ label, hit }) => `
-    <tr>
-      <td style="font-family:monospace;font-size:11px;color:#374151;padding:5px 0;">${label}</td>
-      <td style="text-align:right;padding:5px 0;">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${hit ? '#dc2626' : '#22c55e'};box-shadow:0 0 4px ${hit ? '#dc2626' : '#22c55e'};"></span>
-        <span style="font-family:monospace;font-size:11px;color:${hit ? '#dc2626' : '#22c55e'};margin-left:5px;">${hit ? 'FLAGGED' : 'CLEAN'}</span>
-      </td>
-    </tr>`).join('');
-
-  const redFlagsHtml = redFlags.length > 0
-    ? redFlags.map(f => `<li style="font-family:monospace;font-size:11px;color:#dc2626;margin:3px 0;">${f}</li>`).join('')
-    : '<li style="font-family:monospace;font-size:11px;color:#22c55e;margin:3px 0;">None detected</li>';
-
-  const tagsHtml = tags.length > 0
-    ? tags.map(t => `<span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:10px;color:#374151;margin:2px;">${t}</span>`).join('')
-    : '<span style="font-family:monospace;font-size:11px;color:#9ca3af;">None</span>';
-
-  const urlsHtml = urls.length > 0
-    ? urls.map(u => `<p style="font-family:monospace;font-size:12px;color:#2563eb;margin:2px 0;word-break:break-all;">${u}</p>`).join('')
-    : '<p style="font-family:monospace;font-size:12px;color:#9ca3af;margin:0;">No URLs detected</p>';
-
-  const submittedTextHtml = rawText
-    ? `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
-        <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">SUBMITTED TEXT</p>
-        <p style="font-family:monospace;font-size:12px;color:#111;margin:0;white-space:pre-wrap;word-break:break-word;">${rawText.slice(0, 800)}${rawText.length > 800 ? '…' : ''}</p>
-       </div>`
-    : '';
-
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'PhishScore Alerts <reports@phishscore.ai>',
-        to: ADMIN_EMAIL,
-        subject: `[PhishScore] Score ${score} · ${category} — New Submission`,
-        html: `
-          <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#fff;padding:32px;">
-
-            <div style="margin-bottom:24px;">
-              <span style="font-family:monospace;font-size:18px;font-weight:800;">PHISH</span><span style="font-family:monospace;font-size:18px;font-weight:800;color:#dc2626;">SCORE</span><span style="font-family:monospace;font-size:11px;color:#9ca3af;">.ai</span>
-              <p style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#6b7280;margin:4px 0 0;">NEW SUBMISSION ALERT</p>
-            </div>
-
-            <!-- Score + Category -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;border-top:3px solid ${scoreColor};">
-                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">RISK SCORE</p>
-                <p style="font-family:monospace;font-size:32px;font-weight:800;color:${scoreColor};margin:0;">${score}</p>
-              </div>
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;">
-                <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 4px;">CATEGORY</p>
-                <p style="font-family:monospace;font-size:14px;font-weight:700;color:#374151;margin:0;">${category}</p>
-              </div>
-            </div>
-
-            <!-- Submitted text -->
-            ${submittedTextHtml}
-
-            <!-- URLs detected -->
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 20px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">URLS DETECTED</p>
-              ${urlsHtml}
-            </div>
-
-            <!-- Tags -->
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 20px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">TAGS</p>
-              ${tagsHtml}
-            </div>
-
-            <!-- Red flags -->
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 20px;margin-bottom:16px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">RED FLAGS (${redFlags.length})</p>
-              <ul style="margin:0;padding-left:16px;">${redFlagsHtml}</ul>
-            </div>
-
-            <!-- API checks -->
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 20px;margin-bottom:20px;">
-              <p style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#6b7280;margin:0 0 8px;">THREAT API CHECKS</p>
-              <table style="width:100%;border-collapse:collapse;">${apiRowsHtml}</table>
-            </div>
-
-            <p style="font-family:monospace;font-size:10px;color:#9ca3af;margin:0;">Timestamp: ${new Date().toISOString()}</p>
-          </div>
-        `,
-      }),
-    });
-  } catch (e) {
-    console.error('Admin submission alert error:', e);
-  }
 }
 
 // ── Store anonymized training data ────────────────────────────────────────────
@@ -453,11 +337,6 @@ module.exports = async function handler(req, res) {
           isAnonymous: req.body.isAnonymous === true,
         });
       } catch (e) { console.error('Training store error:', e); }
-    }
-
-    // ── Admin notification (fire and forget) ────────────────────────────────
-    if (parsedResult) {
-      sendAdminSubmissionAlert(rawText.slice(0, 800), uniqueUrls, parsedResult, flaggedSources).catch(e => console.error('Admin alert error:', e));
     }
 
     return res.status(200).json({ ...data, trainingId });

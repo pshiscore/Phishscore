@@ -6,7 +6,6 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL?.replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
-const RESEND_KEY = process.env.RESEND_API_KEY;
 const SENTRY_TOKEN = process.env.SENTRY_AUTH_TOKEN;
 const SENTRY_ORG = process.env.SENTRY_ORG_SLUG;
 const SENTRY_PROJECT = process.env.SENTRY_PROJECT_SLUG;
@@ -14,7 +13,6 @@ const CRON_SECRET = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
 
 // Cost cap: refuse to run if projected input tokens exceed this
 const MAX_INPUT_TOKENS = 30_000;
-const REPORT_EMAIL = process.env.CTO_REPORT_EMAIL || 'vkrasikov@gmail.com';
 
 // ── Supabase helpers ───────────────────────────────────────────────────────────
 
@@ -158,9 +156,6 @@ async function extractHealth() {
     PERPLEXITY_KEY
       ? pingService('Perplexity', 'https://api.perplexity.ai/chat/completions', { Authorization: `Bearer ${PERPLEXITY_KEY}` })
       : Promise.resolve({ name: 'Perplexity', ok: null, status: null, error: 'No key configured' }),
-    RESEND_KEY
-      ? pingService('Resend', 'https://api.resend.com/domains', { Authorization: `Bearer ${RESEND_KEY}` })
-      : Promise.resolve({ name: 'Resend', ok: null, status: null, error: 'No key configured' }),
     SENTRY_TOKEN
       ? pingService('Sentry', `https://sentry.io/api/0/organizations/${SENTRY_ORG}/`, { Authorization: `Bearer ${SENTRY_TOKEN}` })
       : Promise.resolve({ name: 'Sentry', ok: null, status: null, error: 'No key configured' }),
@@ -283,7 +278,7 @@ ${scrubbed}`;
   return { analysis, costUsd };
 }
 
-// ── Phase 5: Email delivery ────────────────────────────────────────────────────
+// ── Phase 5: Report HTML ───────────────────────────────────────────────────────
 
 function buildEmailHtml({ weekStart, weekEnd, metrics, analysis, costAudit, sentryErrors, reportCost }) {
   const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -419,21 +414,6 @@ function buildEmailHtml({ weekStart, weekEnd, metrics, analysis, costAudit, sent
 </div>`;
 }
 
-async function sendEmail(html, weekStart, weekEnd) {
-  if (!RESEND_KEY) return false;
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'PhishScore Reports <reports@phishscore.ai>',
-      to: REPORT_EMAIL,
-      subject: `PhishScore CTO Weekly Brief — ${weekStart}`,
-      html,
-    }),
-  });
-  return res.ok;
-}
-
 // ── Shared pipeline — called by trigger.js inline and by HTTP handler ──────────
 
 async function runPipeline(report_id, weekStart, weekEnd) {
@@ -469,9 +449,8 @@ async function runPipeline(report_id, weekStart, weekEnd) {
       };
     }
 
-    // Phase 5: Email
+    // Phase 5: Build report HTML
     const html = buildEmailHtml({ weekStart, weekEnd, metrics, analysis, costAudit, sentryErrors, reportCost });
-    const emailSent = await sendEmail(html, weekStart, weekEnd);
 
     await sbPatch(report_id, {
       status: 'completed',
@@ -479,7 +458,6 @@ async function runPipeline(report_id, weekStart, weekEnd) {
       recommendations_json: analysis.recommendations || [],
       cost_usd: reportCost,
       completed_at: new Date().toISOString(),
-      ...(emailSent ? { email_sent_at: new Date().toISOString(), email_recipients: [REPORT_EMAIL] } : {}),
     });
 
     console.log(`[weekly-report] ${report_id} completed. Cost: $${reportCost.toFixed(4)}`);
