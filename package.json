@@ -13,6 +13,7 @@
     "rss-parser": "^3.13.0"
   },
   "scripts": {
+    "test": "node --test \"test/*.test.js\"",
     "start": "react-scripts start",
     "build": "react-scripts build && sentry-cli sourcemaps inject ./build && sentry-cli sourcemaps upload --release=$npm_package_version ./build"
   },
