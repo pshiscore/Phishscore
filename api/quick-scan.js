@@ -1,5 +1,6 @@
 const { analyzeContactData } = require('../lib/ipqs');
 const { getDomainAge } = require('../lib/domain-age');
+const { CATEGORY_GUIDE, coerceCategoryId, isValidCategoryId } = require('../lib/categories');
 const { logUsage } = require('./_utils/logUsage');
 // Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
 // scale and the user-facing label cannot drift apart. Lives under src/ because
@@ -93,15 +94,19 @@ async function scoreWithClaude(rawInput, inputType, ipqsData) {
   const staticSystem = `You are a cyber threat analyst. Analyze submitted inputs and return a JSON object only — no explanation, no markdown.
 
 Return this exact JSON shape:
-{"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>", "shows_ai_patterns": <true if content shows LLM-generation patterns; false otherwise>, "impersonated_brand": "<primary brand/org being impersonated or null>", "extracted_iocs": ["<suspicious domains, URLs, or IPs; empty array if none>"], "vector": "<email|sms|social|phone|web|other>"}
+{"score": <0-100 integer>, "category": "<one id from the category list>", "category_label": "<short human-readable label, max 40 chars>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>", "shows_ai_patterns": <true if content shows LLM-generation patterns; false otherwise>, "impersonated_brand": "<primary brand/org being impersonated or null>", "extracted_iocs": ["<suspicious domains, URLs, or IPs; empty array if none>"], "vector": "<email|sms|social|phone|web|other>"}
 
 Category rules:
-- When the evidence supports a specific threat, use a specific, highly descriptive label — e.g. "Insurance Scam", "Delivery Phishing", "Tech Support Fraud", "Bank Impersonation", "Romance Scam", "Investment Fraud", "IRS Impersonation"
-- When the checks come back clean and nothing in the input indicates a scam, say so: use "No Threat Detected"
-- When there is too little signal to judge, use exactly "Insufficient Signal" — this is a valid, expected answer, not a failure
-- NEVER invent a threat label to avoid saying "No Threat Detected" or "Insufficient Signal"
-- NEVER describe an entity as "Suspicious <something>" unless a specific observed signal supports it; name that signal in the summary
-- Absent, unknown or unavailable data is NOT a signal. Missing data must never produce a threat label or raise the score
+- "category" MUST be exactly one id from this list, lowercase, nothing else:
+${CATEGORY_GUIDE}
+- Pick "other" when nothing above fits or there is too little signal. "other" is a
+  valid, expected answer — never force a closer-sounding id to avoid it
+- "category_label" is a short human-readable description of what you actually found
+  (e.g. "VOIP Cold Call", "No Threat Detected", "Insufficient Signal")
+- NEVER describe an entity as suspicious in category_label unless a specific observed
+  signal supports it, and name that signal in the summary
+- Absent, unknown or unavailable data is NOT a signal. Missing data must never
+  produce a threat label or raise the score
 
 Tags rules:
 - 1 to 3 short context tags based on the input (e.g. ["Insurance", "Cold Call", "Spoofed Number"])
@@ -159,9 +164,19 @@ Instructions: ${hasOsint
     const parsed = JSON.parse(jsonStr);
     // Ensure tags is always an array
     if (!Array.isArray(parsed.tags)) parsed.tags = [];
+    if (!isValidCategoryId(parsed.category)) {
+      console.warn('[quick-scan] model returned non-canonical category:', JSON.stringify(parsed.category));
+    }
+    parsed.category = coerceCategoryId(parsed.category);
+    if (typeof parsed.category_label !== 'string' || !parsed.category_label.trim()) {
+      parsed.category_label = null;
+    }
     return parsed;
-  } catch {
-    return { score: 50, category: 'Suspicious Activity', tags: [], summary: 'Could not parse AI response.' };
+  } catch (err) {
+    // Previously this returned score 50 / "Suspicious Activity" — an
+    // infrastructure failure rendered as a threat verdict the user could not
+    // distinguish from a real one. Surface it instead.
+    throw new Error(`AI response was not valid JSON: ${err.message}`);
   }
 }
 
@@ -254,6 +269,7 @@ module.exports = async function handler(req, res) {
     visibility: 'private',
     created_at: new Date().toISOString(),
     radar_metadata: {
+      category_label: aiResult.category_label ?? null,
       shows_ai_patterns: aiResult.shows_ai_patterns ?? null,
       impersonated_brand: aiResult.impersonated_brand ?? null,
       extracted_iocs: Array.isArray(aiResult.extracted_iocs) ? aiResult.extracted_iocs : [],
@@ -267,6 +283,7 @@ module.exports = async function handler(req, res) {
     input_type: inputType,
     score: aiResult.score,
     category: aiResult.category,
+    category_label: aiResult.category_label ?? null,
     summary: aiResult.summary,
     osint: ipqsData
       ? {

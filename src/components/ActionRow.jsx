@@ -410,7 +410,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                       color: T.text3, background: 'rgba(255,255,255,0.04)',
                       border: `1px solid ${T.cardBorder}`, borderRadius: 5, padding: '2px 8px',
                       textTransform: 'uppercase',
-                    }}>{result.category}</span>
+                    }}>{result.category_label || result.category}</span>
                     <span style={{
                       fontFamily: 'monospace', fontSize: 9, letterSpacing: 1,
                       color: '#a78bfa', background: 'rgba(167,139,250,0.08)',
