@@ -1,18 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
+import { getScoreColor, getScoreLabel } from '../score-bands';
 
-const SCORE_COLOR = (score) => {
-  if (score >= 76) return '#f43f5e';
-  if (score >= 51) return '#fb923c';
-  if (score >= 21) return '#fbbf24';
-  return '#34d399';
-};
-
-const SCORE_LABEL = (score) => {
-  if (score >= 76) return 'HIGH RISK';
-  if (score >= 51) return 'SUSPICIOUS';
-  if (score >= 21) return 'LOW RISK';
-  return 'LIKELY SAFE';
-};
+// Bands come from src/score-bands.js so the label the user sees and the scale the
+// model is given can never drift apart again.
+const SCORE_COLOR = getScoreColor;
+const SCORE_LABEL = getScoreLabel;
 
 // ── Tag explanation definitions ───────────────────────────────────────────────
 
@@ -486,6 +478,16 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                       {result.osint.risk_score !== null && result.osint.type === 'url' && (
                         <OsintPill label="URL RISK" value={`${result.osint.risk_score}/100`} color={result.osint.risk_score > 50 ? accentRed : '#34d399'} T={T} />
                       )}
+                      {result.osint.type === 'url' && result.osint.domain_age && (
+                        <OsintPill
+                          label="DOMAIN AGE"
+                          value={result.osint.domain_age.status === 'known'
+                            ? `${result.osint.domain_age.days} DAYS`
+                            : 'UNKNOWN'}
+                          color={T.text3}
+                          T={T}
+                        />
+                      )}
                     </div>
 
                     {/* "What does this mean?" buttons — one per explainable flag */}
@@ -524,6 +526,16 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                   onClose={() => setActiveExplanation(null)}
                   T={T}
                 />
+              )}
+
+              {/* Scan reference — quote this when disputing a result */}
+              {result.scan_id && (
+                <div style={{
+                  marginTop: 10, paddingTop: 8, borderTop: `1px solid ${T.cardBorder}`,
+                  fontFamily: 'monospace', fontSize: 9, letterSpacing: 0.5, color: T.text4,
+                }}>
+                  SCAN ID: <span style={{ color: T.text3, userSelect: 'all' }}>{result.scan_id}</span>
+                </div>
               )}
             </div>
           )}

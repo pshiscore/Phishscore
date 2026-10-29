@@ -1,5 +1,9 @@
 const { analyzeContactData } = require('../lib/ipqs');
 const { logUsage } = require('./_utils/logUsage');
+// Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
+// scale and the user-facing label cannot drift apart. Lives under src/ because
+// CRA cannot import from outside src/; Node resolves it fine from here.
+const { describeScoreBands } = require('../src/score-bands');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -18,6 +22,18 @@ function detectInputType(input) {
 }
 
 // ── Claude Haiku quick scoring ────────────────────────────────────────────────
+
+// Domain age is three-state: known, or unknown. An unknown age is NOT evidence of
+// anything — stating it plainly keeps the model from reading a gap as "new domain".
+function formatDomainAge(age) {
+  if (age && age.status === 'known' && typeof age.days === 'number') {
+    const registered = age.iso ? ` (registered ${age.iso.slice(0, 10)})` : '';
+    return `${age.days} days${registered}`;
+  }
+  return 'UNKNOWN — the age lookup returned no registration date. '
+    + 'This is missing data, NOT evidence of a new domain. '
+    + 'Do not treat it as recently registered, and do not let it raise the score.';
+}
 
 function buildOsintBlock(ipqsData) {
   if (!ipqsData?.data) return '';
@@ -61,7 +77,7 @@ OSINT DATA — We scanned the URL "${entity}" and found:
   Suspicious: ${d.suspicious}
   Parked Domain: ${d.parking}
   Known Spammer: ${d.spamming}
-  Domain Age: ${d.domain_age ? JSON.stringify(d.domain_age) : 'Unknown'}
+  Domain Age: ${formatDomainAge(d.domain_age)}
   Category: ${d.category || 'N/A'}`;
   }
 
@@ -78,20 +94,20 @@ Return this exact JSON shape:
 {"score": <0-100 integer>, "category": "<descriptive category>", "tags": ["<tag1>", "<tag2>"], "summary": "<one sentence, max 120 chars>", "shows_ai_patterns": <true if content shows LLM-generation patterns; false otherwise>, "impersonated_brand": "<primary brand/org being impersonated or null>", "extracted_iocs": ["<suspicious domains, URLs, or IPs; empty array if none>"], "vector": "<email|sms|social|phone|web|other>"}
 
 Category rules:
-- MUST be a specific, highly descriptive label — e.g. "Insurance Scam", "Delivery Phishing", "Tech Support Fraud", "Bank Impersonation", "Romance Scam", "Investment Fraud", "IRS Impersonation", "Suspicious URL"
-- NEVER output "Unknown", "AI Detect", "unknown", or any generic placeholder
-- If genuinely unclear, use the closest plausible threat type, e.g. "Suspicious Cold Call" or "Unverified Link"
+- When the evidence supports a specific threat, use a specific, highly descriptive label — e.g. "Insurance Scam", "Delivery Phishing", "Tech Support Fraud", "Bank Impersonation", "Romance Scam", "Investment Fraud", "IRS Impersonation"
+- When the checks come back clean and nothing in the input indicates a scam, say so: use "No Threat Detected"
+- When there is too little signal to judge, use exactly "Insufficient Signal" — this is a valid, expected answer, not a failure
+- NEVER invent a threat label to avoid saying "No Threat Detected" or "Insufficient Signal"
+- NEVER describe an entity as "Suspicious <something>" unless a specific observed signal supports it; name that signal in the summary
+- Absent, unknown or unavailable data is NOT a signal. Missing data must never produce a threat label or raise the score
 
 Tags rules:
 - 1 to 3 short context tags based on the input (e.g. ["Insurance", "Cold Call", "Spoofed Number"])
 - Tags must NOT contain any PII (no phone numbers, emails, names, or addresses)
 - Tags should describe the scam type, medium, or tactic — not the victim
 
-Scoring guide:
-- 0-20 = safe / low risk
-- 21-50 = suspicious
-- 51-75 = likely threat
-- 76-100 = confirmed threat
+Scoring guide (these bands are also what the user sees, so your score must match the verdict you describe):
+${describeScoreBands()}
 
 Additional rules:
 - VOIP line type + legitimacy claim in text = score ≥ 80
@@ -100,6 +116,9 @@ Additional rules:
 - Phishing or malware flag from URL scan = score ≥ 85
 - Parked domain = score ≥ 75
 - Valid Inbox = false or Active Status = false AND content claims to be from a legitimate org = score ≥ 85 (spoofed/dead-drop sender)
+- All threat checks clean (no phishing, malware, unsafe, suspicious, parked, spam flags) and no scam patterns in the text = score ≤ 20
+- An unknown domain age, or any other unavailable field, adds NOTHING to the score
+- Only cite evidence actually present in the OSINT DATA or the input text. Never state or imply a registration date, domain age, or any other fact that was not given to you
 - Be concise and objective`;
 
   const userMessage = `User Input: "${rawInput}"
@@ -121,6 +140,7 @@ Instructions: ${hasOsint
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
+      temperature: 0, // a disputed scan must be reproducible
       system: [{ type: 'text', text: staticSystem, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     }),
@@ -163,9 +183,19 @@ async function insertQuickScan(record) {
   if (!res.ok) {
     const err = await res.text();
     console.error('quick_scans insert failed [' + res.status + ']:', err);
-  } else {
-    console.log('quick_scans insert ok, input_type:', record.input_type, 'score:', record.ai_score);
+    return null;
   }
+  // Prefer: return=representation is already set, so the new row comes back —
+  // surface its id so a user can quote a scan when disputing a result.
+  let scanId = null;
+  try {
+    const rows = await res.json();
+    scanId = (Array.isArray(rows) ? rows[0] : rows)?.id ?? null;
+  } catch (err) {
+    console.warn('quick_scans insert: could not read returned row:', err.message);
+  }
+  console.log('quick_scans insert ok, id:', scanId, 'input_type:', record.input_type, 'score:', record.ai_score);
+  return scanId;
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -201,7 +231,7 @@ module.exports = async function handler(req, res) {
   }
 
   // Persist — visibility is hardcoded private, cannot be overridden
-  await insertQuickScan({
+  const scanId = await insertQuickScan({
     input_type: inputType,
     raw_input: rawInput,
     ipqs_data: ipqsData || null,
@@ -220,6 +250,7 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({
     ok: true,
+    scan_id: scanId,
     input_type: inputType,
     score: aiResult.score,
     category: aiResult.category,
@@ -227,7 +258,9 @@ module.exports = async function handler(req, res) {
     osint: ipqsData
       ? {
           type: ipqsData.type,
-          fraud_score: ipqsData.data?.fraud_score ?? ipqsData.data?.risk_score ?? null,
+          // Do NOT back-fill from risk_score: for URLs there is no fraud_score, and
+          // reusing one number under two labels reads as two corroborating signals.
+          fraud_score: ipqsData.data?.fraud_score ?? null,
           recent_abuse: ipqsData.data?.recent_abuse ?? null,
           // email
           disposable: ipqsData.data?.disposable ?? null,
@@ -246,6 +279,7 @@ module.exports = async function handler(req, res) {
           risk_score: ipqsData.data?.risk_score ?? null,
           parking: ipqsData.data?.parking ?? null,
           spamming: ipqsData.data?.spamming ?? null,
+          domain_age: ipqsData.data?.domain_age ?? null,
         }
       : null,
   });
