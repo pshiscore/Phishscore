@@ -1,4 +1,5 @@
 const { analyzeContactData } = require('../lib/ipqs');
+const { getDomainAge } = require('../lib/domain-age');
 const { logUsage } = require('./_utils/logUsage');
 // Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
 // scale and the user-facing label cannot drift apart. Lives under src/ because
@@ -28,7 +29,8 @@ function detectInputType(input) {
 function formatDomainAge(age) {
   if (age && age.status === 'known' && typeof age.days === 'number') {
     const registered = age.iso ? ` (registered ${age.iso.slice(0, 10)})` : '';
-    return `${age.days} days${registered}`;
+    const years = (age.days / 365.25).toFixed(1);
+    return `${age.days} days${registered}, about ${years} years`;
   }
   return 'UNKNOWN — the age lookup returned no registration date. '
     + 'This is missing data, NOT evidence of a new domain. '
@@ -220,6 +222,17 @@ module.exports = async function handler(req, res) {
     if (ipqsData?.type === 'unknown') ipqsData = null; // no entity found, skip
   } catch (err) {
     console.warn('IPQS quick-scan failed (non-fatal):', err.message);
+  }
+
+  // Authoritative domain age (RDAP first). IPQS frequently has no creation date,
+  // and its absence previously read as "new domain" to the model.
+  if (ipqsData?.type === 'url' && ipqsData.data) {
+    try {
+      const age = await getDomainAge(ipqsData.input);
+      if (age) ipqsData.data.domain_age = age;
+    } catch (err) {
+      console.warn('domain age lookup failed (non-fatal):', err.message);
+    }
   }
 
   // AI scoring

@@ -482,7 +482,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
                         <OsintPill
                           label="DOMAIN AGE"
                           value={result.osint.domain_age.status === 'known'
-                            ? `${result.osint.domain_age.days} DAYS`
+                            ? `${result.osint.domain_age.days} DAYS${result.osint.domain_age.iso ? ` (${result.osint.domain_age.iso.slice(0, 10)})` : ''}`
                             : 'UNKNOWN'}
                           color={T.text3}
                           T={T}
