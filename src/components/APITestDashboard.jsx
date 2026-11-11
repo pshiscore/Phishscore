@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import useAsyncStatus from "../hooks/useAsyncStatus";
 
 const BASE = '';
 
@@ -269,14 +270,13 @@ const API_GROUPS = [
 
 // ── Radar Refresh Panel ────────────────────────────────────────────────────────
 function RadarRefreshPanel({ onOpenRadar, T }) {
-  const [status, setStatus] = useState('idle'); // idle | running | done | failed
-  const [preview, setPreview] = useState('');
-  const [error, setError] = useState('');
+  // idle → running → success | error (see src/asyncStatus.js)
+  const job = useAsyncStatus();
+  const { status } = job;
+  const preview = job.isSuccess ? (job.data || '') : '';
+  const error = job.isError ? (job.error || '') : '';
 
-  const handleRefresh = async () => {
-    setStatus('running');
-    setPreview('');
-    setError('');
+  const handleRefresh = () => job.run(async () => {
 
     // Step 1: delete the latest trends row so a truly fresh one is generated
     try {
@@ -297,8 +297,8 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
       // Non-blocking — proceed even if delete fails
     }
 
-    // Step 2: trigger fresh generation
-    try {
+    // Step 2: trigger fresh generation — a throw here becomes job.error
+    {
       const r = await fetch(`${BASE}/api/generate-trends`, {
         method: 'POST',
         headers: {
@@ -309,13 +309,9 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
       });
       const d = await safeJson(r);
       if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-      setPreview(d.data?.threat_warning || 'Generated — no preview available.');
-      setStatus('done');
-    } catch (err) {
-      setError(err.message);
-      setStatus('failed');
+      return d.data?.threat_warning || 'Generated — no preview available.';
     }
-  };
+  });
 
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
@@ -325,15 +321,15 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
           <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Clears cache + runs CNL → Gemini pipeline to generate fresh threat intel</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {status === 'done' && (
+          {status === 'success' && (
             <button onClick={onOpenRadar}
               style={{ background: '#34d39918', border: '1px solid #34d39940', color: '#34d399', padding: '8px 14px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
               ✓ DONE — OPEN RADAR
             </button>
           )}
           <button onClick={handleRefresh} disabled={status === 'running'}
-            style={{ background: status === 'running' ? T.cardBg : status === 'failed' ? '#f43f5e18' : 'linear-gradient(135deg,#a78bfa,#7c3aed)', border: status === 'failed' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'failed' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
-            {status === 'running' ? 'REFRESHING...' : status === 'failed' ? '✗ FAILED — RETRY' : 'REFRESH RADAR'}
+            style={{ background: status === 'running' ? T.cardBg : status === 'error' ? '#f43f5e18' : 'linear-gradient(135deg,#a78bfa,#7c3aed)', border: status === 'error' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'error' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            {status === 'running' ? 'REFRESHING...' : status === 'error' ? '✗ FAILED — RETRY' : 'REFRESH RADAR'}
           </button>
         </div>
       </div>
@@ -353,14 +349,13 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
 
 // ── News Refresh Panel ─────────────────────────────────────────────────────────
 function NewsRefreshPanel({ onOpenNews, T }) {
-  const [status, setStatus] = useState('idle'); // idle | running | done | failed
-  const [result, setResult] = useState('');
-  const [error, setError] = useState('');
+  // idle → running → success | error (see src/asyncStatus.js)
+  const job = useAsyncStatus();
+  const { status } = job;
+  const result = job.isSuccess ? (job.data || '') : '';
+  const error = job.isError ? (job.error || '') : '';
 
-  const handleRefresh = async () => {
-    setStatus('running');
-    setResult('');
-    setError('');
+  const handleRefresh = () => job.run(async () => {
 
     // Step 1: delete all rows from threat_news for a clean fetch
     try {
@@ -378,8 +373,8 @@ function NewsRefreshPanel({ onOpenNews, T }) {
       // Non-blocking — proceed even if delete fails
     }
 
-    // Step 2: trigger RSS scraper
-    try {
+    // Step 2: trigger RSS scraper — a throw here becomes job.error
+    {
       const r = await fetch(`${BASE}/api/cron/fetch-news`, {
         method: 'POST',
         headers: {
@@ -390,13 +385,9 @@ function NewsRefreshPanel({ onOpenNews, T }) {
       });
       const d = await safeJson(r);
       if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-      setResult(`Processed: ${d.processed ?? 0} · Skipped: ${d.skipped ?? 0}${d.errors?.length ? ` · Errors: ${d.errors.length}` : ''}`);
-      setStatus('done');
-    } catch (err) {
-      setError(err.message);
-      setStatus('failed');
+      return `Processed: ${d.processed ?? 0} · Skipped: ${d.skipped ?? 0}${d.errors?.length ? ` · Errors: ${d.errors.length}` : ''}`;
     }
-  };
+  });
 
   return (
     <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
@@ -406,15 +397,15 @@ function NewsRefreshPanel({ onOpenNews, T }) {
           <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Purges threat_news table + triggers RSS scraper with Sonnet/Haiku</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {status === 'done' && (
+          {status === 'success' && (
             <button onClick={onOpenNews}
               style={{ background: '#34d39918', border: '1px solid #34d39940', color: '#34d399', padding: '8px 14px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
               ✓ DONE — VIEW NEWS
             </button>
           )}
           <button onClick={handleRefresh} disabled={status === 'running'}
-            style={{ background: status === 'running' ? T.cardBg : status === 'failed' ? '#f43f5e18' : 'linear-gradient(135deg,#38bdf8,#0284c7)', border: status === 'failed' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'failed' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
-            {status === 'running' ? 'REFRESHING...' : status === 'failed' ? '✗ FAILED — RETRY' : 'REFRESH NEWS'}
+            style={{ background: status === 'running' ? T.cardBg : status === 'error' ? '#f43f5e18' : 'linear-gradient(135deg,#38bdf8,#0284c7)', border: status === 'error' ? '1px solid #f43f5e40' : 'none', color: status === 'running' ? T.text4 : status === 'error' ? '#f43f5e' : '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: status === 'running' ? 'default' : 'pointer', fontFamily: 'monospace', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            {status === 'running' ? 'REFRESHING...' : status === 'error' ? '✗ FAILED — RETRY' : 'REFRESH NEWS'}
           </button>
         </div>
       </div>

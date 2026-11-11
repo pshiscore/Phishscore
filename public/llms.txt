@@ -8,8 +8,10 @@ PhishScore.ai aggregates real-time, community-reported scam intelligence, brand 
 
 ## Live Intelligence Endpoints
 
-- [Live Threat Radar](https://phishscore.ai/): Contains real-time statistics on the top targeted sectors and current threat levels, including community-submitted phishing indicators and AI-scored threat assessments.
+- [Live Threat Radar](https://phishscore.ai/radar): Contains real-time statistics on the top targeted sectors and current threat levels, including community-submitted phishing indicators and AI-scored threat assessments.
 - [Threat Glossary & Schemas](https://phishscore.ai/glossary): Contains machine-readable FAQPage and Article JSON-LD schemas defining specific scam vectors (e.g., Tech Support, Banking Spoofs, Package Delivery, Investment Fraud). Each entry includes red flags, definitions, and enterprise impact guidance.
+- [Threat News](https://phishscore.ai/news): Curated, AI-summarized phishing and scam news, refreshed daily.
+- [FAQ](https://phishscore.ai/faq): How scoring works, what the risk bands mean, and how to interpret a result.
 
 ## Data Freshness Notice
 

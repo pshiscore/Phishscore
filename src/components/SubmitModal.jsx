@@ -216,7 +216,8 @@ function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
 
 // ── Shared scanner content — used both inline and inside the modal ────────────
 export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCounts = {}, theme = "dark", T = {} }) {
-  const [step, setStep] = useState(1);
+  // Scanner lifecycle: compose → analyzing → result | error. 'error' returns to compose.
+  const [step, setStep] = useState('compose');
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
   const [activeModal, setActiveModal] = useState('none');
   const [category, setCategory] = useState("other");
@@ -225,7 +226,6 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   const [source, setSource] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [duplicate, setDuplicate] = useState(null);
   const [errorState, setErrorState] = useState(null);
@@ -251,7 +251,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
   }, []);
 
   const resetForm = () => {
-    setStep(1); setResult(null); setText(""); setSource("");
+    setStep('compose'); setResult(null); setText(""); setSource("");
     setCategory("other"); setVisibility("private"); setImage(null);
     setImagePreview(null); setErrorState(null); setDuplicate(null);
     setTrainAI(false); setDeliveryChannel("other");
@@ -334,7 +334,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       const dup = await db.checkDuplicate(text.slice(0, 130));
       if (dup) setDuplicate(dup);
     }
-    setLoading(true);
+    setStep('analyzing');
     try {
       const categoryList = "publishing, delivery, retail, telecom, voip, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, health, other";
       const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<ONE plain-English sentence describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action sentence — NEVER include any URLs, domain names, or web addresses of any kind, not even official ones. Say 'go to the official website' or 'contact your bank directly' instead>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>,"shows_ai_patterns":<true if the content shows signs of AI-generated text such as unnatural fluency, templated structure, or LLM-style phrasing; false otherwise>,"impersonated_brand":"<the primary brand/org being impersonated, e.g. 'USPS', 'Chase Bank', 'IRS', 'Apple'; null if none>","extracted_iocs":["<suspicious domains, URLs, or IPs found in the content — empty array if none>"],"vector":"<primary delivery vector: email | sms | social | phone | web | other>"}`;
@@ -393,14 +393,14 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       if (res.status === 429) {
         const errData = await res.json().catch(() => ({}));
         setErrorState({ type: "rate_limit", message: errData.message || "You've sent too many scans. Please wait a moment before trying again." });
-        setStep("error");
+        setStep('error');
         return;
       }
 
       // Handle service unavailable
       if (!res.ok) {
         setErrorState({ type: "unavailable", message: "The AI analysis service is temporarily unavailable. Please try again in a few minutes." });
-        setStep("error");
+        setStep('error');
         return;
       }
 
@@ -438,16 +438,16 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       };
       const savedId = await onNewResult({ category: finalCategory, text: image && !text.trim() ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel, radarMetadata });
       setCaseId(savedId || null);
-      setStep(3);
+      setStep('result');
     } catch {
       setErrorState({ type: "unavailable", message: "Something went wrong during analysis. Please try again." });
-      setStep("error");
+      setStep('error');
     } finally {
       isSubmitting.current = false;
-      setLoading(false);
     }
   };
 
+  const loading = step === 'analyzing';
   const sc = result ? getScoreColor(result.score) : "#fff";
   const canAnalyze = text.trim().length > 0 || image !== null;
   const visOpt = VISIBILITY_OPTIONS.find(o => o.id === visibility);
@@ -460,7 +460,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           <div style={{ fontSize: 14, letterSpacing: 2, color: T.text, fontFamily: "monospace", marginBottom: 16 }}>ANALYZE THREAT</div>
         </div>
 
-        {(step === 1 || step === 2) && loading && (
+        {step === 'analyzing' && (
           <div style={{ textAlign: "center", padding: "48px 16px" }}>
             <div style={{ fontSize: 32, marginBottom: 16, display: "inline-block", animation: "spin 1.2s linear infinite" }}>
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -472,7 +472,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           </div>
         )}
 
-        {(step === 1 || step === 2) && !loading && (
+        {step === 'compose' && (
           <>
             {/* Interactive pill row */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
@@ -622,7 +622,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           </>
         )}
 
-        {step === "error" && errorState && (
+        {step === 'error' && errorState && (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>
               {errorState.type === "rate_limit" ? "🐾" : "⚡"}
@@ -634,13 +634,13 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
               {errorState.message}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={() => { setStep(1); setErrorState(null); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>TRY AGAIN</button>
+              <button onClick={() => { setStep('compose'); setErrorState(null); }} style={{ background: "linear-gradient(135deg,#f43f5e,#be123c)", border: "none", color: "#fff", padding: "11px 28px", borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 2, cursor: "pointer", fontFamily: "monospace", boxShadow: "0 4px 20px rgba(244,63,94,0.35)" }}>TRY AGAIN</button>
               <button onClick={onClose} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "11px 20px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>CLOSE</button>
             </div>
           </div>
         )}
 
-        {step === 3 && result && (
+        {step === 'result' && result && (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, padding: 22, background: `${sc}0d`, border: `1px solid ${sc}30`, borderRadius: 14, marginBottom: 20, flexWrap: "wrap", textAlign: "center" }}>
               <ScoreRing score={result.score} size={80} trackColor={T.ringTrack} />

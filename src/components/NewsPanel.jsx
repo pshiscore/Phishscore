@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import useAsyncStatus from '../hooks/useAsyncStatus';
 import { PhishScoreLogo } from "./Primitives";
 
 
@@ -97,15 +98,15 @@ function NewsCard({ item, T }) {
 
 function SubscribeModal({ T, onClose }) {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle'); // idle | submitting | success | error
-  const [errorMsg, setErrorMsg] = useState('');
+  // Subscribe lifecycle: idle → running → success | error (see src/asyncStatus.js).
+  const sub = useAsyncStatus();
+  const { status } = sub;
+  const errorMsg = sub.isError ? (sub.error || 'Something went wrong. Please try again.') : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setStatus('submitting');
-    setErrorMsg('');
-    try {
+    sub.run(async () => {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,11 +114,8 @@ function SubscribeModal({ T, onClose }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Subscription failed');
-      setStatus('success');
-    } catch (err) {
-      setErrorMsg(err.message || 'Something went wrong. Please try again.');
-      setStatus('error');
-    }
+      return data;
+    });
   };
 
   return (
@@ -155,9 +153,9 @@ function SubscribeModal({ T, onClose }) {
               />
               <button
                 type="submit"
-                disabled={status === 'submitting'}
-                style={{ background: status === 'submitting' ? T.innerBg : "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: status === 'submitting' ? T.text4 : "#fff", padding: "10px 20px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, cursor: status === 'submitting' ? "default" : "pointer", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-                {status === 'submitting' ? '...' : 'SUBSCRIBE'}
+                disabled={status === 'running'}
+                style={{ background: status === 'running' ? T.innerBg : "linear-gradient(135deg,#a78bfa,#7c3aed)", border: "none", color: status === 'running' ? T.text4 : "#fff", padding: "10px 20px", borderRadius: 10, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, cursor: status === 'running' ? "default" : "pointer", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                {status === 'running' ? '...' : 'SUBSCRIBE'}
               </button>
             </div>
             {status === 'error' && (
@@ -183,30 +181,30 @@ function SubscribeModal({ T, onClose }) {
 }
 
 export function NewsPanel({ T = {}, onClose }) {
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Feed lifecycle: idle → running → success | error (see src/asyncStatus.js).
+  // It fetches on mount, so "loading" means "not settled yet": the spinner is
+  // up from the first frame, exactly as useState(true) was.
+  const feed = useAsyncStatus();
+  const { run: loadFeed } = feed;
+  const articles = feed.data || [];
+  const loading = !feed.isSuccess && !feed.isError;
+  const error = feed.isError ? "Could not load threat news. Please try again shortly." : null;
   const [activeSource, setActiveSource] = useState('all');
   const [showSubscribe, setShowSubscribe] = useState(false);
 
   useEffect(() => {
-    async function fetchNews() {
-      setLoading(true);
-      setError(null);
+    loadFeed(async () => {
       try {
         const res = await fetch('/api/get-news');
         if (!res.ok) throw new Error(`Failed to load news: ${res.status}`);
         const data = await res.json();
-        setArticles(Array.isArray(data) ? data : []);
+        return Array.isArray(data) ? data : [];
       } catch (err) {
         console.error("NewsPanel fetch error:", err);
-        setError("Could not load threat news. Please try again shortly.");
-      } finally {
-        setLoading(false);
+        throw err;
       }
-    }
-    fetchNews();
-  }, []);
+    });
+  }, [loadFeed]);
 
   const visibleNews = activeSource === 'all'
     ? articles

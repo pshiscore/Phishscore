@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import APITestDashboard from './APITestDashboard';
 
 const T = {
@@ -39,13 +39,11 @@ export default function DevDashboard() {
   const [deepIntelProtected, setDeepIntelProtected] = useState(() => localStorage.getItem('deepIntelProtected') !== 'false');
 
   // ── Weekly Report state ──────────────────────────────────────────────────────
-  const [reportState, setReportState] = useState('idle'); // idle | triggering | running | completed | failed | blocked
-  const [reportId, setReportId] = useState(null);
+  // Weekly report: idle → running → completed | failed  (mirrors weekly_report_status in SQL)
+  const [reportState, setReportState] = useState('idle');
   const [reportError, setReportError] = useState(null);
   const [reportCompletedAt, setReportCompletedAt] = useState(null);
-  const pollRef = useRef(null);
-
-  const stopPoll = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  const reportBusy = reportState === 'running';
 
   const triggerReport = async () => {
     setReportState('running');
@@ -64,7 +62,6 @@ export default function DevDashboard() {
         return;
       }
       if (!r.ok) throw new Error(data.error || 'Trigger failed');
-      setReportId(data.report_id);
       setReportState('completed');
       setReportCompletedAt(new Date().toISOString());
     } catch (err) {
@@ -72,8 +69,6 @@ export default function DevDashboard() {
       setReportState('failed');
     }
   };
-
-  useEffect(() => () => stopPoll(), []);
 
   const [evalRunning, setEvalRunning] = useState(false);
   const [evalStatus, setEvalStatus] = useState(null); // null | 'success' | 'error'
@@ -381,18 +376,17 @@ export default function DevDashboard() {
         />
 
         {/* ── Weekly CTO Report ───────────────────────────────────────────────── */}
-        <div style={{ marginBottom: 28, background: T.cardBg, border: `1px solid ${reportState === 'completed' ? '#22c55e40' : reportState === 'failed' ? '#f43f5e40' : reportState === 'running' || reportState === 'triggering' ? '#38bdf840' : T.cardBorder}`, borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 28, background: T.cardBg, border: `1px solid ${reportState === 'completed' ? '#22c55e40' : reportState === 'failed' ? '#f43f5e40' : reportBusy ? '#38bdf840' : T.cardBorder}`, borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: 4, color: '#38bdf8', fontFamily: 'monospace', marginBottom: 6 }}>WEEKLY CTO BRIEFING</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: reportState === 'completed' ? '#22c55e' : reportState === 'failed' ? '#f43f5e' : reportState === 'running' || reportState === 'triggering' ? '#38bdf8' : T.text4, boxShadow: reportState === 'running' || reportState === 'triggering' ? '0 0 8px #38bdf8' : 'none', flexShrink: 0 }} />
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: reportState === 'completed' ? '#22c55e' : reportState === 'failed' ? '#f43f5e' : reportBusy ? '#38bdf8' : T.text4, boxShadow: reportBusy ? '0 0 8px #38bdf8' : 'none', flexShrink: 0 }} />
               <div style={{ fontSize: 20, fontWeight: 800, color: T.text, fontFamily: 'monospace', letterSpacing: 1 }}>
-                {reportState === 'idle' ? 'READY' : reportState === 'triggering' ? 'TRIGGERING...' : reportState === 'running' ? 'GENERATING...' : reportState === 'completed' ? 'DELIVERED' : 'FAILED'}
+                {reportState === 'idle' ? 'READY' : reportState === 'running' ? 'GENERATING...' : reportState === 'completed' ? 'DELIVERED' : 'FAILED'}
               </div>
             </div>
             <div style={{ fontSize: 11, color: reportState === 'failed' ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
               {reportState === 'idle' && 'AI-generated weekly briefing — metrics, Sentry errors, recommendations.'}
-              {reportState === 'triggering' && 'Launching pipeline...'}
               {reportState === 'running' && 'Running 5-phase pipeline (30–120s). Results sent via email.'}
               {reportState === 'completed' && `Delivered to ${process.env.REACT_APP_REPORT_EMAIL || 'vkrasikov@gmail.com'} — ${reportCompletedAt ? new Date(reportCompletedAt).toLocaleString() : ''}`}
               {reportState === 'failed' && (reportError || 'Report generation failed.')}
@@ -401,24 +395,24 @@ export default function DevDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
             <button
               onClick={triggerReport}
-              disabled={reportState === 'triggering' || reportState === 'running'}
+              disabled={reportBusy}
               style={{
-                background: reportState === 'completed' ? 'linear-gradient(135deg,#22c55e,#15803d)' : reportState === 'failed' ? 'linear-gradient(135deg,#f43f5e,#be123c)' : reportState === 'running' || reportState === 'triggering' ? T.innerBg : 'linear-gradient(135deg,#38bdf8,#0284c7)',
+                background: reportState === 'completed' ? 'linear-gradient(135deg,#22c55e,#15803d)' : reportState === 'failed' ? 'linear-gradient(135deg,#f43f5e,#be123c)' : reportBusy ? T.innerBg : 'linear-gradient(135deg,#38bdf8,#0284c7)',
                 border: 'none',
-                color: reportState === 'running' || reportState === 'triggering' ? T.text4 : '#fff',
+                color: reportBusy ? T.text4 : '#fff',
                 padding: '14px 28px',
                 borderRadius: 12,
                 fontSize: 12,
                 fontWeight: 700,
                 letterSpacing: 2,
-                cursor: reportState === 'running' || reportState === 'triggering' ? 'default' : 'pointer',
+                cursor: reportBusy ? 'default' : 'pointer',
                 fontFamily: 'monospace',
                 minWidth: 180,
                 transition: 'all 0.2s',
-                boxShadow: reportState === 'running' || reportState === 'triggering' ? 'none' : '0 4px 20px rgba(56,189,248,0.4)',
+                boxShadow: reportBusy ? 'none' : '0 4px 20px rgba(56,189,248,0.4)',
               }}
             >
-              {reportState === 'triggering' ? '...' : reportState === 'running' ? '⏳ GENERATING...' : reportState === 'completed' ? '✓ SEND AGAIN' : reportState === 'failed' ? '↺ RETRY' : 'GENERATE REPORT'}
+              {reportState === 'running' ? '⏳ GENERATING...' : reportState === 'completed' ? '✓ SEND AGAIN' : reportState === 'failed' ? '↺ RETRY' : 'GENERATE REPORT'}
             </button>
             {reportState === 'completed' && (
               <div style={{ fontSize: 9, color: '#22c55e', fontFamily: 'monospace', letterSpacing: 1 }}>Check your inbox</div>

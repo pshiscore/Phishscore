@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getScoreColor, getScoreLabel } from '../score-bands';
+import useAsyncStatus from '../hooks/useAsyncStatus';
 
 // Bands come from src/score-bands.js so the label the user sees and the scale the
 // model is given can never drift apart again.
@@ -141,9 +142,9 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
   }, [analyzerOpen, activePanel]);
   const [input, setInput] = useState('');
   const [focused, setFocused] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  // Quick Scan lifecycle: idle → running → success | error (see src/asyncStatus.js).
+  const scan = useAsyncStatus();
+  const { data: result, error, isRunning: loading } = scan;
   const inputRef = useRef(null);
   const omniRef = useRef(null);
 
@@ -158,8 +159,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
 
   function openQuickScan() {
     setActivePanel(p => p === 'quickscan' ? null : 'quickscan');
-    setResult(null);
-    setError(null);
+    scan.reset();
   }
 
   function openAnalyzeThreat() {
@@ -169,18 +169,14 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
 
   function closePanel() {
     setActivePanel(null);
-    setResult(null);
-    setError(null);
+    scan.reset();
     setInput('');
     setActiveExplanation(null);
   }
 
-  async function runScan() {
-    if (!input.trim() || loading) return;
-    setLoading(true);
-    setResult(null);
-    setError(null);
-    try {
+  function runScan() {
+    if (!input.trim() || scan.isRunning) return;
+    scan.run(async () => {
       const res = await fetch('/api/quick-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,12 +184,8 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Scan failed');
-      setResult(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      return data;
+    });
   }
 
   function onKeyDown(e) {
@@ -202,8 +194,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
 
   function reset() {
     setInput('');
-    setResult(null);
-    setError(null);
+    scan.reset();
     inputRef.current?.focus();
   }
 
@@ -302,7 +293,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={e => { setInput(e.target.value); setResult(null); setError(null); }}
+              onChange={e => { setInput(e.target.value); scan.reset(); }}
               onKeyDown={onKeyDown}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}

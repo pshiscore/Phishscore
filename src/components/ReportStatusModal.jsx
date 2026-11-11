@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { PHASE, POLL_INTERVAL_MS, deriveReportPhase, shouldPoll, shouldTriggerAnalysis } from "../reportPhase";
 import { PhishScoreLogo } from "./Primitives";
 
 const TIER_NAMES = {
@@ -26,31 +27,49 @@ const TIER_UPGRADE = [
   },
 ];
 
+const T1_STATUS_UI = {
+  [PHASE.GENERATING]: {
+    icon: "⏳", color: "#fbbf24", title: "GENERATING YOUR REPORT",
+    body: "Our AI agent is running forensic checks now. Your report will be ready in a few minutes. This page updates automatically.",
+  },
+  [PHASE.READY]: {
+    icon: "✅", color: "#34d399", title: "REPORT DELIVERED",
+    body: "Your forensic case file is ready. Use the link below to view it online — save it for future reference.",
+  },
+  [PHASE.STALLED]: {
+    icon: "⏱", color: "#fb923c", title: "TAKING LONGER THAN EXPECTED",
+    body: "Your report is still being prepared. Copy your report link below and check back in a few minutes — it will appear here as soon as it is ready.",
+  },
+  [PHASE.AWAITING_PAYMENT]: {
+    icon: "💳", color: "#a78bfa", title: "CONFIRMING PAYMENT",
+    body: "We're waiting for your payment to be confirmed. This usually takes a few seconds — refresh this page if it doesn't update.",
+  },
+};
+
 export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
   const [caseData, setCaseData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  // The analysis must fire at most once per modal lifetime (see src/reportPhase.js).
+  const triggeredRef = useRef(false);
+
+  const phase = deriveReportPhase({ error, caseData, pollCount });
 
   useEffect(() => {
     fetchStatus();
   }, []);
 
-  // Poll every 15s if report not ready yet (Tier 1 only)
+  // Poll only while generating, and stop at the cap instead of spinning forever.
   useEffect(() => {
-    if (!caseData) return;
-    if (caseData.tier !== 1) return; // T2/T3 don't auto-generate
-    if (caseData.report_generated_at) return;
-    if (caseData.payment_status !== "paid") return;
-
+    if (!shouldPoll(phase)) return;
     const timer = setTimeout(() => {
       setPollCount(p => p + 1);
       fetchStatus();
-    }, 15000);
+    }, POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [caseData, pollCount]);
+  }, [phase, pollCount]);
 
   const fetchStatus = async () => {
     try {
@@ -71,8 +90,10 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
       if (Array.isArray(rows) && rows.length > 0) {
         const data = rows[0];
         setCaseData(data);
-        // Trigger analysis for T1 if paid but not yet generated
-        if (data.tier === 1 && data.payment_status === 'paid' && !data.report_generated_at) {
+        // Fire the analysis once. The server only refuses FINISHED cases, so
+        // triggering on every poll used to launch parallel forensic pipelines.
+        if (shouldTriggerAnalysis(data, triggeredRef.current)) {
+          triggeredRef.current = true;
           triggerAnalysis(data.id);
         }
       } else {
@@ -80,8 +101,6 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
       }
     } catch (err) {
       setError("Unable to load case status.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -95,6 +114,12 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
     } catch (err) {
       console.error('Failed to trigger analysis:', err);
     }
+  };
+
+  // From 'stalled': re-arm polling for another full window.
+  const retryPolling = () => {
+    setPollCount(0);
+    fetchStatus();
   };
 
   const handleUpgrade = async (tier) => {
@@ -136,8 +161,8 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
     });
   };
 
-  const isReportReady = caseData?.report_generated_at;
-  const isPaid = caseData?.payment_status === "paid";
+  const isReportReady = phase === PHASE.READY;
+  const t1 = T1_STATUS_UI[phase] || T1_STATUS_UI[PHASE.GENERATING];
   const tierPurchased = caseData?.tier || 1;
 
   return (
@@ -161,20 +186,20 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
           <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>INVESTIGATION STATUS</div>
         </div>
 
-        {loading && (
+        {phase === PHASE.LOADING && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <div style={{ fontSize: 11, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>LOADING CASE...</div>
           </div>
         )}
 
-        {error && (
+        {phase === PHASE.ERROR && (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 13, color: T.text3, fontFamily: "Georgia, serif", marginBottom: 16 }}>{error}</div>
             <button onClick={onClose} style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "10px 24px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "monospace" }}>CLOSE</button>
           </div>
         )}
 
-        {!loading && !error && caseData && (
+        {caseData && phase !== PHASE.ERROR && (
           <>
             {/* Case ID */}
             <div style={{ background: T.innerBg, border: `1px solid ${T.innerBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -190,23 +215,26 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
 
             {/* ── TIER 1 STATUS ── */}
             {tierPurchased === 1 && (
-              <div style={{ background: isReportReady ? "#34d39912" : "#fbbf2412", border: `1px solid ${isReportReady ? "#34d39930" : "#fbbf2430"}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+              <div style={{ background: `${t1.color}12`, border: `1px solid ${t1.color}30`, borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 24 }}>{isReportReady ? "✅" : "⏳"}</div>
+                  <div style={{ fontSize: 24 }}>{t1.icon}</div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: isReportReady ? "#34d399" : "#fbbf24", fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
-                      {isReportReady ? "REPORT DELIVERED" : "GENERATING YOUR REPORT"}
+                    <div style={{ fontSize: 12, fontWeight: 700, color: t1.color, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>
+                      {t1.title}
                     </div>
                     <p style={{ color: T.text2, fontSize: 13, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: 0 }}>
-                      {isReportReady
-                        ? `Your forensic case file is ready. Use the link below to view it online — save it for future reference.`
-                        : `Our AI agent is running forensic checks now. Your report will be ready in a few minutes. This page updates automatically.`}
+                      {t1.body}
                     </p>
                   </div>
                 </div>
-                {/* Copy link */}
-                {isReportReady && caseData.report_token && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #34d39930" }}>
+                {phase === PHASE.STALLED && (
+                  <button onClick={retryPolling} style={{ marginTop: 12, background: T.innerBg, border: `1px solid ${T.innerBorder}`, color: T.text3, padding: "8px 16px", borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "monospace", letterSpacing: 1 }}>
+                    ↺ CHECK AGAIN
+                  </button>
+                )}
+                {/* Copy link — also offered while stalled so the user can come back to it */}
+                {(isReportReady || phase === PHASE.STALLED) && caseData.report_token && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${t1.color}30` }}>
                     <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOUR REPORT LINK — SAVE THIS</div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <div style={{ flex: 1, background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 11, color: T.text3, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

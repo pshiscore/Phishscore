@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import { getQsTaxonomy, QS_TAXONOMY } from "./utils/taxonomy";
+import { viewFromPath, pathForView, isView } from "./views";
 import db from "./db";
 import { ScoreRing, CatIconSvg, VisibilityBadge, PhishScoreLogo, Tooltip } from "./components/Primitives";
 import CategoryBreakdown from "./components/CategoryBreakdown";
@@ -135,7 +136,8 @@ export default function App() {
   const [showTransparency, setShowTransparency] = useState(false);
   // activeView drives the inline section below hero stats
   // 'dashboard' = community feed, 'radar' = radar panel, 'faq' = FAQ, 'deep-intel' = Deep Intel
-  const [activeView, setActiveView] = useState('dashboard');
+  // Views are URL-addressable (/radar, /glossary, …); see src/views.js.
+  const [activeView, setActiveView] = useState(() => viewFromPath(window.location.pathname));
   const contentRef = useRef(null);
   const [showInvestigation, setShowInvestigation] = useState(false); // modal only — for prefill from scan results
   const [showLegal, setShowLegal] = useState(() => {
@@ -192,9 +194,24 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   });
   const dismissBar = () => { setBarDismissed(true); try { localStorage.setItem("phishscore_bar_dismissed", "1"); } catch {} };
 
+  // Push a history entry per view so the back button and deep links work.
+  // ?case= / ?token= / ?legal= are preserved; index.js owns /beta and /devs.
   const switchView = (view) => {
-    setActiveView(view);
+    const next = isView(view) ? view : 'dashboard';
+    setActiveView(next);
+    const target = pathForView(next) + window.location.search;
+    if (window.location.pathname + window.location.search !== target) {
+      window.history.pushState({ view: next }, '', target);
+    }
   };
+
+  useEffect(() => {
+    // Seed the current entry so the first back-navigation has a view to restore.
+    window.history.replaceState({ view: viewFromPath(window.location.pathname) }, '', window.location.pathname + window.location.search);
+    const onPop = () => setActiveView(viewFromPath(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => {
     if (activeView !== 'dashboard' && window.innerWidth < 768 && contentRef.current) {
@@ -580,8 +597,8 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
       {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
-{reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', '/'); }} T={T} />}
-      {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', '/'); }} T={T} />}
+{reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', pathForView(activeView)); }} T={T} />}
+      {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', pathForView(activeView)); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
       <InvestigatorChat />
 
