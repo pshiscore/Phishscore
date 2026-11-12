@@ -2,7 +2,7 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const { analyzeRadarBatch } = require('../lib/cnl-analyzer');
-const { authorizeCron } = require('./_utils/cronAuth');
+const { requireJobAuth } = require('./_utils/cronAuth');
 
 const SECTOR_MAP = {
   publishing: "Authors & Writers",
@@ -320,10 +320,10 @@ module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  // Bearer is checked against CRON_SECRET (what Vercel actually sends),
-  // falling back to INTERNAL_SECRET; x-internal-secret stays for the dashboard.
-  const auth = authorizeCron(req);
-  if (!auth.ok) return res.status(401).json({ error: 'Unauthorized' });
+  // Cron presents Bearer <CRON_SECRET>; the dashboard presents its session
+  // cookie; get-trends' server-side refresh presents the same Bearer.
+  const auth = requireJobAuth(req, res);
+  if (!auth) return;
   console.log('generate-trends start, actor:', auth.actor);
 
   try {

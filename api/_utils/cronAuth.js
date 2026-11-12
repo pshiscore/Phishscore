@@ -1,28 +1,43 @@
-// One answer to "may this request run a scheduled job?" for every cron handler.
+// The one gate for scheduled jobs and their manual triggers.
 //
-// Vercel invokes a cron path with a bare GET. The only credential it will ever
-// attach is `Authorization: Bearer <CRON_SECRET>`, and only when an env var
-// literally named CRON_SECRET exists. The three cron handlers previously each
-// checked a different thing — `x-internal-secret`, `Bearer $INTERNAL_SECRET`,
-// `x-cron-secret` — none of which Vercel sends, so every scheduled run was
-// rejected with 401 and the data only moved when someone pressed a button in
-// the dev dashboard.
+// Two callers, two credentials, nothing else:
+//   cron    Authorization: Bearer <CRON_SECRET>   — what Vercel attaches to a
+//           scheduled invocation. Fails closed: no CRON_SECRET, no cron.
+//   manual  devs_session cookie                   — issued by /api/auth-devs
+//           after an admin login. Derived once here; every validator agrees
+//           with the issuer, and validation always fails closed when the
+//           admin credentials are unset.
 //
-// Accepted, in order:
-//   cron    Authorization: Bearer <CRON_SECRET>      ← what Vercel sends
-//   manual  x-internal-secret: <INTERNAL_SECRET>     ← dev dashboard buttons
-//   legacy  x-cron-secret / ?secret=                 ← older call sites
-//
-// CRON_SECRET falls back to INTERNAL_SECRET so setting one Vercel env var to
-// the same value is enough. The hardcoded default is kept ONLY so existing
-// manual callers do not break; it is public in this repo and should be retired.
+// There is no shared string, no header the browser has to know, and no
+// hardcoded default. The old x-internal-secret / x-cron-secret / ?secret=
+// forms are refused.
 
-const DEFAULT_SECRET = 'phiscore-radara-2026';
+const crypto = require('crypto');
 
-function secrets(env = process.env) {
-  const internal = env.INTERNAL_SECRET || DEFAULT_SECRET;
-  const cron = env.CRON_SECRET || internal;
-  return { internal, cron };
+const COOKIE_NAME = 'devs_session';
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ba = Buffer.from(a), bb = Buffer.from(b);
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+
+// Stateless session token: changes whenever the admin password changes.
+// /api/auth-devs issues it; this is the only place it is derived.
+function sessionToken(env = process.env) {
+  return crypto
+    .createHmac('sha256', env.ADMIN_PASSWORD || 'fallback')
+    .update(env.ADMIN_USERNAME || 'admin')
+    .digest('hex');
+}
+
+function parseCookies(header = '') {
+  return Object.fromEntries(
+    String(header || '').split(';').map(c => {
+      const [k, ...v] = c.trim().split('=');
+      return [k, v.join('=')];
+    }).filter(([k]) => k)
+  );
 }
 
 function header(req, name) {
@@ -30,15 +45,39 @@ function header(req, name) {
   return Array.isArray(v) ? v[0] : v;
 }
 
-// Returns { ok, actor } where actor ∈ 'cron' | 'manual' | 'legacy' | null.
+const refuse = (reason) => ({ ok: false, actor: null, reason });
+
 function authorizeCron(req, env = process.env) {
-  const { internal, cron } = secrets(env);
-  const bearer = (header(req, 'authorization') || '').replace(/^Bearer\s+/i, '');
-  if (bearer && bearer === cron) return { ok: true, actor: 'cron' };
-  if (header(req, 'x-internal-secret') === internal) return { ok: true, actor: 'manual' };
-  if (header(req, 'x-cron-secret') === internal) return { ok: true, actor: 'legacy' };
-  if (req?.query?.secret === internal) return { ok: true, actor: 'legacy' };
-  return { ok: false, actor: null };
+  if (!env.CRON_SECRET) return refuse('CRON_SECRET not configured');
+  // The scheme is required: a bare token in the Authorization header is not a
+  // bearer credential, and must not be compared as one.
+  const m = /^Bearer\s+(\S+)$/i.exec(header(req, 'authorization') || '');
+  if (!m) return refuse('no bearer token');
+  return safeEqual(m[1], env.CRON_SECRET) ? { ok: true, actor: 'cron' } : refuse('bad bearer token');
 }
 
-module.exports = { authorizeCron, DEFAULT_SECRET };
+function authorizeSession(req, env = process.env) {
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD) return refuse('admin credentials not configured');
+  const token = parseCookies(header(req, 'cookie'))[COOKIE_NAME];
+  if (!token) return refuse('no session cookie');
+  return safeEqual(token, sessionToken(env))
+    ? { ok: true, actor: `manual:${env.ADMIN_USERNAME}` }
+    : refuse('bad session cookie');
+}
+
+function authorizeJob(req, env = process.env) {
+  const cron = authorizeCron(req, env);
+  if (cron.ok) return cron;
+  const session = authorizeSession(req, env);
+  if (session.ok) return session;
+  return refuse('unauthorized');
+}
+
+// Handler-side: returns the auth result, or sends 401 and returns null.
+function requireJobAuth(req, res, env = process.env) {
+  const auth = authorizeJob(req, env);
+  if (!auth.ok) { res.status(401).json({ error: 'Unauthorized' }); return null; }
+  return auth;
+}
+
+module.exports = { COOKIE_NAME, sessionToken, parseCookies, authorizeCron, authorizeSession, authorizeJob, requireJobAuth };

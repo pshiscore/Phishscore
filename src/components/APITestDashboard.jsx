@@ -301,10 +301,8 @@ function RadarRefreshPanel({ onOpenRadar, T }) {
     {
       const r = await fetch(`${BASE}/api/generate-trends`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || 'phiscore-radara-2026',
-        },
+        credentials: 'include', // the /devs session cookie authorizes manual runs
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
       const d = await safeJson(r);
@@ -377,10 +375,8 @@ function NewsRefreshPanel({ onOpenNews, T }) {
     {
       const r = await fetch(`${BASE}/api/cron/fetch-news`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.REACT_APP_INTERNAL_SECRET || 'phiscore-radara-2026',
-        },
+        credentials: 'include', // the /devs session cookie authorizes manual runs
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
       const d = await safeJson(r);

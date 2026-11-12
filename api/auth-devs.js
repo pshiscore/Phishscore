@@ -1,14 +1,10 @@
-const crypto = require('crypto');
+const { COOKIE_NAME, sessionToken, authorizeSession } = require('./_utils/cronAuth');
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-// Session token — derived from credentials so it's stateless and auto-invalidates on password change
-const SESSION_TOKEN = crypto
-  .createHmac('sha256', ADMIN_PASSWORD || 'fallback')
-  .update(ADMIN_USERNAME || 'admin')
-  .digest('hex');
-
-const COOKIE_NAME = 'devs_session';
+// Session token — stateless, derived from the admin credentials in ONE place
+// (api/_utils/cronAuth.js) so every validator agrees with this issuer.
+const SESSION_TOKEN = sessionToken();
 const COOKIE_MAX_AGE = 60 * 60 * 8; // 8 hours
 
 module.exports = async function handler(req, res) {
@@ -36,20 +32,9 @@ module.exports = async function handler(req, res) {
 
   // GET /api/auth-devs — check if session cookie is valid
   if (req.method === 'GET') {
-    const cookies = parseCookies(req.headers.cookie || '');
-    const token = cookies[COOKIE_NAME];
-    const valid = !!ADMIN_PASSWORD && token === SESSION_TOKEN;
-    return res.status(200).json({ ok: valid });
+    return res.status(200).json({ ok: authorizeSession(req).ok });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
 };
 
-function parseCookies(cookieHeader) {
-  return Object.fromEntries(
-    cookieHeader.split(';').map(c => {
-      const [k, ...v] = c.trim().split('=');
-      return [k, v.join('=')];
-    }).filter(([k]) => k)
-  );
-}

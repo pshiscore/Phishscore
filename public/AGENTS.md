@@ -16,6 +16,12 @@ backend is a set of Vercel serverless functions (`api/`) backed by Supabase.
   required keys from your team's secret store before running locally —
   the app will not function correctly without Supabase and AI provider keys
   configured.
+- Scheduled jobs and the dev dashboard are gated by `api/_utils/cronAuth.js`:
+  Vercel cron presents `Authorization: Bearer <CRON_SECRET>` (the env var
+  must be named exactly `CRON_SECRET`, or Vercel sends nothing and the job
+  is refused); manual runs present the `/devs` session cookie, which
+  requires `ADMIN_USERNAME` and `ADMIN_PASSWORD`. There is no shared header
+  secret and no default — a missing variable fails closed.
 
 ## Development
 

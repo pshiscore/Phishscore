@@ -1,31 +1,14 @@
 const { Eval } = require('braintrust');
 const { Factuality } = require('autoevals');
-const crypto = require('crypto');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BRAINTRUST_API_KEY = process.env.BRAINTRUST_API_KEY;
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const SESSION_TOKEN = crypto
-  .createHmac('sha256', ADMIN_PASSWORD || 'fallback')
-  .update(ADMIN_USERNAME || 'admin')
-  .digest('hex');
-const COOKIE_NAME = 'devs_session';
-
-function parseCookies(cookieHeader) {
-  return Object.fromEntries(
-    (cookieHeader || '').split(';').map(c => {
-      const [k, ...v] = c.trim().split('=');
-      return [k, v.join('=')];
-    }).filter(([k]) => k)
-  );
-}
+const { authorizeSession } = require('../_utils/cronAuth');
 
 function isAuthorized(req) {
-  if (!ADMIN_PASSWORD) return false;
-  const cookies = parseCookies(req.headers.cookie);
-  return cookies[COOKIE_NAME] === SESSION_TOKEN;
+  // The /devs session cookie, validated by the shared gate in api/_utils/cronAuth.js.
+  return authorizeSession(req).ok;
 }
 
 const DATASET = [

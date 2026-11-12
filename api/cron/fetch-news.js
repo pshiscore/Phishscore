@@ -1,6 +1,6 @@
 const Parser = require('rss-parser');
 const { logUsage } = require('../_utils/logUsage');
-const { authorizeCron } = require('../_utils/cronAuth');
+const { requireJobAuth } = require('../_utils/cronAuth');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -11,7 +11,6 @@ const FEEDS = [
   { name: 'Writer Beware',    url: 'https://writerbeware.blog/feed/' },
   { name: 'The Record',       url: 'https://therecord.media/feed' },
   { name: 'Ars Technica',     url: 'https://arstechnica.com/tag/security/feed/' },
-  { name: 'Fraud of the Day', url: 'https://fraudoftheday.com/feed' },
   { name: 'TorrentFreak',     url: 'https://torrentfreak.com/feed' },
 ];
 
@@ -111,11 +110,9 @@ module.exports.config = { maxDuration: 60 };
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Vercel cron sends only `Authorization: Bearer $CRON_SECRET`; the old check
-  // never accepted it, so scheduled runs were refused and news only moved
-  // when the dev-dashboard button was pressed.
-  const auth = authorizeCron(req);
-  if (!auth.ok) return res.status(401).json({ error: 'Unauthorized' });
+  // Cron presents Bearer <CRON_SECRET>; the dashboard presents its session cookie.
+  const auth = requireJobAuth(req, res);
+  if (!auth) return;
   console.log('fetch-news start, actor:', auth.actor);
 
   const parser = new Parser({ timeout: 10000 });

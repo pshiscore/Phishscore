@@ -1,6 +1,6 @@
 // POST /api/devs/weekly-report/run
 // The async 5-phase CTO report pipeline. Called by trigger.js in the background.
-// Auth: x-cron-secret header only (never called directly from browser.
+// Auth: Bearer CRON_SECRET only — this route is for cron, never the browser.
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL?.replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -9,7 +9,7 @@ const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 const SENTRY_TOKEN = process.env.SENTRY_AUTH_TOKEN;
 const SENTRY_ORG = process.env.SENTRY_ORG_SLUG;
 const SENTRY_PROJECT = process.env.SENTRY_PROJECT_SLUG;
-const CRON_SECRET = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
+const { authorizeCron } = require('../../_utils/cronAuth');
 
 // Cost cap: refuse to run if projected input tokens exceed this
 const MAX_INPUT_TOKENS = 30_000;
@@ -471,7 +471,7 @@ async function runPipeline(report_id, weekStart, weekEnd) {
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (req.headers['x-cron-secret'] !== CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+  if (!authorizeCron(req).ok) return res.status(401).json({ error: 'Unauthorized' });
 
   const { report_id, week_start, week_end } = req.body || {};
   if (!report_id || !week_start || !week_end) return res.status(400).json({ error: 'report_id, week_start, week_end required' });

@@ -1,29 +1,12 @@
-const crypto = require('crypto');
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const SESSION_TOKEN = crypto
-  .createHmac('sha256', ADMIN_PASSWORD || 'fallback')
-  .update(ADMIN_USERNAME || 'admin')
-  .digest('hex');
-const COOKIE_NAME = 'devs_session';
+const { authorizeSession } = require('./_utils/cronAuth');
 
 // In-memory state — resets on cold start (maintenance mode is never "stuck on")
 let maintenanceOn = false;
 
-function parseCookies(cookieHeader) {
-  return Object.fromEntries(
-    (cookieHeader || '').split(';').map(c => {
-      const [k, ...v] = c.trim().split('=');
-      return [k, v.join('=')];
-    }).filter(([k]) => k)
-  );
-}
-
 function isAuthorized(req) {
-  if (!ADMIN_PASSWORD) return false;
-  const cookies = parseCookies(req.headers.cookie);
-  return cookies[COOKIE_NAME] === SESSION_TOKEN;
+  // The /devs session cookie, validated by the shared gate in api/_utils/cronAuth.js.
+  return authorizeSession(req).ok;
 }
 
 module.exports = async function handler(req, res) {

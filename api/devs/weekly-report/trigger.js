@@ -1,40 +1,21 @@
 // POST /api/devs/weekly-report/trigger
-// Auth-gated: requires valid devs_session cookie or x-cron-secret header.
+// Auth-gated: Vercel cron via Bearer CRON_SECRET, or the /devs session cookie.
 // Inserts a weekly_reports row, runs the full pipeline synchronously, then responds.
 // maxDuration: 120 keeps the Vercel function alive for the full pipeline run.
 
-const crypto = require('crypto');
-const { authorizeCron } = require('../../_utils/cronAuth');
+const { authorizeJob } = require('../../_utils/cronAuth');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL?.replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-const SESSION_TOKEN = crypto
-  .createHmac('sha256', ADMIN_PASSWORD || 'fallback')
-  .update(ADMIN_USERNAME || 'admin')
-  .digest('hex');
 
-function parseCookies(header = '') {
-  return Object.fromEntries(
-    header.split(';').map(c => {
-      const [k, ...v] = c.trim().split('=');
-      return [k, v.join('=')];
-    }).filter(([k]) => k)
-  );
-}
 
 function isAuthed(req) {
-  // Vercel authenticates scheduled runs with a Bearer token (see cronAuth);
-  // the custom header checked here before was never sent. Any secret-based
-  // caller is recorded as 'cron' in triggered_by, exactly as before.
-  if (authorizeCron(req).ok) return { ok: true, actor: 'cron' };
-  const cookies = parseCookies(req.headers.cookie || '');
-  if (ADMIN_PASSWORD && cookies['devs_session'] === SESSION_TOKEN) {
-    return { ok: true, actor: `manual:${ADMIN_USERNAME || 'admin'}` };
-  }
-  return { ok: false };
+  // Cron presents Bearer <CRON_SECRET>; the dashboard presents its session
+  // cookie. The actor is recorded in triggered_by: 'cron' or 'manual:<admin>'.
+  return authorizeJob(req);
 }
 
 function getWeekBounds() {
