@@ -28,7 +28,8 @@ module.exports = async (req, res) => {
           body: JSON.stringify({
             is_accurate,
             user_feedback: feedbackText || null,
-            feedback_at: new Date().toISOString(),
+            // There is no feedback_at column on submissions; sending it made
+            // PostgREST reject every PATCH, so no feedback was ever stored.
           }),
         }
       );

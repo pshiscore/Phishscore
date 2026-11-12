@@ -1,5 +1,7 @@
 const { checkRateLimit } = require('./_utils/rateLimit');
 const { logUsage } = require('./_utils/logUsage');
+const { buildSubmissionRow } = require('../src/submissionRow');
+const { isValidCategoryId } = require('../lib/categories');
 
 // ── Per-URL threat check (no cache) ──────────────────────────────────────────
 async function checkUrlThreat(url, wrKey, cfKey) {
@@ -95,6 +97,41 @@ async function storeTrainingData(parsed, context = {}) {
 }
 
 
+// ── Save the community-feed row (service key) ─────────────────────────────────
+// Replaces the browser's anon-key insert so anon INSERT/SELECT on submissions
+// can be revoked. The score, tags and flags come from THIS request's verdict,
+// so a client can no longer store a score the model never gave. Returns the
+// stored row, or null — a failed save never fails the analysis.
+async function storeSubmission(parsed, input) {
+  const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const row = buildSubmissionRow({ parsed, input });
+  if (!row) { console.error('storeSubmission: verdict has no usable score, not saved'); return null; }
+  if (!isValidCategoryId(row.category)) row.category = 'other';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) {
+      console.error(`storeSubmission failed [${res.status}]:`, await res.text());
+      return null;
+    }
+    const rows = await res.json();
+    return Array.isArray(rows) && rows[0] ? rows[0] : null;
+  } catch (e) {
+    console.error('storeSubmission error:', e.message);
+    return null;
+  }
+}
+
 // ── reCAPTCHA v3 verification ─────────────────────────────────────────────────
 async function verifyRecaptcha(token, minScore = 0.5) {
   if (!token || !process.env.RECAPTCHA_SECRET_KEY) return true; // skip if not configured
@@ -174,7 +211,7 @@ function buildIpqsContext(ipqs) {
 // ── Claude API call with model fallback ───────────────────────────────────────
 async function callClaude(body, model) {
   // Strip fields that are not valid Claude API params
-  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ipqs, ...claudeBody } = body;
+  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ipqs, submission, ...claudeBody } = body;
 
   // Inject IPQS context as an additional user message content block
   if (ipqs && Array.isArray(claudeBody.messages)) {
@@ -339,7 +376,23 @@ module.exports = async function handler(req, res) {
       } catch (e) { console.error('Training store error:', e); }
     }
 
-    return res.status(200).json({ ...data, trainingId });
+    // ── Save the feed row — only for real submissions, never for API pings ──
+    // The Analyze Threat form sends `submission`; the dev dashboard's pings do not.
+    let submission = null;
+    const sub = req.body.submission;
+    if (sub && typeof sub === 'object' && parsedResult) {
+      submission = await storeSubmission(parsedResult, {
+        category: typeof sub.category === 'string' ? sub.category : 'other',
+        text: typeof sub.text === 'string' ? sub.text : '',
+        hasImage: sub.hasImage === true,
+        source: typeof sub.source === 'string' ? sub.source.slice(0, 200) : '',
+        visibility: req.body.visibility,
+        deliveryChannel: req.body.deliveryChannel,
+        ipqs: req.body.ipqs ?? null,
+      });
+    }
+
+    return res.status(200).json({ ...data, trainingId, submission });
 
   } catch (err) {
     console.error('Analysis error:', err);

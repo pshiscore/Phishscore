@@ -239,39 +239,16 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
     setDbLoading(false);
   };
 
-  const handleNewResult = async ({ category, text, result, source, visibility, classificationNote, summary, deliveryChannel, radarMetadata }) => {
-    const isAnon = visibility === "anonymous";
-    const newSub = {
-      category,
-      source: isAnon ? null : (source || "user-submitted"),
-      // CHANGE: store AI summary instead of raw text slice; fall back to short preview if no summary
-      summary: isAnon ? null : (summary || null),
-      preview: isAnon ? null : ((text || "").slice(0, 80) + ((text || "").length > 80 ? "..." : "")),
-      score: result.score,
-      tags: result.tags || [],
-      visibility: visibility || "public",
-      classification_note: classificationNote || null,
-      gsb_flagged: result.safeBrowsingFlagged === true,
-      radar_flagged: result.radarFlagged === true,
-      urlhaus_flagged: result.urlhausFlagged === true,
-      // Always written — first-class submission field, not gated behind train_ai
-      delivery_channel: deliveryChannel || 'other',
-      radar_metadata: radarMetadata || null,
-    };
-    try {
-      const saved = await db.insertSubmission(newSub);
-      if (Array.isArray(saved) && saved[0]) {
-        setSubmissions(prev => [saved[0], ...prev]);
-        return saved[0].id || null;
-      } else {
-        const fallback = { ...newSub, id: Date.now(), created_at: new Date().toISOString() };
-        setSubmissions(prev => [fallback, ...prev]);
-        return null;
-      }
-    } catch {
-      setSubmissions(prev => [{ ...newSub, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
-      return null;
+  // api/analyze.js stores the row with the service key and returns it as
+  // `saved`. If the save failed, show a display-only copy so the user still
+  // sees their result in the feed; it has no case id to give feedback on.
+  const handleNewResult = ({ saved, fallback }) => {
+    if (saved && saved.id) {
+      setSubmissions(prev => [saved, ...prev]);
+      return saved.id;
     }
+    if (fallback) setSubmissions(prev => [{ ...fallback, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
+    return null;
   };
 
   const total = submissions.length;

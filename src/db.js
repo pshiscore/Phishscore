@@ -1,5 +1,3 @@
-import { SUPABASE_URL, SUPABASE_KEY } from "./constants";
-
 const db = {
   // Served by /api/get-submissions (service key) so anon SELECT on the table can
   // be revoked; private rows arrive with preview and source already removed.
@@ -42,15 +40,7 @@ const db = {
     } catch {}
     return null;
   },
-
-  async insertSubmission(data) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
-      method: "POST",
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify(data)
-    });
-    return res.json();
-  }
+  // Submissions are saved by /api/analyze (service key) — see src/submissionRow.js.
 };
 
 export default db;

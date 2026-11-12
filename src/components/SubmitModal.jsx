@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, getScoreColor, getStatusLabel, getCat } from "../constants";
 import { ScoreRing, CatIconSvg, VisibilityBadge, Tooltip, PhishScoreLogo } from "./Primitives";
 import db from "../db";
+import { resolveCategory, buildSubmissionRow } from "../submissionRow";
 
 function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
   const [showAll, setShowAll] = useState(false);
@@ -387,7 +388,7 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         }
       } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
 
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility, ipqs: ipqsData ?? null }) });
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility, ipqs: ipqsData ?? null, submission: { category, text, hasImage: !!image, source } }) });
 
       // Handle rate limit specifically
       if (res.status === 429) {
@@ -408,35 +409,15 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
       if (data.trainingId) setTrainingId(data.trainingId);
       const raw = data.content?.map(c => c.text || "").join("") || "";
       const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
-      let finalCategory = category, classificationNote = null;
-      if (parsed.detectedCategory && parsed.detectedCategory !== category) {
-        if (category === "other") { finalCategory = parsed.detectedCategory; classificationNote = "auto"; }
-        else if (parsed.categoryReclassified === true) { finalCategory = parsed.detectedCategory; classificationNote = "reclassified"; }
-      }
+      // The same module builds the stored row on the server (api/analyze.js).
+      const submissionInput = { category, text, hasImage: !!image, source, visibility, deliveryChannel, ipqs: ipqsData ?? null };
+      const { finalCategory, classificationNote } = resolveCategory(category, parsed);
       parsed.finalCategory = finalCategory; parsed.classificationNote = classificationNote;
       setResult(parsed);
 
-      const isPhoneOrEmail = (val) => {
-        if (!val || !val.trim()) return false;
-        const v = val.trim();
-        return /^[\+\d\s\-\(\)]{7,}$/.test(v) || v.includes("@");
-      };
-      let allSources = [];
-      if (source.trim() && isPhoneOrEmail(source.trim())) allSources.push(source.trim());
-      if (Array.isArray(parsed.detectedSources)) {
-        parsed.detectedSources.forEach(s => {
-          if (s && isPhoneOrEmail(s) && !allSources.includes(s.trim())) allSources.push(s.trim());
-        });
-      }
-      const finalSource = allSources.length > 0 ? JSON.stringify(allSources.slice(0, 3)) : "user-submitted";
-      const radarMetadata = {
-        shows_ai_patterns: parsed.shows_ai_patterns ?? null,
-        impersonated_brand: parsed.impersonated_brand ?? null,
-        extracted_iocs: Array.isArray(parsed.extracted_iocs) ? parsed.extracted_iocs : [],
-        vector: parsed.vector ?? deliveryChannel ?? 'other',
-        ipqs: ipqsData ?? null,
-      };
-      const savedId = await onNewResult({ category: finalCategory, text: image && !text.trim() ? "[Screenshot submitted]" : text, result: parsed, source: finalSource, visibility, classificationNote: parsed.classificationNote, summary: parsed.summary || null, deliveryChannel, radarMetadata });
+      // data.submission is the row the server stored; on a failed save the feed
+      // shows a display-only copy and the feedback widget has no case to link.
+      const savedId = onNewResult({ saved: data.submission || null, fallback: buildSubmissionRow({ parsed, input: submissionInput }) });
       setCaseId(savedId || null);
       setStep('result');
     } catch {
