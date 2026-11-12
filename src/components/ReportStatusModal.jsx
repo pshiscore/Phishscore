@@ -73,22 +73,13 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
 
   const fetchStatus = async () => {
     try {
-      let url;
-      if (token) {
-        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?report_token=eq.${token}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email,report_token`;
-      } else {
-        url = `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/deep_intel_cases?id=eq.${caseId}&select=id,created_at,original_category,original_score,ivs_score,ivs_label,tier,payment_status,report_generated_at,email,report_token`;
-      }
-
-      const res = await fetch(url, {
-        headers: {
-          apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
-        }
-      });
-      const rows = await res.json();
-      if (Array.isArray(rows) && rows.length > 0) {
-        const data = rows[0];
+      // /api/report holds the service key and returns only what this modal
+      // reads: the token path adds the forensic report, the post-checkout case
+      // path is status-only. The anon key no longer touches deep_intel_cases.
+      const query = token ? `token=${encodeURIComponent(token)}` : `case=${encodeURIComponent(caseId)}`;
+      const res = await fetch(`/api/report?${query}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
         setCaseData(data);
         // Fire the analysis once. The server only refuses FINISHED cases, so
         // triggering on every poll used to launch parallel forensic pipelines.

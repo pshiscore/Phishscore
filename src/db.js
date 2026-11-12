@@ -1,11 +1,16 @@
 import { SUPABASE_URL, SUPABASE_KEY } from "./constants";
 
 const db = {
+  // Served by /api/get-submissions (service key) so anon SELECT on the table can
+  // be revoked; private rows arrive with preview and source already removed.
   async getSubmissions() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?order=created_at.desc&limit=1000`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-    });
-    return res.json();
+    const res = await fetch('/api/get-submissions');
+    if (!res.ok) {
+      console.warn('[db] get-submissions returned', res.status);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   },
 
   async getQuickScans() {
@@ -22,21 +27,18 @@ const db = {
     return data;
   },
 
+  // The similarity match now runs in /api/check-duplicate against recent rows
+  // (private ones included) and returns only score/tags/category/created_at.
   async checkDuplicate(preview) {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions?select=preview,score,tags,category,created_at&order=created_at.desc&limit=50`, {
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      const res = await fetch('/api/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview }),
       });
+      if (!res.ok) return null;
       const data = await res.json();
-      if (!Array.isArray(data)) return null;
-      const words = preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
-      for (const sub of data) {
-        if (!sub.preview) continue;
-        const subWords = sub.preview.toLowerCase().split(/\s+/).filter(w => w.length > 5);
-        const matches = words.filter(w => subWords.includes(w)).length;
-        const similarity = words.length > 0 ? matches / words.length : 0;
-        if (similarity > 0.5) return sub;
-      }
+      return data?.match || null;
     } catch {}
     return null;
   },
