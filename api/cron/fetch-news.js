@@ -1,10 +1,10 @@
 const Parser = require('rss-parser');
 const { logUsage } = require('../_utils/logUsage');
+const { authorizeCron } = require('../_utils/cronAuth');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 const FEEDS = [
   { name: 'BleepingComputer', url: 'https://www.bleepingcomputer.com/feed/' },
@@ -111,10 +111,12 @@ module.exports.config = { maxDuration: 60 };
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const secret = req.headers['x-internal-secret'] || req.query.secret;
-  if (secret !== (INTERNAL_SECRET || 'phiscore-radara-2026')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Vercel cron sends only `Authorization: Bearer $CRON_SECRET`; the old check
+  // never accepted it, so scheduled runs were refused and news only moved
+  // when the dev-dashboard button was pressed.
+  const auth = authorizeCron(req);
+  if (!auth.ok) return res.status(401).json({ error: 'Unauthorized' });
+  console.log('fetch-news start, actor:', auth.actor);
 
   const parser = new Parser({ timeout: 10000 });
   const results = { processed: 0, skipped: 0, errors: [] };

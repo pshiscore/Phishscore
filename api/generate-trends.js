@@ -2,6 +2,7 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const { analyzeRadarBatch } = require('../lib/cnl-analyzer');
+const { authorizeCron } = require('./_utils/cronAuth');
 
 const SECTOR_MAP = {
   publishing: "Authors & Writers",
@@ -319,12 +320,11 @@ module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  const expectedSecret = process.env.INTERNAL_SECRET || 'phiscore-radara-2026';
-  const cronAuth = req.headers['authorization'] === `Bearer ${expectedSecret}`;
-  const manualAuth = req.headers['x-internal-secret'] === expectedSecret;
-  if (!cronAuth && !manualAuth) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Bearer is checked against CRON_SECRET (what Vercel actually sends),
+  // falling back to INTERNAL_SECRET; x-internal-secret stays for the dashboard.
+  const auth = authorizeCron(req);
+  if (!auth.ok) return res.status(401).json({ error: 'Unauthorized' });
+  console.log('generate-trends start, actor:', auth.actor);
 
   try {
     const month = new Date().getMonth() + 1;
