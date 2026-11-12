@@ -4,6 +4,12 @@
 // Returns: { sender, subject, body, ipqs }
 
 const { analyzeContactData } = require('../lib/ipqs');
+const rateLimit = require('./_utils/rateLimit');
+const recaptcha = require('./_utils/recaptcha');
+
+// A pasted email with headers. The model only ever sees the first MODEL_CHARS.
+const MAX_RAW_TEXT_CHARS = 20000;
+const MODEL_CHARS = 8000;
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -34,7 +40,7 @@ async function callHaiku(rawText) {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: rawText.slice(0, 8000) }],
+      messages: [{ role: 'user', content: rawText.slice(0, MODEL_CHARS) }],
     }),
   });
 
@@ -50,13 +56,24 @@ async function callHaiku(rawText) {
   return JSON.parse(match[0]);
 }
 
+// Paid route. Order: rate limit (shared, fails closed) → input validation →
+// reCAPTCHA (fails closed) → paid calls. The model, system prompt and token
+// limit are fixed below; nothing in the request body can change them.
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { rawText } = req.body || {};
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:min', max: 10, windowSeconds: 60 })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:day', max: 100, windowSeconds: 86400 })) return;
+
+  const { rawText, recaptchaToken } = req.body || {};
   if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
     return res.status(400).json({ error: 'rawText is required' });
   }
+  if (rawText.length > MAX_RAW_TEXT_CHARS) {
+    return res.status(400).json({ error: `rawText is longer than ${MAX_RAW_TEXT_CHARS} characters` });
+  }
+
+  if (await recaptcha.requireHuman(req, res, recaptchaToken, 'extract_email', { remoteIp: rateLimit.clientIp(req) })) return;
 
   // Phase A — AI parsing
   let parsed;
@@ -86,4 +103,4 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({ sender, subject, body, ipqs, ipqsType: ipqs?.type ?? null });
 };
 
-module.exports.config = { api: { bodyParser: { sizeLimit: '1mb' } } };
+module.exports.config = { api: { bodyParser: { sizeLimit: '64kb' } } };

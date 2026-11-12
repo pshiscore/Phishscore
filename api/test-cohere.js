@@ -1,8 +1,12 @@
+const { authorizeSession } = require('./_utils/cronAuth');
 const { CohereClient } = require('cohere-ai');
 
 const COHERE_KEY = process.env.COHERE_API_KEY;
 
 module.exports = async function handler(req, res) {
+  // Dev-dashboard diagnostic (/devs): admin session cookie required. Same-origin
+  // only, so no CORS headers.
+  if (!authorizeSession(req).ok) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!COHERE_KEY) return res.status(500).json({ error: 'COHERE_API_KEY not configured' });
 

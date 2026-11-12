@@ -66,4 +66,18 @@ async function verifyRecaptcha(token, { action, minScore = DEFAULT_MIN_SCORE, re
 
 function isServerSideFailure(reason) { return SERVER_SIDE_REASONS.has(reason); }
 
-module.exports = { verifyRecaptcha, isServerSideFailure, EXPECTED_HOSTNAMES, VERIFY_URL };
+// Route helper: answers 503 (we cannot verify) or 403 (did not verify) and
+// returns true when the handler must stop. Looks the verifier up on
+// module.exports at call time so unit tests can mock it.
+async function requireHuman(req, res, token, action, { minScore = DEFAULT_MIN_SCORE, remoteIp } = {}) {
+  const human = await module.exports.verifyRecaptcha(token, { action, minScore, remoteIp });
+  if (human.ok) return false;
+  if (isServerSideFailure(human.reason)) {
+    res.status(503).json({ error: 'service_unavailable', message: 'This service is temporarily unavailable. Please try again in a few minutes.' });
+  } else {
+    res.status(403).json({ error: 'verification_failed', message: "We couldn't verify this request came from a person. Please refresh the page and try again." });
+  }
+  return true;
+}
+
+module.exports = { verifyRecaptcha, isServerSideFailure, requireHuman, EXPECTED_HOSTNAMES, VERIFY_URL };

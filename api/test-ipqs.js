@@ -1,6 +1,10 @@
+const { authorizeSession } = require('./_utils/cronAuth');
 const { analyzeContactData } = require('../lib/ipqs');
 
 module.exports = async function handler(req, res) {
+  // Dev-dashboard diagnostic (/devs): admin session cookie required. Same-origin
+  // only, so no CORS headers.
+  if (!authorizeSession(req).ok) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { contact } = req.body || {};

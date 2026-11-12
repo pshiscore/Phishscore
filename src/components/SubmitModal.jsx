@@ -269,10 +269,13 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     if (!pastedText || pastedText.trim().length < 20) return;
     setExtracting(true);
     try {
+      // Best effort: without a token the server refuses, and the form still works.
+      const recaptchaToken = await getRecaptchaToken('extract_email');
+      if (!recaptchaToken) return;
       const res = await fetch('/api/extract-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: pastedText }),
+        body: JSON.stringify({ rawText: pastedText, recaptchaToken }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -304,10 +307,12 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     sourceDebounceRef.current = setTimeout(async () => {
       setExtracting(true);
       try {
+        const recaptchaToken = await getRecaptchaToken('extract_email');
+        if (!recaptchaToken) return;
         const res = await fetch('/api/extract-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rawText: trimmed }),
+          body: JSON.stringify({ rawText: trimmed, recaptchaToken }),
         });
         if (!res.ok) return;
         const data = await res.json();

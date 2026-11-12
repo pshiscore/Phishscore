@@ -2,6 +2,8 @@ const { analyzeContactData } = require('../lib/ipqs');
 const { getDomainAge } = require('../lib/domain-age');
 const { CATEGORY_GUIDE, coerceCategoryId, isValidCategoryId } = require('../lib/categories');
 const { logUsage } = require('./_utils/logUsage');
+const rateLimit = require('./_utils/rateLimit');
+const recaptcha = require('./_utils/recaptcha');
 // Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
 // scale and the user-facing label cannot drift apart. Lives under src/ because
 // CRA cannot import from outside src/; Node resolves it fine from here.
@@ -11,7 +13,8 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-module.exports.config = { maxDuration: 30 };
+// Phone numbers, emails, links or a short message; longer text belongs in Analyze Threat.
+const MAX_INPUT_CHARS = 2000;
 
 // ── Input type detection ──────────────────────────────────────────────────────
 
@@ -217,13 +220,25 @@ async function insertQuickScan(record) {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
+// Paid route. Order: rate limit (shared, fails closed) → input validation →
+// reCAPTCHA (fails closed) → paid calls. The model, system prompt and token
+// limit are fixed below; nothing in the request body can change them.
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { input } = req.body || {};
+  const message = 'Too many scans in a short time. Please wait a moment and try again.';
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:min', max: 6, windowSeconds: 60, message })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:day', max: 60, windowSeconds: 86400, message: 'Daily scan limit reached. Please try again tomorrow.' })) return;
+
+  const { input, recaptchaToken } = req.body || {};
   if (!input || typeof input !== 'string' || !input.trim()) {
     return res.status(400).json({ error: 'input is required' });
   }
+  if (input.length > MAX_INPUT_CHARS) {
+    return res.status(400).json({ error: `input is longer than ${MAX_INPUT_CHARS} characters` });
+  }
+
+  if (await recaptcha.requireHuman(req, res, recaptchaToken, 'quick_scan', { remoteIp: rateLimit.clientIp(req) })) return;
 
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
@@ -314,3 +329,7 @@ module.exports = async function handler(req, res) {
       : null,
   });
 };
+
+// Assigned after module.exports = handler; assigning first (as before) put it on
+// the object that the handler then replaced, so it was silently dropped.
+module.exports.config = { maxDuration: 30, api: { bodyParser: { sizeLimit: '16kb' } } };

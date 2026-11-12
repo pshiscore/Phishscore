@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { getRecaptchaToken } from "../recaptcha";
 import { getScoreColor, getScoreLabel } from '../score-bands';
 import useAsyncStatus from '../hooks/useAsyncStatus';
 
@@ -177,13 +178,15 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
   function runScan() {
     if (!input.trim() || scan.isRunning) return;
     scan.run(async () => {
+      const recaptchaToken = await getRecaptchaToken('quick_scan');
+      if (!recaptchaToken) throw new Error("We couldn't run the quick human check. If you use an ad or script blocker, allow google.com/recaptcha for this site, then try again.");
       const res = await fetch('/api/quick-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: input.trim() }),
+        body: JSON.stringify({ input: input.trim(), recaptchaToken }),
       });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Scan failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Scan failed');
       return data;
     });
   }
@@ -293,6 +296,7 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
             <textarea
               ref={inputRef}
               value={input}
+            maxLength={2000}
               onChange={e => { setInput(e.target.value); scan.reset(); }}
               onKeyDown={onKeyDown}
               onFocus={() => setFocused(true)}

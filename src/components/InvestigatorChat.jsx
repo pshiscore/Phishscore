@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { getRecaptchaToken } from "../recaptcha";
 
 const WELCOME = {
   role: 'ai',
@@ -44,13 +45,16 @@ export default function InvestigatorChat() {
     setIsLoading(true);
 
     try {
+      // Every message carries its own reCAPTCHA token (the server is stateless).
+      const recaptchaToken = await getRecaptchaToken('investigator_chat');
+      if (!recaptchaToken) throw new Error("We couldn't run the quick human check. If you use an ad or script blocker, allow google.com/recaptcha for this site, then try again.");
       const res = await fetch('/api/investigator-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, recaptchaToken }),
       });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Request failed');
       setMessages(prev => [...prev, { role: 'ai', content: data.text }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'system', content: `Error: ${err.message}` }]);
@@ -179,6 +183,7 @@ export default function InvestigatorChat() {
             <input
               ref={inputRef}
               value={input}
+            maxLength={1000}
               onChange={e => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Ask about scams or threats..."

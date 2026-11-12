@@ -1,4 +1,8 @@
+const { authorizeSession } = require('./_utils/cronAuth');
 module.exports = async function handler(req, res) {
+  // Dev-dashboard diagnostic (/devs): admin session cookie required. Same-origin
+  // only, so no CORS headers.
+  if (!authorizeSession(req).ok) return res.status(401).json({ error: 'Unauthorized' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!process.env.GOOGLE_WEB_RISK_KEY) return res.status(200).json({ skipped: true, message: 'GOOGLE_WEB_RISK_KEY not configured' });
 
