@@ -1,6 +1,7 @@
 const { CohereClient } = require('cohere-ai');
 const rateLimit = require('./_utils/rateLimit');
 const recaptcha = require('./_utils/recaptcha');
+const { rejectIfChatParked } = require('./_utils/investigatorChatGate');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -29,6 +30,7 @@ async function sbFetch(path) {
 // reCAPTCHA (fails closed) → paid calls. The model and preamble are fixed
 // below; nothing in the request body can change them.
 module.exports = async function handler(req, res) {
+  if (rejectIfChatParked(req, res)) return; // parked — docs/INVESTIGATOR_CHAT_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:min', max: 5, windowSeconds: 60, message: 'Too many questions in a short time. Please wait a moment.' })) return;

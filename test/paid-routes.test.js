@@ -10,6 +10,7 @@ process.env.SUPABASE_SERVICE_KEY = 'service-key';
 process.env.ANTHROPIC_API_KEY = 'anthropic-key';
 process.env.COHERE_API_KEY = 'cohere-key';
 process.env.RECAPTCHA_SECRET_KEY = 'secret';
+process.env.INVESTIGATOR_CHAT_ENABLED = 'true'; // parking is covered in investigator-chat-gate.test.js
 
 const { CohereClient } = require('cohere-ai');
 const rateLimit = require('../api/_utils/rateLimit');

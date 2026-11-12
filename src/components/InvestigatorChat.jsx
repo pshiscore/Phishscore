@@ -15,6 +15,11 @@ function parseMarkdown(text) {
     .replace(/\n/g, '<br/>');
 }
 
+// Parked (docs/INVESTIGATOR_CHAT_PARKED.md). While false, App.js does not
+// mount the widget, so the browser never calls /api/investigator-chat.
+// Flip this together with INVESTIGATOR_CHAT_ENABLED on Vercel.
+export const INVESTIGATOR_CHAT_ENABLED = false;
+
 export default function InvestigatorChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME]);
