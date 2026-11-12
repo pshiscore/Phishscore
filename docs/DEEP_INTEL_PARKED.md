@@ -76,9 +76,15 @@ These were open when the feature was parked and are **not** fixed by parking:
    `polar-checkout` inserts a `deep_intel_cases` row per request.
 6. **`api/lemonsqueezy-webhook.js` is a dead stub** that returns 200 for any
    body with no signature check. Delete it or wire it properly.
-7. **Anon RLS policies on `deep_intel_cases`** currently allow INSERT, UPDATE
-   and SELECT to the public role (see the step 4 SQL in the security plan).
-   The browser no longer uses them, so they should be dropped before relaunch.
+7. ~~Anon RLS policies on `deep_intel_cases`~~ **Fixed 2026-11-12.** The
+   public-role SELECT, INSERT and UPDATE policies were dropped; RLS stays on
+   with no policies, so only the service key can read or write the table. The
+   original definitions are in
+   `db/rollback/2026-11-12-anon-policies-deep-intel-cases-and-submissions.sql`.
+   Every existing `report_token` (13 paid cases) was rotated the same day,
+   because the old ones were readable by anyone with the anon key. **Links sent
+   to earlier customers no longer work;** a relaunch needs a way to re-issue
+   them (see issue 1).
 
 ## Tests
 
