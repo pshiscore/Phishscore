@@ -15,7 +15,7 @@
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "start": "react-scripts start",
-    "build": "react-scripts build && sentry-cli sourcemaps inject ./build && sentry-cli sourcemaps upload --release=$npm_package_version ./build"
+    "build": "REACT_APP_RELEASE=$(printf %.7s \"${VERCEL_GIT_COMMIT_SHA:-dev}\") react-scripts build && sentry-cli sourcemaps inject ./build && sentry-cli sourcemaps upload --release=$(printf %.7s \"${VERCEL_GIT_COMMIT_SHA:-dev}\") ./build"
   },
   "browserslist": {
     "production": [

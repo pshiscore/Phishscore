@@ -1,4 +1,5 @@
 const rateLimit = require('./_utils/rateLimit');
+const LIMITS = require('./_utils/limits').analyze;
 // Called as recaptcha.verifyRecaptcha so unit tests can mock the verifier.
 const recaptcha = require('./_utils/recaptcha');
 const { logUsage } = require('./_utils/logUsage');
@@ -237,8 +238,12 @@ module.exports = async function handler(req, res) {
 
   // Shared limiter (Postgres); fails closed — a paid endpoint never runs unmetered.
   if (await rateLimit.enforceRateLimit(req, res, {
-    route: 'analyze', max: 5, windowSeconds: 60,
+    route: 'analyze', max: LIMITS.perMinute, windowSeconds: 60,
     message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again.",
+  })) return;
+  if (await rateLimit.enforceRateLimit(req, res, {
+    route: 'analyze:day', max: LIMITS.perIpDay, windowSeconds: 86400,
+    message: "You've reached today's analysis limit. Please try again tomorrow.",
   })) return;
 
   // Only the user's content is accepted; see api/_utils/analyzeInput.js.
@@ -262,6 +267,12 @@ module.exports = async function handler(req, res) {
       message: "We couldn't verify this submission came from a person. Please refresh the page and try again.",
     });
   }
+
+  // Global daily ceiling across all callers — counted only for verified requests.
+  if (await rateLimit.enforceRateLimit(req, res, {
+    route: 'analyze:global-day', max: LIMITS.globalDay, windowSeconds: 86400, scope: 'global',
+    message: "PhishScore has reached today's limit for this feature. Please try again tomorrow.",
+  })) return;
 
   try {
     // ── Step 1: Try primary model (Sonnet) ──────────────────────────────────

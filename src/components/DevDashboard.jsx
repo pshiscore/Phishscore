@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import APITestDashboard from './APITestDashboard';
 
+// Shown after a weekly report run. A plain constant: REACT_APP_REPORT_EMAIL was
+// never set, and referencing an unset REACT_APP_* variable makes CRA inline the
+// entire process.env object (commit message, git metadata) into the bundle.
+const REPORT_EMAIL = 'vkrasikov@gmail.com';
+
 const T = {
   pageBg:      '#f8f6f2',
   cardBg:      '#ffffff',
@@ -388,7 +393,7 @@ export default function DevDashboard() {
             <div style={{ fontSize: 11, color: reportState === 'failed' ? '#f43f5e' : T.text4, fontFamily: 'monospace', marginTop: 4 }}>
               {reportState === 'idle' && 'AI-generated weekly briefing — metrics, Sentry errors, recommendations.'}
               {reportState === 'running' && 'Running 5-phase pipeline (30–120s). Results sent via email.'}
-              {reportState === 'completed' && `Delivered to ${process.env.REACT_APP_REPORT_EMAIL || 'vkrasikov@gmail.com'} — ${reportCompletedAt ? new Date(reportCompletedAt).toLocaleString() : ''}`}
+              {reportState === 'completed' && `Delivered to ${REPORT_EMAIL} — ${reportCompletedAt ? new Date(reportCompletedAt).toLocaleString() : ''}`}
               {reportState === 'failed' && (reportError || 'Report generation failed.')}
             </div>
           </div>

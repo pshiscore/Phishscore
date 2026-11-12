@@ -8,12 +8,15 @@ import DevDashboard from './components/DevDashboard';
 Sentry.init({
   dsn: process.env.REACT_APP_SENTRY_DSN,
   environment: process.env.NODE_ENV,
-  release: process.env.REACT_APP_VERSION || '1.0.0',
+  // Short commit SHA, set by the build script ("dev" for local builds). Never
+  // reference a REACT_APP_* variable that might be unset: CRA then inlines the
+  // whole process.env object, including Vercel's commit message and git metadata.
+  release: process.env.REACT_APP_RELEASE,
   tracesSampleRate: 0.2,
   replaysOnErrorSampleRate: 1.0,
   integrations: [
     Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+    Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }),
   ],
 });
 

@@ -14,7 +14,48 @@
     }
   ],
   "rewrites": [
-    { "source": "/beta", "destination": "/index.html" },
-    { "source": "/devs", "destination": "/index.html" }
+    {
+      "source": "/ps-internal-api-test-v1_1.html",
+      "destination": "/api/not-found"
+    },
+    {
+      "source": "/recaptcha-snippet.html",
+      "destination": "/api/not-found"
+    },
+    {
+      "source": "/beta",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/devs",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self'; img-src 'self' data: blob: https://www.gstatic.com/recaptcha/; font-src 'self' data:; connect-src 'self' https://o4511221443264512.ingest.us.sentry.io https://oqwunrpzeufxwkdwbztm.supabase.co https://www.google.com/recaptcha/; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; report-uri https://o4511221443264512.ingest.us.sentry.io/api/4511221447589888/security/?sentry_key=6e4c48b2aa2ed9b6290f0a3e8bcee5c1"
+        }
+      ]
+    }
   ]
 }

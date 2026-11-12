@@ -5,6 +5,7 @@
 
 const { analyzeContactData } = require('../lib/ipqs');
 const rateLimit = require('./_utils/rateLimit');
+const LIMITS = require('./_utils/limits').extractEmail;
 const recaptcha = require('./_utils/recaptcha');
 
 // A pasted email with headers. The model only ever sees the first MODEL_CHARS.
@@ -62,8 +63,8 @@ async function callHaiku(rawText) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:min', max: 10, windowSeconds: 60 })) return;
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:day', max: 100, windowSeconds: 86400 })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:min', max: LIMITS.perMinute, windowSeconds: 60 })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:day', max: LIMITS.perIpDay, windowSeconds: 86400, message: 'Daily limit reached for email extraction. Please try again tomorrow.' })) return;
 
   const { rawText, recaptchaToken } = req.body || {};
   if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
@@ -74,6 +75,9 @@ module.exports = async function handler(req, res) {
   }
 
   if (await recaptcha.requireHuman(req, res, recaptchaToken, 'extract_email', { remoteIp: rateLimit.clientIp(req) })) return;
+
+  // Global daily ceiling across all callers — counted only for verified requests.
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'extract-email:global-day', max: LIMITS.globalDay, windowSeconds: 86400, scope: 'global', message: "PhishScore has reached today's limit for this feature. Please try again tomorrow." })) return;
 
   // Phase A — AI parsing
   let parsed;

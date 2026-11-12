@@ -1,9 +1,13 @@
 const { CohereClient } = require('cohere-ai');
 const rateLimit = require('./_utils/rateLimit');
+const LIMITS = require('./_utils/limits').investigatorChat;
 const recaptcha = require('./_utils/recaptcha');
 const { rejectIfChatParked } = require('./_utils/investigatorChatGate');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+// REACT_APP_SUPABASE_URL is the live project. SUPABASE_URL was set by the old
+// Supabase integration and points at a deleted project; preferring it sent
+// these writes to a dead database.
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const COHERE_KEY = process.env.COHERE_API_KEY;
 
@@ -33,8 +37,8 @@ module.exports = async function handler(req, res) {
   if (rejectIfChatParked(req, res)) return; // parked — docs/INVESTIGATOR_CHAT_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:min', max: 5, windowSeconds: 60, message: 'Too many questions in a short time. Please wait a moment.' })) return;
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:day', max: 40, windowSeconds: 86400, message: 'Daily question limit reached. Please come back tomorrow.' })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:min', max: LIMITS.perMinute, windowSeconds: 60, message: 'Too many questions in a short time. Please wait a moment.' })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:day', max: LIMITS.perIpDay, windowSeconds: 86400, message: 'Daily question limit reached. Please come back tomorrow.' })) return;
 
   const { message, recaptchaToken } = req.body || {};
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -45,6 +49,9 @@ module.exports = async function handler(req, res) {
   }
 
   if (await recaptcha.requireHuman(req, res, recaptchaToken, 'investigator_chat', { remoteIp: rateLimit.clientIp(req) })) return;
+
+  // Global daily ceiling across all callers — counted only for verified requests.
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'investigator-chat:global-day', max: LIMITS.globalDay, windowSeconds: 86400, scope: 'global', message: "PhishScore has reached today's limit for this feature. Please try again tomorrow." })) return;
 
   if (!COHERE_KEY) return res.status(500).json({ error: 'COHERE_API_KEY not configured' });
 

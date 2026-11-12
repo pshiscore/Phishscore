@@ -143,21 +143,31 @@ function ShareCard({ result, category, T = {} }) {
 }
 
 function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
-  // status: 'idle' | 'form_open' | 'submitting' | 'success'
+  // status: 'idle' | 'form_open' | 'submitting' | 'success' | 'duplicate'
   const [status, setStatus] = useState('idle');
   const [feedbackText, setFeedbackText] = useState('');
 
   const submitFeedback = async (isAccurate, text = '') => {
     setStatus('submitting');
     try {
-      await fetch('/api/submit-feedback', {
+      const recaptchaToken = await getRecaptchaToken('feedback');
+      const res = await fetch('/api/submit-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseId, trainingId, is_accurate: isAccurate, feedbackText: text }),
+        body: JSON.stringify({ caseId, trainingId, is_accurate: isAccurate, feedbackText: text.slice(0, 1000), recaptchaToken }),
       });
+      if (res.status === 409) { setStatus('duplicate'); return; }
     } catch { /* best-effort — show success regardless */ }
     setStatus('success');
   };
+
+  if (status === 'duplicate') {
+    return (
+      <div style={{ padding: "10px 14px", background: T.innerBg, border: `1px solid ${T.cardBorder}`, borderRadius: 10 }}>
+        <span style={{ fontSize: 11, color: T.text4, fontFamily: "monospace" }}>You've already rated this result today. Thanks!</span>
+      </div>
+    );
+  }
 
   if (status === 'success') {
     return (
@@ -174,6 +184,7 @@ function AccuracyFeedback({ caseId = null, trainingId = null, T = {} }) {
         <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 1, marginBottom: 8 }}>WHAT DID WE MISS?</div>
         <textarea
           value={feedbackText}
+          maxLength={1000}
           onChange={e => setFeedbackText(e.target.value)}
           placeholder="Tell us what the AI got wrong or what context it missed..."
           style={{ width: "100%", minHeight: 88, background: T.inputBg, border: `1.5px solid ${T.inputBorder}`, borderRadius: 8, color: T.text, padding: "10px 12px", fontSize: 12, fontFamily: "Georgia, serif", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.6 }}

@@ -95,8 +95,15 @@ async function checkRateLimit(ip, maxRequests = 5, windowSeconds = 60, route = '
 
 // Route helper: answers 429 (over the limit) or 503 (limiter unavailable) and
 // returns true when the handler must stop.
-async function enforceRateLimit(req, res, { route, max, windowSeconds, message, failOpen = false }) {
-  const { allowed, unavailable } = await checkRateLimit(clientIp(req), max, windowSeconds, route, { failOpen });
+//
+// scope 'ip' (default) counts per client address; scope 'global' counts every
+// caller together — a hard daily stop that holds even against many IPs. Put
+// global checks AFTER reCAPTCHA, so unverified junk cannot use up the shared
+// budget and lock real users out.
+const GLOBAL_KEY = 'all';
+async function enforceRateLimit(req, res, { route, max, windowSeconds, message, failOpen = false, scope = 'ip' }) {
+  const who = scope === 'global' ? GLOBAL_KEY : clientIp(req);
+  const { allowed, unavailable } = await checkRateLimit(who, max, windowSeconds, route, { failOpen });
   if (allowed) return false;
   if (unavailable) {
     res.status(503).json({ error: 'service_unavailable', message: 'This service is temporarily unavailable. Please try again in a moment.' });

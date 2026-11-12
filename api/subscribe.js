@@ -1,4 +1,7 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+// REACT_APP_SUPABASE_URL is the live project. SUPABASE_URL was set by the old
+// Supabase integration and points at a deleted project; preferring it sent
+// these writes to a dead database.
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 module.exports = async function handler(req, res) {

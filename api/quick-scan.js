@@ -3,6 +3,7 @@ const { getDomainAge } = require('../lib/domain-age');
 const { CATEGORY_GUIDE, coerceCategoryId, isValidCategoryId } = require('../lib/categories');
 const { logUsage } = require('./_utils/logUsage');
 const rateLimit = require('./_utils/rateLimit');
+const LIMITS = require('./_utils/limits').quickScan;
 const recaptcha = require('./_utils/recaptcha');
 // Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
 // scale and the user-facing label cannot drift apart. Lives under src/ because
@@ -227,8 +228,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const message = 'Too many scans in a short time. Please wait a moment and try again.';
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:min', max: 6, windowSeconds: 60, message })) return;
-  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:day', max: 60, windowSeconds: 86400, message: 'Daily scan limit reached. Please try again tomorrow.' })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:min', max: LIMITS.perMinute, windowSeconds: 60, message })) return;
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:day', max: LIMITS.perIpDay, windowSeconds: 86400, message: 'Daily scan limit reached. Please try again tomorrow.' })) return;
 
   const { input, recaptchaToken } = req.body || {};
   if (!input || typeof input !== 'string' || !input.trim()) {
@@ -239,6 +240,9 @@ module.exports = async function handler(req, res) {
   }
 
   if (await recaptcha.requireHuman(req, res, recaptchaToken, 'quick_scan', { remoteIp: rateLimit.clientIp(req) })) return;
+
+  // Global daily ceiling across all callers — counted only for verified requests.
+  if (await rateLimit.enforceRateLimit(req, res, { route: 'quick-scan:global-day', max: LIMITS.globalDay, windowSeconds: 86400, scope: 'global', message: "PhishScore has reached today's limit for this feature. Please try again tomorrow." })) return;
 
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 

@@ -14,7 +14,6 @@ const analyze = require('../api/analyze');
 const rateLimit = require('../api/_utils/rateLimit');
 rateLimit.setRateLimitStore(rateLimit.createMemoryStore());
 const recaptcha = require('../api/_utils/recaptcha');
-const feedback = require('../api/submit-feedback');
 
 const UUID = '3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 const VERDICT = {
@@ -159,14 +158,4 @@ test('analyze: a verdict without a score is not stored', async (t) => {
   assert.ok(!calls.some(c => c.url.includes('/rest/v1/submissions')));
 });
 
-// ── /api/submit-feedback ───────────────────────────────────────────────────────
-
-test('feedback: PATCH only sends columns that exist on submissions', async (t) => {
-  const calls = [];
-  t.mock.method(globalThis, 'fetch', async (url, opts) => { calls.push({ url: String(url), opts }); return reply(null); });
-  const r = res();
-  await feedback({ method: 'POST', body: { caseId: UUID, is_accurate: true, feedbackText: 'spot on' } }, r);
-  assert.strictEqual(r.code, 200);
-  const patch = calls.find(c => c.url.includes(`/rest/v1/submissions?id=eq.${UUID}`));
-  assert.deepStrictEqual(Object.keys(JSON.parse(patch.opts.body)).sort(), ['is_accurate', 'user_feedback']);
-});
+// /api/submit-feedback is covered in test/feedback.test.js.
