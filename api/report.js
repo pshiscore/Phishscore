@@ -14,6 +14,7 @@
 // cleaner design and needs a schema column.
 
 const crypto = require('crypto');
+const { rejectIfParked } = require('./_utils/deepIntelGate');
 
 const SUPABASE_URL = (process.env.REACT_APP_SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -51,6 +52,7 @@ async function fetchCase(filter, fields) {
 }
 
 async function handler(req, res) {
+  if (rejectIfParked(req, res)) return; // Deep Intel is parked — docs/DEEP_INTEL_PARKED.md
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Not configured' });

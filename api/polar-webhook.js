@@ -1,6 +1,7 @@
 // ── Polar Webhook — handles post-payment events from Polar via Svix ───────────
 
 const crypto = require('crypto');
+const { deepIntelEnabled } = require('./_utils/deepIntelGate');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -55,6 +56,14 @@ module.exports = async function handler(req, res) {
     event = JSON.parse(rawBody);
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
+  }
+
+  // Deep Intel is parked (docs/DEEP_INTEL_PARKED.md): the signature above is
+  // still enforced, and the verified event is acknowledged so Polar stops
+  // retrying, but nothing is written to the database.
+  if (!deepIntelEnabled()) {
+    console.log(`polar-webhook: Deep Intel parked — ignoring ${event.type} (event ${event.data?.id || 'n/a'}, case ${event.data?.metadata?.caseId || 'n/a'})`);
+    return res.status(200).json({ received: true, parked: true });
   }
 
   // Only handle order.created

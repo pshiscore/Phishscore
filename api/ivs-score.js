@@ -2,10 +2,13 @@
 // Uses Claude Sonnet to evaluate how much value a deep investigation would provide
 // Called before purchase — free, fast, honest
 
+const { rejectIfParked } = require('./_utils/deepIntelGate');
+
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 module.exports = async function handler(req, res) {
+  if (rejectIfParked(req, res)) return; // Deep Intel is parked — docs/DEEP_INTEL_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { message, story, originalScore, originalCategory, caseId } = req.body;

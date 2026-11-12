@@ -52,6 +52,8 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  // /api/report answers 503 while Deep Intel is parked (docs/DEEP_INTEL_PARKED.md).
+  const [parked, setParked] = useState(false);
   // The analysis must fire at most once per modal lifetime (see src/reportPhase.js).
   const triggeredRef = useRef(false);
 
@@ -78,6 +80,11 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
       // path is status-only. The anon key no longer touches deep_intel_cases.
       const query = token ? `token=${encodeURIComponent(token)}` : `case=${encodeURIComponent(caseId)}`;
       const res = await fetch(`/api/report?${query}`, { cache: 'no-store' });
+      if (res.status === 503) {
+        setParked(true);
+        setError("Deep Intel is currently available by request only");
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setCaseData(data);
@@ -96,6 +103,7 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
   };
 
   const triggerAnalysis = async (id) => {
+    if (parked) return;
     try {
       await fetch('/api/deep-intel', {
         method: 'POST',
@@ -114,7 +122,7 @@ export default function ReportStatusModal({ caseId, token, onClose, T = {} }) {
   };
 
   const handleUpgrade = async (tier) => {
-    if (!caseData?.email) return;
+    if (parked || !caseData?.email) return;
     setUpgradeLoading(true);
     try {
       const res = await fetch("/api/create-checkout", {

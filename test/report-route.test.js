@@ -6,6 +6,7 @@ const { mock } = require('node:test');
 
 process.env.REACT_APP_SUPABASE_URL = 'https://db.example';
 process.env.SUPABASE_SERVICE_KEY = 'service-key';
+process.env.DEEP_INTEL_ENABLED = 'true'; // the gate itself is covered in deep-intel-gate.test.js
 const handler = require('../api/report');
 const { isValidToken, isValidCaseId, tokensMatch, shapeForToken, shapeForCase, STATUS_FIELDS, REPORT_FIELDS } = handler;
 

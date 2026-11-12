@@ -1,5 +1,7 @@
 // create-checkout.js
 
+const { rejectIfParked } = require('./_utils/deepIntelGate');
+
 // Check for both naming conventions to prevent undefined errors
 const POLAR_API_KEY = process.env.POLAR_ACCESS_TOKEN || process.env.POLAR_API_KEY;
 
@@ -10,6 +12,7 @@ const POLAR_PRODUCTS = {
 };
 
 module.exports = async function handler(req, res) {
+  if (rejectIfParked(req, res)) return; // Deep Intel is parked — docs/DEEP_INTEL_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { caseId, email, tier = 1 } = req.body || {};

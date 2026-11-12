@@ -101,8 +101,33 @@ const IVS_CONFIG = {
   CRITICAL: { color: "#f43f5e", bg: "#f43f5e12", border: "#f43f5e30", label: "CRITICAL VALUE" },
 };
 
-// TEMP: set to true to gate Deep Intel behind a contact-us overlay
+// Deep Intel is parked (docs/DEEP_INTEL_PARKED.md). While gated, the
+// request-access overlay sits over a static placeholder; the intake form is
+// not mounted at all, so the browser never calls /api/ivs-score or
+// /api/polar-checkout. Flip this together with DEEP_INTEL_ENABLED on Vercel.
 const DEEP_INTEL_GATED = true;
+
+// Static stand-in rendered under the overlay. No state, no handlers, no fetch.
+function ParkedPlaceholder({ T = {} }) {
+  const bar = (width, height = 12) => (
+    <div style={{ width, height, borderRadius: 6, background: T.innerBg || "rgba(255,255,255,0.06)", border: `1px solid ${T.innerBorder || "rgba(255,255,255,0.08)"}` }} />
+  );
+  return (
+    <div aria-hidden="true" style={{ pointerEvents: "none", userSelect: "none", opacity: 0.3, minHeight: 440 }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 800, color: T.text, letterSpacing: 1 }}>DEEP INTEL</span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "#f43f5e", border: "1px solid #f43f5e60", background: "#f43f5e12", padding: "2px 7px", borderRadius: 6, fontFamily: "monospace" }}>BETA</span>
+        </div>
+        <div style={{ fontSize: 9, color: T.text4, fontFamily: "monospace", letterSpacing: 2 }}>FORENSIC SCAM INVESTIGATION</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {bar("40%")}{bar("100%", 120)}{bar("55%")}{bar("100%", 72)}{bar("30%", 36)}
+      </div>
+    </div>
+  );
+}
 
 // ── Shared Deep Intel content — used both inline and inside the modal ─────────
 export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
@@ -227,8 +252,9 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
         </div>
       )}
 
-      {/* ── Interface (blurred behind overlay when gated) ── */}
-      <div style={DEEP_INTEL_GATED ? { pointerEvents: "none", userSelect: "none", opacity: 0.3 } : {}}>
+      {/* ── Interface: a static placeholder while gated, the real form otherwise ── */}
+      {DEEP_INTEL_GATED ? <ParkedPlaceholder T={T} /> : (
+      <div>
         {/* Header */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
@@ -478,6 +504,7 @@ export function DeepIntelContent({ onClose, prefill = {}, T = {} }) {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

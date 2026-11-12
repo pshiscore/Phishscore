@@ -1,5 +1,7 @@
 // ── Polar Checkout — creates a Polar checkout session and returns the URL ──────
 
+const { rejectIfParked } = require('./_utils/deepIntelGate');
+
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const POLAR_API_KEY = process.env.POLAR_API_KEY;
@@ -11,6 +13,7 @@ const PRODUCT_IDS = {
 };
 
 module.exports = async function handler(req, res) {
+  if (rejectIfParked(req, res)) return; // Deep Intel is parked — docs/DEEP_INTEL_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const {

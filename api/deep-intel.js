@@ -2,6 +2,8 @@
 // Triggered after payment confirmed via webhook
 // Uses Claude Opus for maximum analysis depth
 
+const { rejectIfParked } = require('./_utils/deepIntelGate');
+
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { analyzeForDeepIntel } = require('../lib/cnl-analyzer');
@@ -430,6 +432,7 @@ Rules: No URLs in the report. Plain English. Be direct and specific. This person
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
+  if (rejectIfParked(req, res)) return; // Deep Intel is parked — docs/DEEP_INTEL_PARKED.md
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { caseId } = req.body;
