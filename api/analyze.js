@@ -1,7 +1,11 @@
-const { checkRateLimit } = require('./_utils/rateLimit');
+const rateLimit = require('./_utils/rateLimit');
+// Called as recaptcha.verifyRecaptcha so unit tests can mock the verifier.
+const recaptcha = require('./_utils/recaptcha');
 const { logUsage } = require('./_utils/logUsage');
 const { buildSubmissionRow } = require('../src/submissionRow');
 const { isValidCategoryId } = require('../lib/categories');
+const { buildScoringRequest } = require('../lib/analyze-prompt');
+const { validateAnalyzeInput } = require('./_utils/analyzeInput');
 
 // ── Per-URL threat check (no cache) ──────────────────────────────────────────
 async function checkUrlThreat(url, wrKey, cfKey) {
@@ -132,25 +136,6 @@ async function storeSubmission(parsed, input) {
   }
 }
 
-// ── reCAPTCHA v3 verification ─────────────────────────────────────────────────
-async function verifyRecaptcha(token, minScore = 0.5) {
-  if (!token || !process.env.RECAPTCHA_SECRET_KEY) return true; // skip if not configured
-  try {
-    const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
-    });
-    const data = await res.json();
-    console.log('reCAPTCHA score:', data.score, 'action:', data.action);
-    if (!data.success) return false;
-    return data.score >= minScore;
-  } catch (e) {
-    console.error('reCAPTCHA verification error:', e);
-    return true; // fail open — don't block if verification itself fails
-  }
-}
-
 const PII_SCRUBBING_BLOCK = `
 
 PUBLIC PRIVACY PROTOCOL — This summary will be displayed on a public community feed. You MUST redact ALL personally identifying information from the summary:
@@ -209,28 +194,25 @@ function buildIpqsContext(ipqs) {
 }
 
 // ── Claude API call with model fallback ───────────────────────────────────────
-async function callClaude(body, model) {
-  // Strip fields that are not valid Claude API params
-  const { trainAI, recaptchaToken, deliveryChannel, isAnonymous, visibility, ipqs, submission, ...claudeBody } = body;
+// `request` is built by lib/analyze-prompt.js from validated input. Nothing the
+// caller sent is spread into the Anthropic body: model, max_tokens, system and
+// messages are all decided here.
+function finalMessages(request, { ipqs, visibility }) {
+  let messages = request.messages;
 
-  // Inject IPQS context as an additional user message content block
-  if (ipqs && Array.isArray(claudeBody.messages)) {
-    const context = buildIpqsContext(ipqs);
-    if (context) {
-      claudeBody.messages = claudeBody.messages.map((msg, i) => {
-        if (i !== claudeBody.messages.length - 1) return msg;
-        const content = Array.isArray(msg.content)
-          ? [...msg.content, { type: 'text', text: context }]
-          : [{ type: 'text', text: typeof msg.content === 'string' ? msg.content : '' }, { type: 'text', text: context }];
-        return { ...msg, content };
-      });
-    }
+  // Inject IPQS context as an additional block on the last user message
+  const context = ipqs ? buildIpqsContext(ipqs) : null;
+  if (context) {
+    messages = messages.map((msg, i) => i === messages.length - 1
+      ? { ...msg, content: [...msg.content, { type: 'text', text: context }] }
+      : msg);
   }
 
-  if (visibility === 'public' && Array.isArray(claudeBody.messages)) {
-    claudeBody.messages = injectPiiScrubbing(claudeBody.messages);
-  }
+  if (visibility === 'public') messages = injectPiiScrubbing(messages);
+  return messages;
+}
 
+async function callClaude(request, model, context) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -239,7 +221,12 @@ async function callClaude(body, model) {
       'anthropic-version': '2023-06-01',
       'anthropic-beta': 'prompt-caching-2024-07-31',
     },
-    body: JSON.stringify({ ...claudeBody, model })
+    body: JSON.stringify({
+      model,
+      max_tokens: request.max_tokens,
+      system: request.system,
+      messages: finalMessages(request, context),
+    }),
   });
   return response;
 }
@@ -248,34 +235,44 @@ async function callClaude(body, model) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = (req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown').split(',')[0].trim();
+  // Shared limiter (Postgres); fails closed — a paid endpoint never runs unmetered.
+  if (await rateLimit.enforceRateLimit(req, res, {
+    route: 'analyze', max: 5, windowSeconds: 60,
+    message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again.",
+  })) return;
 
-  const { allowed } = await checkRateLimit(ip);
-  if (!allowed) {
-    return res.status(429).json({
-      error: 'rate_limited',
-      message: "Our guard dogs need a nap! You've sent too many scans. Please wait a moment before trying again."
-    });
-  }
+  // Only the user's content is accepted; see api/_utils/analyzeInput.js.
+  const validation = validateAnalyzeInput(req.body);
+  if (!validation.ok) return res.status(400).json({ error: 'invalid_request', message: validation.error });
+  const input = validation.value;
 
-  // reCAPTCHA v3 verification
-  const recaptchaToken = req.body.recaptchaToken;
-  const recaptchaPassed = await verifyRecaptcha(recaptchaToken, 0.5);
-  if (!recaptchaPassed) {
-    return res.status(429).json({
-      error: 'bot_detected',
-      message: "Submission could not be verified. Please try again."
+  // reCAPTCHA v3 — fails closed. 503 when our side cannot verify, 403 otherwise.
+  const human = await recaptcha.verifyRecaptcha(input.recaptchaToken, {
+    action: 'submit', minScore: 0.5, remoteIp: rateLimit.clientIp(req),
+  });
+  if (!human.ok) {
+    if (recaptcha.isServerSideFailure(human.reason)) {
+      return res.status(503).json({
+        error: 'service_unavailable',
+        message: 'The AI analysis service is temporarily unavailable. Please try again in a few minutes.',
+      });
+    }
+    return res.status(403).json({
+      error: 'verification_failed',
+      message: "We couldn't verify this submission came from a person. Please refresh the page and try again.",
     });
   }
 
   try {
     // ── Step 1: Try primary model (Sonnet) ──────────────────────────────────
-    let response = await callClaude(req.body, 'claude-sonnet-4-6');
+    const request = buildScoringRequest(input);
+    const context = { ipqs: input.ipqs, visibility: input.visibility };
+    let response = await callClaude(request, 'claude-sonnet-4-6', context);
 
     // ── Step 2: Fallback to Haiku if Sonnet overloaded ──────────────────────
     if (response.status === 529 || response.status === 500 || response.status === 503) {
       console.warn(`Sonnet returned ${response.status}, falling back to Haiku`);
-      response = await callClaude(req.body, 'claude-haiku-4-5-20251001');
+      response = await callClaude(request, 'claude-haiku-4-5-20251001', context);
     }
 
     if (!response.ok) {
@@ -298,8 +295,7 @@ module.exports = async function handler(req, res) {
     }).catch(() => {});
 
     // ── Step 3: Extract URLs for threat checks ──────────────────────────────
-    const content = JSON.stringify(req.body.messages || []);
-    const urlMatches = content.match(/https?:\/\/[^\s"'\\]+/g) || [];
+    const urlMatches = input.text.match(/https?:\/\/[^\s"'\\]+/g) || [];
     const uniqueUrls = [...new Set(urlMatches)].slice(0, 5);
 
     let gsbFlagged = false;
@@ -352,43 +348,35 @@ module.exports = async function handler(req, res) {
     } catch (e) { console.error('Response parse error:', e); }
 
     // ── Extract raw text once for training + admin alert ────────────────────
-    const rawText = (req.body.messages || [])
-      .flatMap(m => Array.isArray(m.content)
-        ? m.content.filter(c => c.type === 'text').map(c => c.text)
-        : [typeof m.content === 'string' ? m.content : '']
-      ).join('\n').slice(0, 4000);
+    const rawText = input.text.slice(0, 4000);
 
     // ── Store training data if opted in ─────────────────────────────────────
     let trainingId = null;
-    if (req.body.trainAI === true && parsedResult) {
+    if (input.trainAI && !input.dryRun && parsedResult) {
       try {
-        const modality = (req.body.messages || []).some(m =>
-          Array.isArray(m.content) && m.content.some(c => c.type === 'image')
-        ) ? 'image' : 'text';
+        const modality = input.image ? 'image' : 'text';
         trainingId = await storeTrainingData(parsedResult, {
           modality,
           rawText,
           gsbFlagged,
           radarFlagged,
           urlhausFlagged,
-          isAnonymous: req.body.isAnonymous === true,
+          isAnonymous: input.isAnonymous,
         });
       } catch (e) { console.error('Training store error:', e); }
     }
 
-    // ── Save the feed row — only for real submissions, never for API pings ──
-    // The Analyze Threat form sends `submission`; the dev dashboard's pings do not.
+    // ── Save the feed row — every real submission; dryRun (dev dashboard) never ──
     let submission = null;
-    const sub = req.body.submission;
-    if (sub && typeof sub === 'object' && parsedResult) {
+    if (!input.dryRun && parsedResult) {
       submission = await storeSubmission(parsedResult, {
-        category: typeof sub.category === 'string' ? sub.category : 'other',
-        text: typeof sub.text === 'string' ? sub.text : '',
-        hasImage: sub.hasImage === true,
-        source: typeof sub.source === 'string' ? sub.source.slice(0, 200) : '',
-        visibility: req.body.visibility,
-        deliveryChannel: req.body.deliveryChannel,
-        ipqs: req.body.ipqs ?? null,
+        category: input.category,
+        text: input.text,
+        hasImage: !!input.image,
+        source: input.source,
+        visibility: input.visibility,
+        deliveryChannel: input.deliveryChannel,
+        ipqs: input.ipqs,
       });
     }
 
@@ -403,4 +391,5 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+// A ≤3 MB image is ~4 MB as base64; Vercel caps request bodies at 4.5 MB anyway.
+module.exports.config = { api: { bodyParser: { sizeLimit: '4.5mb' } } };

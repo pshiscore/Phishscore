@@ -11,6 +11,9 @@ delete process.env.RECAPTCHA_SECRET_KEY;
 
 const { resolveCategory, resolveSource, buildSubmissionRow } = require('../src/submissionRow');
 const analyze = require('../api/analyze');
+const rateLimit = require('../api/_utils/rateLimit');
+rateLimit.setRateLimitStore(rateLimit.createMemoryStore());
+const recaptcha = require('../api/_utils/recaptcha');
 const feedback = require('../api/submit-feedback');
 
 const UUID = '3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
@@ -84,6 +87,7 @@ test('unknown visibility falls back to private, never public', () => {
 
 function stubAnalyze(t, { insertOk = true, verdict = VERDICT } = {}) {
   const calls = [];
+  t.mock.method(recaptcha, 'verifyRecaptcha', async () => ({ ok: true, score: 0.9 }));
   t.mock.method(globalThis, 'fetch', async (url, opts) => {
     url = String(url); calls.push({ url, opts });
     if (url.includes('api.anthropic.com')) return reply({ model: 'claude-sonnet-4-6', content: [{ type: 'text', text: JSON.stringify(verdict) }], usage: { input_tokens: 1, output_tokens: 1 } });
@@ -97,8 +101,7 @@ function stubAnalyze(t, { insertOk = true, verdict = VERDICT } = {}) {
 }
 const FORM = (extra = {}) => ({
   method: 'POST', headers: { 'x-forwarded-for': `10.0.0.${Math.floor(Math.random() * 250)}` }, connection: {},
-  body: { model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: 'Your parcel is held, pay $1.99' }], visibility: 'public', deliveryChannel: 'sms', ipqs: null,
-    submission: { category: 'other', text: 'Your parcel is held, pay $1.99', hasImage: false, source: '' }, ...extra },
+  body: { text: 'Your parcel is held, pay $1.99', category: 'other', visibility: 'public', deliveryChannel: 'sms', ipqs: null, source: '', recaptchaToken: 'tok', ...extra },
 });
 
 test('analyze: a form submission is saved with the service key and the stored row is returned', async (t) => {
@@ -117,18 +120,17 @@ test('analyze: a form submission is saved with the service key and the stored ro
   assert.strictEqual(row.preview, 'Your parcel is held, pay $1.99');
 });
 
-test('analyze: the Claude request never carries the submission field', async (t) => {
+test('analyze: the Claude request carries only model, max_tokens, system and messages', async (t) => {
   const calls = stubAnalyze(t);
-  await analyze(FORM(), res());
+  await analyze(FORM({ trainAI: false }), res());
   const claude = JSON.parse(calls.find(c => c.url.includes('api.anthropic.com')).opts.body);
-  for (const k of ['submission', 'visibility', 'deliveryChannel', 'ipqs', 'trainAI', 'recaptchaToken', 'isAnonymous']) assert.ok(!(k in claude), k);
+  assert.deepStrictEqual(Object.keys(claude).sort(), ['max_tokens', 'messages', 'model', 'system']);
 });
 
-test('analyze: requests without `submission` (dashboard API pings) never insert', async (t) => {
+test('analyze: dryRun requests (dev dashboard pings) never insert', async (t) => {
   const calls = stubAnalyze(t);
   const r = res();
-  const req = FORM(); delete req.body.submission;
-  await analyze(req, r);
+  await analyze(FORM({ dryRun: true }), r);
   assert.strictEqual(r.code, 200);
   assert.strictEqual(r.body.submission, null);
   assert.ok(!calls.some(c => c.url.includes('/rest/v1/submissions')));

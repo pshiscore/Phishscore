@@ -3,6 +3,7 @@ import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, getScoreColor, getStatusLabel, get
 import { ScoreRing, CatIconSvg, VisibilityBadge, Tooltip, PhishScoreLogo } from "./Primitives";
 import db from "../db";
 import { resolveCategory, buildSubmissionRow } from "../submissionRow";
+import { getRecaptchaToken } from "../recaptcha";
 
 function CategoryPicker({ selected, onSelect, submissionCounts = {}, T = {} }) {
   const [showAll, setShowAll] = useState(false);
@@ -337,15 +338,11 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
     }
     setStep('analyzing');
     try {
-      const categoryList = "publishing, delivery, retail, telecom, voip, traffic, social, finance, government, prize, romance, job, tech, political, travel, legal, health, other";
-      const jsonSchema = `{"score":<0-100>,"tags":[<2-4 labels>],"summary":"<ONE plain-English sentence describing what this scam is and how it operates, written for a community feed — no raw email fields, no technical jargon>","verdict":"<one sentence>","analysis":"<2-3 sentences>","redFlags":[<up to 5>],"whatToDo":"<one action sentence — NEVER include any URLs, domain names, or web addresses of any kind, not even official ones. Say 'go to the official website' or 'contact your bank directly' instead>","detectedSources":["<only phone numbers with country code if present, and sender email addresses — nothing else, empty array if none found>"],"detectedCategory":<best category id string or null>,"categoryReclassified":<true if user category was wrong, false otherwise>,"shows_ai_patterns":<true if the content shows signs of AI-generated text such as unnatural fluency, templated structure, or LLM-style phrasing; false otherwise>,"impersonated_brand":"<the primary brand/org being impersonated, e.g. 'USPS', 'Chase Bank', 'IRS', 'Apple'; null if none>","extracted_iocs":["<suspicious domains, URLs, or IPs found in the content — empty array if none>"],"vector":"<primary delivery vector: email | sms | social | phone | web | other>"}`;
-      // Static system prompt — cached across all analyze calls
-      const staticSystem = `You are PhishScore.ai. Analyze submitted content for scam indicators and return only valid JSON.\n\nIMPORTANT TASKS:\n1. Extract ONLY phone numbers (with country code if visible) and sender email addresses. Do NOT extract domains, URLs, names, usernames, or any other identifiers.\n2. If the user selected "other", determine the best category from: ${categoryList}. Return it in detectedCategory if 70%+ confident, else null.\n3. If the user selected a specific category but the content clearly belongs to a DIFFERENT category with 85%+ confidence, return the correct category in detectedCategory and set categoryReclassified to true.\n4. For category "health": apply relevant sub-tags from — "Fake Research Claims", "Miracle Cure / Panacea", "Medical Fear-mongering", "Counterfeit Pharmaceuticals".\n5. For category distinction: use "voip" when the content involves a scam call or message originating from a VOIP/internet-based phone number, robocall, or spoofed caller ID. Use "telecom" for carrier impersonation scams (e.g. fake T-Mobile reward emails). The IPQS pre-score may indicate VOIP line type — factor that in.\n6. For radar fields: shows_ai_patterns should be true if the text feels LLM-generated; impersonated_brand should be the exact brand name impersonated or null; extracted_iocs should list any suspicious domains or IPs visible in the content; vector should be the delivery channel the scam arrived through.\n\nRespond ONLY with valid JSON (no markdown):\n${jsonSchema}`;
-
-      // Build content array dynamically — image + text can coexist
-      const content = [];
+      // The scoring prompt, model and token budget live on the server
+      // (lib/analyze-prompt.js). The client sends only the user's content.
+      let imagePayload = null;
       if (image) {
-        // Compress image before sending to stay under 4.5MB Vercel limit
+        // Compress before sending to stay well under Vercel's 4.5 MB body limit
         const compressedImage = await new Promise((resolve) => {
           const img = new Image();
           img.onload = () => {
@@ -362,38 +359,39 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
           };
           img.src = image;
         });
-        const base64 = compressedImage.split(",")[1];
-        content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } });
+        imagePayload = { data: compressedImage.split(",")[1], mediaType: "image/jpeg" };
       }
-      if (text.trim()) {
-        content.push({ type: "text", text: `User Message:\n${text}` });
+
+      // reCAPTCHA v3 — the server refuses submissions without a valid token,
+      // so stop here with a clear message if the check could not run.
+      const recaptchaToken = await getRecaptchaToken('submit');
+      if (!recaptchaToken) {
+        setErrorState({ type: "verification", message: "We couldn't run the quick human check. If you use an ad or script blocker, allow google.com/recaptcha for this site, then refresh and try again." });
+        setStep('error');
+        return;
       }
-      // Per-request context appended as volatile user content
-      content.push({ type: "text", text: `User selected category: "${cat.label}" (id: "${category}") - ${cat.description}` });
 
-      const messages = [{ role: "user", content }];
-      // Get reCAPTCHA v3 token before submitting
-      let recaptchaToken = null;
-      try {
-        if (window.grecaptcha && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
-          recaptchaToken = await new Promise((resolve) => {
-            window.grecaptcha.ready(async () => {
-              const token = await window.grecaptcha.execute(
-                process.env.REACT_APP_RECAPTCHA_SITE_KEY,
-                { action: 'submit' }
-              );
-              resolve(token);
-            });
-          });
-        }
-      } catch (e) { console.warn('reCAPTCHA failed silently:', e); }
-
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }], messages, trainAI, recaptchaToken, deliveryChannel, isAnonymous: visibility === "anonymous", visibility, ipqs: ipqsData ?? null, submission: { category, text, hasImage: !!image, source } }) });
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text, image: imagePayload, category, source, deliveryChannel, visibility,
+          isAnonymous: visibility === "anonymous", trainAI, recaptchaToken, ipqs: ipqsData ?? null,
+        }),
+      });
 
       // Handle rate limit specifically
       if (res.status === 429) {
         const errData = await res.json().catch(() => ({}));
         setErrorState({ type: "rate_limit", message: errData.message || "You've sent too many scans. Please wait a moment before trying again." });
+        setStep('error');
+        return;
+      }
+
+      // Server could not verify the reCAPTCHA token
+      if (res.status === 403) {
+        const errData = await res.json().catch(() => ({}));
+        setErrorState({ type: "verification", message: errData.message || "We couldn't verify this submission. Please refresh the page and try again." });
         setStep('error');
         return;
       }
@@ -606,10 +604,10 @@ export function ScannerPanel({ onClose, onNewResult, onDeepIntel, submissionCoun
         {step === 'error' && errorState && (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>
-              {errorState.type === "rate_limit" ? "🐾" : "⚡"}
+              {errorState.type === "rate_limit" ? "🐾" : errorState.type === "verification" ? "🛡️" : "⚡"}
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: "monospace", letterSpacing: 1, marginBottom: 10 }}>
-              {errorState.type === "rate_limit" ? "SLOW DOWN A LITTLE" : "SERVICE TEMPORARILY UNAVAILABLE"}
+              {errorState.type === "rate_limit" ? "SLOW DOWN A LITTLE" : errorState.type === "verification" ? "QUICK CHECK DIDN'T COMPLETE" : "SERVICE TEMPORARILY UNAVAILABLE"}
             </div>
             <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 13, lineHeight: 1.7, margin: "0 0 24px" }}>
               {errorState.message}

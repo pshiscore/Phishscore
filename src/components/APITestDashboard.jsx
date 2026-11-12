@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { getRecaptchaToken } from "../recaptcha";
 import useAsyncStatus from "../hooks/useAsyncStatus";
 
 const BASE = '';
@@ -104,27 +105,18 @@ const API_GROUPS = [
     color: '#a78bfa',
     apis: [
       {
-        id: 'claude-sonnet', name: 'Claude Sonnet 4.6',
-        desc: 'Primary AI model — main analysis pipeline',
+        // /api/analyze picks its own model (Sonnet, Haiku fallback on 5xx) and
+        // prompt; callers cannot choose either, so this checks the real pipeline
+        // end to end. dryRun: the result is not saved to the feed or training set.
+        id: 'claude-analyze', name: 'Claude analyze pipeline',
+        desc: 'Main analysis endpoint — Sonnet primary, Haiku fallback (server-chosen)',
         run: async (url) => {
           const start = Date.now();
-          const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. URL: ${url}. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `API test ping from the dev dashboard. URL: ${url}`, category: 'other', visibility: 'private', deliveryChannel: 'other', dryRun: true, recaptchaToken: await getRecaptchaToken('submit') }) });
           const d = await safeJson(r);
+          if (!r.ok) throw new Error(`HTTP ${r.status}${d?.message ? ` — ${d.message}` : ''}`);
           if (d.error) throw new Error(d.error || d.message);
-          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-sonnet-4-6`, `Blocks: ${d.content?.length ?? 0}`].join('\n');
-        }
-      },
-      {
-        id: 'claude-haiku', name: 'Claude Haiku 4.5 (Fallback)',
-        desc: 'Backup AI model — fires when Sonnet unavailable',
-        run: async (url) => {
-          const start = Date.now();
-          const r = await fetch(`${BASE}/api/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: `API test ping. Return JSON: {"score":50,"tags":["test"],"summary":"API test","verdict":"OK","analysis":"Test","redFlags":[],"whatToDo":"None","detectedSources":[],"detectedCategory":null,"categoryReclassified":false}` }] }) });
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          const d = await safeJson(r);
-          if (d.error) throw new Error(d.error || d.message);
-          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: claude-haiku-4-5-20251001`].join('\n');
+          return [`Status: OK`, `Time: ${((Date.now() - start) / 1000).toFixed(1)}s`, `Model: ${d.model || 'unknown'}`, `Blocks: ${d.content?.length ?? 0}`].join('\n');
         }
       },
       {
