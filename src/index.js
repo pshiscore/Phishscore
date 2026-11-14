@@ -1,4 +1,5 @@
 import React from 'react';
+import './styles/fallback.css';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './App';

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import '../styles/action-row.css';
 import { getRecaptchaToken } from "../recaptcha";
 import { getScoreColor, getScoreLabel } from '../score-bands';
 import useAsyncStatus from '../hooks/useAsyncStatus';
@@ -537,12 +538,6 @@ export default function ActionRow({ T, onAnalyzeThreat, analyzerOpen }) {
         </div>
       )}
 
-      <style>{`
-        @media (max-width: 767px) {
-          .action-row-grid { grid-template-columns: 1fr !important; }
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 }

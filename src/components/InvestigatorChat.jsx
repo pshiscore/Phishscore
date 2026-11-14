@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import '../styles/investigator-chat.css';
 import { getRecaptchaToken } from "../recaptcha";
 
 const WELCOME = {
@@ -266,15 +267,6 @@ export default function InvestigatorChat() {
         )}
       </button>
 
-      <style>{`
-        @keyframes investigatorPulse {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-        @media (max-width: 767px) {
-          .investigator-chat-root { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

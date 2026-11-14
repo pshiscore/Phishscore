@@ -1,0 +1,12 @@
+/* Moved out of an inline <style> block so the Content-Security-Policy can use
+   style-src 'self' with no 'unsafe-inline'. Rules are unchanged. */
+
+/* /beta prototype (src/components/BetaDashboard.jsx). Scoped to html.ps-beta,
+   set while the dashboard is mounted. #0a0a0f is BetaDashboard's T.pageBg. */
+
+:where(html.ps-beta), :where(html.ps-beta) * { box-sizing: border-box; }
+:where(html.ps-beta) body { margin: 0; background: #0a0a0f; }
+:where(html.ps-beta) textarea::placeholder { color: #475569; }
+:where(html.ps-beta) textarea::-webkit-scrollbar { width: 4px; }
+:where(html.ps-beta) textarea::-webkit-scrollbar-track { background: transparent; }
+:where(html.ps-beta) textarea::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }

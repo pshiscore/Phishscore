@@ -1,0 +1,9 @@
+/* Moved out of an inline <style> block so the Content-Security-Policy can use
+   style-src 'self' with no 'unsafe-inline'. Rules are unchanged. */
+
+/* Quick Scan / Analyze row (src/components/ActionRow.jsx). */
+
+@media (max-width: 767px) {
+  .action-row-grid { grid-template-columns: 1fr !important; }
+}
+@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }

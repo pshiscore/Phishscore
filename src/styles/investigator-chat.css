@@ -1,0 +1,13 @@
+/* Moved out of an inline <style> block so the Content-Security-Policy can use
+   style-src 'self' with no 'unsafe-inline'. Rules are unchanged. */
+
+/* Investigator chat widget (parked). investigatorPulse is also used by the
+   Quick Scan in-progress indicator in ActionRow. */
+
+@keyframes investigatorPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+@media (max-width: 767px) {
+  .investigator-chat-root { display: none !important; }
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import '../styles/radar.css';
 import { PhishScoreLogo } from "./Primitives";
 import { SCAM_CATEGORIES } from "../constants";
 
@@ -443,11 +444,6 @@ export default function RadarModal({ onClose, T = {} }) {
         <div style={{ marginBottom: 6 }}><PhishScoreLogo T={T} size={16} dotSize={11} /></div>
         <RadarPanel T={T} onClose={onClose} />
       </div>
-      <style>{`
-        @keyframes radarPulse { 0%{transform:scale(0.8);opacity:1} 100%{transform:scale(1.6);opacity:0} }
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes slideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-      `}</style>
     </div>
   );
 }

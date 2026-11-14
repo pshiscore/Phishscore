@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import "./styles/app.css";
 import { SCAM_CATEGORIES, VISIBILITY_OPTIONS, THEMES, getScoreColor, getStatusLabel, getCat, timeAgo } from "./constants";
 import { getQsTaxonomy, QS_TAXONOMY } from "./utils/taxonomy";
 import { viewFromPath, pathForView, isView } from "./views";
@@ -182,6 +183,17 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("phishscore_theme") || "light"; } catch { return "light"; } });
 
   const T = THEMES[theme] || THEMES.light;
+
+  // The shell stylesheet (src/styles/app.css) is scoped to html.ps-app and picks
+  // its colours from a ps-theme-* class. Classes rather than inline style
+  // properties: applied before paint, and no style attribute ever changes.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('ps-app');
+    root.classList.toggle('ps-theme-dark', theme === 'dark');
+    root.classList.toggle('ps-theme-light', theme !== 'dark');
+  }, [theme]);
+  useLayoutEffect(() => () => document.documentElement.classList.remove('ps-app', 'ps-theme-dark', 'ps-theme-light'), []);
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -579,47 +591,6 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}
       {INVESTIGATOR_CHAT_ENABLED && <InvestigatorChat />}
 
-      <style>{`
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
-        @keyframes radarNavPulse { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.2);opacity:0} }
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: ${T.pageBg}; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: ${T.scrollTrack}; }
-        ::-webkit-scrollbar-thumb { background: ${T.scrollThumb}; border-radius: 3px; }
-        button { transition: all 0.15s; }
-        a { transition: color 0.15s; }
-        a:hover { color: #f43f5e !important; }
-        .nav-label { display: none; }
-        @media (min-width: 768px) { .nav-label { display: inline; } }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        @media (max-width: 767px) {
-          .site-header { padding: 12px 14px !important; gap: 8px !important; }
-          .nav-scroll-wrapper { overflow-x: auto !important; }
-          .nav-buttons { gap: 4px !important; flex-wrap: nowrap !important; padding-bottom: 2px; }
-          .nav-btn { height: 34px !important; padding: 0 8px !important; border-radius: 8px !important; flex-shrink: 0 !important; }
-          .cta-btn { padding: 9px 12px !important; font-size: 10px !important; border-radius: 10px !important; letter-spacing: 1px !important; flex-shrink: 0 !important; }
-          .site-main { padding: 16px 14px !important; }
-          .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; margin-bottom: 14px !important; }
-          .stat-card { padding: 8px 6px !important; border-radius: 8px !important; border-top-width: 2px !important; }
-          .stat-label { font-size: 7px !important; letter-spacing: 1px !important; line-height: 1.3 !important; margin-bottom: 4px !important; text-align: center !important; }
-          .stat-value { font-size: 18px !important; text-align: center !important; }
-          .stat-sub { font-size: 8px !important; text-align: center !important; }
-          .cat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-          .feed-card { padding: 16px 14px !important; border-radius: 12px !important; }
-          .feed-row { grid-template-columns: 44px 1fr !important; gap: 10px !important; }
-          .feed-row > *:last-child { grid-column: 2; margin-top: -4px; }
-          .filter-divider { display: none !important; }
-          .feed-text { display: block; overflow: visible; }
-          .desktop-only { display: none !important; }
-        }
-        @media (max-width: 480px) {
-          .modal-inner { padding: 20px 16px !important; }
-          .modal-inner .step-indicators { gap: 4px !important; }
-        }
-      `}</style>
     </div>
   );
 }

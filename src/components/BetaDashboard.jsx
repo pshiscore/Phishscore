@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useLayoutEffect } from 'react';
+import '../styles/beta.css';
 
 const T = {
   pageBg: '#0a0a0f',
@@ -11,6 +12,11 @@ const T = {
 };
 
 export default function BetaDashboard() {
+  // Scope for src/styles/beta.css (was an inline <style> while mounted).
+  useLayoutEffect(() => {
+    document.documentElement.classList.add('ps-beta');
+    return () => document.documentElement.classList.remove('ps-beta');
+  }, []);
   const [input, setInput] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -204,14 +210,6 @@ export default function BetaDashboard() {
         PHISHSCORE.AI — V2 BETA PROTOTYPE · NOT FOR PUBLIC DISTRIBUTION
       </div>
 
-      <style>{`
-        * { box-sizing: border-box; }
-        body { margin: 0; background: ${T.pageBg}; }
-        textarea::placeholder { color: #475569; }
-        textarea::-webkit-scrollbar { width: 4px; }
-        textarea::-webkit-scrollbar-track { background: transparent; }
-        textarea::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-      `}</style>
     </div>
   );
 }

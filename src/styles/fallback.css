@@ -1,0 +1,6 @@
+/* Static fallback content in public/index.html (shown before the app mounts,
+   and to crawlers). Was two inline style= attributes. main.css is linked in
+   <head>, so these apply before the bundle runs. */
+
+.fallback-kicker { font: 11px monospace; letter-spacing: 3px; color: #f43f5e; }
+.fallback-footer { font: 11px monospace; color: #9ca3af; }

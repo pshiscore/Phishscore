@@ -1,0 +1,14 @@
+/* Moved out of an inline <style> block so the Content-Security-Policy can use
+   style-src 'self' with no 'unsafe-inline'. Rules are unchanged. */
+
+/* Category breakdown (src/components/CategoryBreakdown.jsx). */
+
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+@media (max-width: 767px) {
+  .breakdown-desktop-only { display: none !important; }
+  .breakdown-desktop-count { display: none !important; }
+}
+@media (min-width: 768px) {
+  .breakdown-mobile-count { display: none !important; }
+}

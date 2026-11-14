@@ -1,4 +1,5 @@
 import { useState } from "react";
+import '../styles/category-breakdown.css';
 import { CatIconSvg } from "./Primitives";
 
 export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setFilterCat, T = {} }) {
@@ -55,17 +56,6 @@ export default function CategoryBreakdown({ catCounts, maxCount, filterCat, setF
           {showAll ? "SHOW LESS" : `+ ${catCounts.length - DEFAULT_DESKTOP} MORE CATEGORIES`}
         </button>
       )}
-      <style>{`
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        @media (max-width: 767px) {
-          .breakdown-desktop-only { display: none !important; }
-          .breakdown-desktop-count { display: none !important; }
-        }
-        @media (min-width: 768px) {
-          .breakdown-mobile-count { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }
