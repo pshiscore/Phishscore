@@ -129,14 +129,14 @@ function SubscribeModal({ T, onClose }) {
         <div style={{ fontSize: 9, letterSpacing: 4, color: "#a78bfa", fontFamily: "monospace", marginBottom: 10 }}>WEEKLY INTELLIGENCE</div>
         <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "monospace", color: T.text, marginBottom: 6, letterSpacing: 0.5 }}>PhishScore Weekly Brief</div>
         <p style={{ fontSize: 13, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6, margin: "0 0 24px" }}>
-          One email per week. The most critical threats, synthesized by AI.
+          The weekly brief has not launched yet. Leave your email and we will write only if it does.
         </p>
 
         {status === 'success' ? (
           <div style={{ background: "#081410", border: "1px solid #34d39930", borderRadius: 12, padding: "18px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOU'RE IN</div>
-            <div style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>Check your inbox for a confirmation. Your first briefing arrives next week.</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399", fontFamily: "monospace", letterSpacing: 1, marginBottom: 6 }}>YOU'RE ON THE LIST</div>
+            <div style={{ fontSize: 12, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.6 }}>We saved your email. No emails are being sent yet; we will write only if the weekly brief launches.</div>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -168,10 +168,10 @@ function SubscribeModal({ T, onClose }) {
         <div style={{ background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 12, padding: "14px 16px", marginTop: status === 'success' ? 16 : 0 }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, letterSpacing: 2, color: "#a78bfa", marginBottom: 6 }}>🤖 AI TRANSPARENCY</div>
           <p style={{ fontSize: 11, color: T.text3, fontFamily: "Georgia, serif", lineHeight: 1.65, margin: "0 0 8px" }}>
-            <strong style={{ color: T.text2 }}>100% AI-Generated.</strong> This briefing is autonomously synthesized by AI. We use Cohere's enterprise RAG (Retrieval-Augmented Generation) models to digest thousands of community reports and global threat feeds into a single, zero-hallucination newsletter. No human writers involved.
+            <strong style={{ color: T.text2 }}>100% AI-Generated.</strong> These briefings are written by AI. Anthropic's Claude summarizes articles from public security news sources, such as BleepingComputer, The Record and Ars Technica. No human writers are involved, and summaries can contain mistakes, so check the linked source before acting on one.
           </p>
           <p style={{ fontSize: 10, color: T.text4, fontFamily: "monospace", letterSpacing: 0.5, margin: 0 }}>
-            One email per week. Unsubscribe anytime. We never sell your data.
+            We never sell your data. To have your email removed, write to contact@phishscore.ai.
           </p>
         </div>
 

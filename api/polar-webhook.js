@@ -1,3 +1,4 @@
+const { dbError } = require('./_utils/safeLog');
 // ── Polar Webhook — handles post-payment events from Polar via Svix ───────────
 
 const crypto = require('crypto');
@@ -100,15 +101,14 @@ module.exports = async function handler(req, res) {
   });
 
   if (!patchRes.ok) {
-    console.error('polar-webhook: Supabase PATCH failed', await patchRes.text());
+    console.error('polar-webhook: Supabase PATCH failed', dbError(await patchRes.text()));
   }
 
   console.log(`polar-webhook: case ${caseId} marked paid (tier ${tier})`);
 
   // T2/T3: T1 frontend polls and triggers /api/deep-intel itself
   if (Number(tier) >= 2) {
-    const customerEmail = order.customer?.email || 'unknown';
-    console.log(`polar-webhook: T${tier} case ${caseId} paid by ${customerEmail} — manual follow-up required (order ${order.id})`);
+    console.log(`polar-webhook: T${tier} case ${caseId} paid — manual follow-up required (order ${order.id})`);
   }
 
   return res.status(200).json({ received: true });

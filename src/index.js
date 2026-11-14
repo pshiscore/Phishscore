@@ -59,6 +59,11 @@ const fallback = (
 
 const path = window.location.pathname;
 
+// The in-app legal modal was removed; old ?legal=terms|privacy links go to the
+// static pages, which are the only copies of the policy and terms.
+const legal = new URLSearchParams(window.location.search).get('legal');
+if (legal === 'privacy' || legal === 'terms') window.location.replace(`/${legal}.html`);
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>

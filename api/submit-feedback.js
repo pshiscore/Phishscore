@@ -1,3 +1,4 @@
+const { dbError } = require('./_utils/safeLog');
 // POST /api/submit-feedback — "Was this result accurate?" on an Analyze result.
 //
 // Order: per-IP rate limit (shared, fails closed) → input validation →
@@ -33,7 +34,7 @@ async function patch(table, id, body) {
     headers: { ...sbHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) console.error(`submit-feedback: ${table} PATCH failed`, await res.text());
+  if (!res.ok) console.error(`submit-feedback: ${table} PATCH failed`, dbError(await res.text()));
 }
 
 function validate(body) {

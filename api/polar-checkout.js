@@ -1,3 +1,4 @@
+const { dbError } = require('./_utils/safeLog');
 // ── Polar Checkout — creates a Polar checkout session and returns the URL ──────
 
 const { rejectIfParked } = require('./_utils/deepIntelGate');
@@ -62,7 +63,7 @@ module.exports = async function handler(req, res) {
 
     const caseRows = await caseRes.json();
     if (!Array.isArray(caseRows) || !caseRows[0]) {
-      console.error('Supabase case insert failed:', JSON.stringify(caseRows));
+      console.error('Supabase case insert failed:', dbError(JSON.stringify(caseRows)));
       throw new Error('Failed to create case record');
     }
     const caseId = caseRows[0].id;
@@ -84,13 +85,13 @@ module.exports = async function handler(req, res) {
 
     if (!polarRes.ok) {
       const errText = await polarRes.text();
-      console.error('Polar checkout error:', polarRes.status, errText);
+      console.error('Polar checkout error:', polarRes.status); // body can echo the customer's email
       throw new Error(`Polar API returned ${polarRes.status}: ${errText}`);
     }
 
     const polarData = await polarRes.json();
     if (!polarData.url) {
-      console.error('Polar response missing URL:', JSON.stringify(polarData));
+      console.error('Polar response missing URL; response keys:', Object.keys(polarData || {}).join(','));
       throw new Error('Polar API did not return a checkout URL');
     }
 

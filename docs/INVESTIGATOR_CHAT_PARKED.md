@@ -23,6 +23,13 @@ The code is kept; nothing was deleted.
 2. In Vercel, set `INVESTIGATOR_CHAT_ENABLED` = `true` for Production.
 3. Set `INVESTIGATOR_CHAT_ENABLED = true` in `src/components/InvestigatorChat.jsx`.
 4. Deploy, then ask the chat one question on www.phishscore.ai.
+5. **Restore the privacy policy disclosure first.** Section 7 of
+   `public/privacy.html` (rewritten 2026-11-14) does not list Cohere while the
+   chat is parked. Add this sentence back, under "Analysis and threat checks",
+   and update the effective date:
+
+   > **Cohere** — answers questions in the Investigator chat. It receives your
+   > question plus public submission summaries and threat news as context.
 
 ## Known issues to fix before relaunch
 

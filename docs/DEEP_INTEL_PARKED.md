@@ -49,6 +49,20 @@ depend on any gated endpoint.
    This mounts the real intake form again and removes the overlay.
 3. Deploy. Verify: `curl -X POST https://www.phishscore.ai/api/ivs-score -d '{}'
    -H 'content-type: application/json'` should return 400 (validation), not 503.
+4. **Before turning it back on, restore the privacy policy disclosure.**
+   Section 7 of `public/privacy.html` was rewritten on 2026-11-14 to list only
+   services that live code paths call. Deep Intel's services were left out
+   while it is parked. Add this paragraph back to section 7 (after
+   "Hosting, storage and monitoring"), update the effective date, and check
+   sections 2, 3, 5, 8 and 10, which describe paid investigations:
+
+   > **Deep Intel investigations.** Deep Intel investigations also use
+   > **Polar** for payment (it receives your email address; we never see card
+   > numbers), **URLScan.io** and **VirusTotal** to scan links in the case,
+   > **AbuseIPDB** to check the server hosting a linked site (not your IP
+   > address), and **Google Cloud Vision** to analyze images you upload.
+   > Anthropic, IPQualityScore, WhoisXML and Google Natural Language, listed
+   > above, are used for investigations too.
 
 To park again: remove the env var (or set it to anything but `true`) and flip
 `DEEP_INTEL_GATED` back to `true`.

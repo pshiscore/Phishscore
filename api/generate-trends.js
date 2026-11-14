@@ -45,10 +45,14 @@ const FALLBACK_INTELLIGENCE = {
   recommendedAction: "Do not click links in unsolicited SMS or email messages — navigate directly to the official website by typing the address into your browser.",
 };
 
+function publicSummaries(rows) {
+  return (Array.isArray(rows) ? rows : []).filter(s => s && s.visibility === 'public' && typeof s.summary === 'string' && s.summary).map(s => s.summary);
+}
+
 // ── Data fetching ──────────────────────────────────────────────────────────────
 
 async function fetchLast100() {
-  const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags,summary&order=created_at.desc&limit=100`;
+  const url = `${SUPABASE_URL}/rest/v1/submissions?select=category,score,tags,summary,visibility&order=created_at.desc&limit=100`;
   const res = await fetch(url, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   });
@@ -316,7 +320,6 @@ async function storeTrend(payload) {
 
 // ── Main handler ───────────────────────────────────────────────────────────────
 
-module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -344,8 +347,9 @@ module.exports = async function handler(req, res) {
     const prevTotal = previousRaw?.length || 0;
     const surgeRatio = prevTotal > 0 ? currentRaw.length / prevTotal : 1;
 
-    // CNL batch analysis on available summaries
-    const summaryTexts = currentRaw.filter(s => s.summary).map(s => s.summary);
+    // CNL batch analysis — public submissions only: private and anonymous
+    // summaries never leave our database.
+    const summaryTexts = publicSummaries(currentRaw);
     const cnlInsights = summaryTexts.length >= 5 ? await analyzeRadarBatch(summaryTexts) : null;
     if (cnlInsights) console.log('CNL insights:', JSON.stringify(cnlInsights).slice(0, 120));
 
@@ -378,3 +382,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to generate trends' });
   }
 };
+
+// Assigned after module.exports = handler (it used to be assigned first and lost).
+module.exports.config = { maxDuration: 60 };
+module.exports.publicSummaries = publicSummaries;

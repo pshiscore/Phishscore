@@ -460,7 +460,7 @@ module.exports = async function handler(req, res) {
     const domain = extractDomain(url);
     const messageText = caseRecord.original_message || caseRecord.story || '';
 
-    console.log(`Deep Intel case ${caseId}: URL=${url}, domain=${domain}`);
+    console.log(`Deep Intel case ${caseId}: starting (url ${url ? 'present' : 'absent'})`);
 
     // Initialise telemetry log — tracks every external API call in execution order
     const telemetryLog = [];
@@ -522,7 +522,7 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    console.log(`Deep Intel case ${caseId} complete — report available at https://phishscore.ai/report?token=${caseRecord.report_token}`);
+    console.log(`Deep Intel case ${caseId} complete`); // the report token is a bearer secret: never log it
     return res.status(200).json({ success: true });
 
   } catch (err) {

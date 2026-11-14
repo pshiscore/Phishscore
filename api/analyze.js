@@ -1,4 +1,5 @@
 const rateLimit = require('./_utils/rateLimit');
+const { dbError, safeError } = require('./_utils/safeLog');
 const LIMITS = require('./_utils/limits').analyze;
 // Called as recaptcha.verifyRecaptcha so unit tests can mock the verifier.
 const recaptcha = require('./_utils/recaptcha');
@@ -27,7 +28,8 @@ async function checkUrlThreat(url, wrKey, cfKey) {
         const r = await fetch('https://api.cloudflare.com/client/v4/radar/url_scanner/scans', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfKey}` },
-          body: JSON.stringify({ url, visibility: 'Public' }),
+          // Unlisted: the scan stays out of Cloudflare Radar's public listings.
+          body: JSON.stringify({ url, visibility: 'Unlisted' }),
         });
         const d = await r.json();
         return !!(d.success && d.result?.scan?.verdicts?.malicious);
@@ -50,6 +52,13 @@ async function checkUrlThreat(url, wrKey, cfKey) {
 }
 
 // ── Store anonymized training data ────────────────────────────────────────────
+const TRAINING_ANALYSIS_DROPPED = Object.freeze(['detectedSources', 'extracted_iocs']);
+function trainingAnalysis(parsed) {
+  const out = { ...(parsed || {}) };
+  for (const k of TRAINING_ANALYSIS_DROPPED) delete out[k];
+  return out;
+}
+
 async function storeTrainingData(parsed, context = {}) {
   const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -67,9 +76,12 @@ async function storeTrainingData(parsed, context = {}) {
       urlhaus_flagged: parsed.urlhausFlagged === true,
       has_urls: (parsed.detectedSources || []).some(s => s.startsWith('http')),
       has_phone: (parsed.detectedSources || []).some(s => /^\+?[\d\s\-()]{7,}$/.test(s)),
-      original_text: context.rawText || null,
-      // Enriched training fields (only written when trainAI === true)
-      training_analysis: parsed,
+      // The message itself is never stored for training (privacy policy §6,
+      // and the promise on the submit form). original_text stays null.
+      original_text: null,
+      // Enriched training fields (only written when trainAI === true), minus
+      // the identifiers the model extracted: sender emails/phones and links.
+      training_analysis: trainingAnalysis(parsed),
       training_modality: context.modality || 'text',
       // delivery_channel is a first-class submission field — not stored here
       training_gsb_state: context.gsbFlagged || false,
@@ -90,13 +102,13 @@ async function storeTrainingData(parsed, context = {}) {
     });
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`Supabase Insert Failed [${res.status}]:`, errorText);
+      console.error(`Supabase Insert Failed [${res.status}]:`, dbError(errorText));
       throw new Error(`Database error: ${res.status}`);
     }
     const data = await res.json();
     return data[0]?.id || null;
   } catch (e) {
-    console.error('Training data storage error:', e);
+    console.error('Training data storage error:', safeError(e));
     return null;
   }
 }
@@ -126,7 +138,7 @@ async function storeSubmission(parsed, input) {
       body: JSON.stringify(row),
     });
     if (!res.ok) {
-      console.error(`storeSubmission failed [${res.status}]:`, await res.text());
+      console.error(`storeSubmission failed [${res.status}]:`, dbError(await res.text()));
       return null;
     }
     const rows = await res.json();
@@ -348,7 +360,7 @@ module.exports = async function handler(req, res) {
         });
 
         data.content = [{ type: 'text', text: JSON.stringify(parsed) }];
-      } catch (e) { console.error('Response injection error:', e); }
+      } catch (e) { console.error('Response injection error:', safeError(e)); }
     }
 
     // ── Parse final response once for training + admin notification ────────────
@@ -356,10 +368,9 @@ module.exports = async function handler(req, res) {
     try {
       const raw = data.content?.map(c => c.text || '').join('') || '';
       if (raw.trim()) parsedResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    } catch (e) { console.error('Response parse error:', e); }
+    } catch (e) { console.error('Response parse error:', safeError(e)); }
 
     // ── Extract raw text once for training + admin alert ────────────────────
-    const rawText = input.text.slice(0, 4000);
 
     // ── Store training data if opted in ─────────────────────────────────────
     let trainingId = null;
@@ -368,13 +379,12 @@ module.exports = async function handler(req, res) {
         const modality = input.image ? 'image' : 'text';
         trainingId = await storeTrainingData(parsedResult, {
           modality,
-          rawText,
           gsbFlagged,
           radarFlagged,
           urlhausFlagged,
           isAnonymous: input.isAnonymous,
         });
-      } catch (e) { console.error('Training store error:', e); }
+      } catch (e) { console.error('Training store error:', safeError(e)); }
     }
 
     // ── Save the feed row — every real submission; dryRun (dev dashboard) never ──
@@ -394,7 +404,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ...data, trainingId, submission });
 
   } catch (err) {
-    console.error('Analysis error:', err);
+    console.error('Analysis error:', safeError(err));
     return res.status(500).json({
       error: 'service_unavailable',
       message: 'The AI analysis service is temporarily unavailable. Please try again in a few minutes.'
@@ -404,3 +414,4 @@ module.exports = async function handler(req, res) {
 
 // A ≤3 MB image is ~4 MB as base64; Vercel caps request bodies at 4.5 MB anyway.
 module.exports.config = { api: { bodyParser: { sizeLimit: '4.5mb' } } };
+module.exports.trainingAnalysis = trainingAnalysis;

@@ -46,13 +46,13 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('Polar checkout error:', response.status, text);
+      console.error('Polar checkout error:', response.status); // body can echo the customer's email
       throw new Error(`Polar API returned ${response.status}: ${text}`);
     }
 
     const data = await response.json();
     if (!data.url) {
-      console.error("Polar response missing URL:", data);
+      console.error("Polar response missing URL; response keys:", Object.keys(data || {}).join(","));
       throw new Error("Polar API did not return a checkout URL");
     }
     return res.status(200).json({ url: data.url });

@@ -10,7 +10,6 @@ import SubmitModal, { ScannerPanel } from "./components/SubmitModal";
 import { FAQContent } from "./components/FAQPage";
 import { GlossaryContent } from "./components/GlossaryPage";
 import TransparencyPage from "./components/TransparencyPage";
-import LegalPage from "./components/LegalPage";
 import { RadarPanel } from "./components/RadarModal";
 import { NewsPanel } from "./components/NewsPanel";
 import DeepIntelModal, { DeepIntelContent } from "./components/DeepIntelModal";
@@ -84,7 +83,8 @@ function FeedItem({ s, i, T, isMobile }) {
   const qsTaxon = s._isQuickScan ? getQsTaxonomy(s.input_type) : null;
   const cat = s._isQuickScan ? null : getCat(s.category);
   const qsTags = s._isQuickScan ? [s.category, ...(s.ai_tags || [])].filter(Boolean) : [];
-  const summaryText = s.summary || s.preview || "";
+  // Only the AI summary is shown; the raw message preview is never published.
+  const summaryText = s.summary || "Summary not available.";
   const isTruncatable = summaryText.length > MAX_SUMMARY;
 
   return (
@@ -141,18 +141,6 @@ export default function App() {
   const [activeView, setActiveView] = useState(() => viewFromPath(window.location.pathname));
   const contentRef = useRef(null);
   const [showInvestigation, setShowInvestigation] = useState(false); // modal only — for prefill from scan results
-  const [showLegal, setShowLegal] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("legal") === "terms" || params.get("legal") === "privacy";
-    } catch { return false; }
-  });
-  const [legalTab, setLegalTab] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("legal") === "privacy" ? "privacy" : "terms";
-    } catch { return "terms"; }
-  });
 const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const [reportCaseId, setReportCaseId] = useState(() => {
     try {
@@ -207,7 +195,7 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
   const dismissBar = () => { setBarDismissed(true); try { localStorage.setItem("phishscore_bar_dismissed", "1"); } catch {} };
 
   // Push a history entry per view so the back button and deep links work.
-  // ?case= / ?token= / ?legal= are preserved; index.js owns /beta and /devs.
+  // ?case= / ?token= are preserved; index.js owns /beta and /devs.
   const switchView = (view) => {
     const next = isView(view) ? view : 'dashboard';
     setActiveView(next);
@@ -557,8 +545,8 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
               <button onClick={() => switchView('faq')} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>FAQ</button>
               <button onClick={() => switchView('glossary')} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>GLOSSARY</button>
               <button onClick={() => setShowTransparency(true)} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TRANSPARENCY</button>
-              <button onClick={() => { setLegalTab("terms"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>TERMS</button>
-              <button onClick={() => { setLegalTab("privacy"); setShowLegal(true); }} style={{ background: "none", border: "none", color: T.text4, cursor: "pointer", fontFamily: "monospace", fontSize: 11, letterSpacing: 1 }}>PRIVACY</button>
+              <a href="/terms.html" style={{ color: T.text4, fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1, display: "inline-block", padding: "1px 6px", lineHeight: "normal" }}>TERMS</a>
+              <a href="/privacy.html" style={{ color: T.text4, fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1, display: "inline-block", padding: "1px 6px", lineHeight: "normal" }}>PRIVACY</a>
               <a href="mailto:contact@phishscore.ai" style={{ color: T.text4, fontFamily: "monospace", fontSize: 11, textDecoration: "none", letterSpacing: 1 }}>contact@phishscore.ai</a>
               <div style={{ fontSize: 10, color: T.text4, fontFamily: "monospace" }}>2026 PhishScore.ai</div>
             </div>
@@ -585,7 +573,6 @@ const [deepIntelPrefill, setDeepIntelPrefill] = useState({});
       )}
       {showModal && <SubmitModal onClose={() => setShowModal(false)} onNewResult={handleNewResult} onDeepIntel={(prefill) => { setShowModal(false); setDeepIntelPrefill(prefill || {}); setShowInvestigation(true); }} submissionCounts={Object.fromEntries(SCAM_CATEGORIES.map(c => [c.id, submissions.filter(s => s.category === c.id).length]))} theme={theme} T={T} />}
       {showTransparency && <TransparencyPage onClose={() => setShowTransparency(false)} submissions={submissions} T={T} />}
-      {showLegal && <LegalPage onClose={() => setShowLegal(false)} initialTab={legalTab} T={T} />}
 {reportCaseId && <ReportStatusModal caseId={reportCaseId} onClose={() => { setReportCaseId(null); window.history.replaceState({}, '', pathForView(activeView)); }} T={T} />}
       {reportToken && <ReportStatusModal token={reportToken} onClose={() => { setReportToken(null); window.history.replaceState({}, '', pathForView(activeView)); }} T={T} />}
       {showInvestigation && <DeepIntelModal onClose={() => { setShowInvestigation(false); setDeepIntelPrefill({}); }} prefill={deepIntelPrefill} T={T} />}

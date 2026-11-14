@@ -78,9 +78,11 @@ function buildSubmissionRow({ parsed, input = {} }) {
     radar_metadata: {
       shows_ai_patterns: parsed.shows_ai_patterns ?? null,
       impersonated_brand: parsed.impersonated_brand ?? null,
-      extracted_iocs: Array.isArray(parsed.extracted_iocs) ? parsed.extracted_iocs : [],
+      // Anonymous rows keep no identifiers: no links/domains/IPs from the
+      // message and no IPQS lookup (it carries the sender's email or phone).
+      extracted_iocs: isAnon ? [] : (Array.isArray(parsed.extracted_iocs) ? parsed.extracted_iocs : []),
       vector: parsed.vector ?? deliveryChannel,
-      ipqs: input.ipqs ?? null,
+      ipqs: isAnon ? null : (input.ipqs ?? null),
     },
   };
 }

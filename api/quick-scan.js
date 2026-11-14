@@ -5,6 +5,7 @@ const { logUsage } = require('./_utils/logUsage');
 const rateLimit = require('./_utils/rateLimit');
 const LIMITS = require('./_utils/limits').quickScan;
 const recaptcha = require('./_utils/recaptcha');
+const { dbError } = require('./_utils/safeLog');
 // Shared with the Quick Scan UI (src/components/ActionRow.jsx) so the model's
 // scale and the user-facing label cannot drift apart. Lives under src/ because
 // CRA cannot import from outside src/; Node resolves it fine from here.
@@ -203,7 +204,7 @@ async function insertQuickScan(record) {
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error('quick_scans insert failed [' + res.status + ']:', err);
+    console.error('quick_scans insert failed [' + res.status + ']:', dbError(err));
     return null;
   }
   // Prefer: return=representation is already set, so the new row comes back —

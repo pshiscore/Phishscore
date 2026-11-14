@@ -7,6 +7,7 @@ const { analyzeContactData } = require('../lib/ipqs');
 const rateLimit = require('./_utils/rateLimit');
 const LIMITS = require('./_utils/limits').extractEmail;
 const recaptcha = require('./_utils/recaptcha');
+const { safeError } = require('./_utils/safeLog');
 
 // A pasted email with headers. The model only ever sees the first MODEL_CHARS.
 const MAX_RAW_TEXT_CHARS = 20000;
@@ -84,7 +85,7 @@ module.exports = async function handler(req, res) {
   try {
     parsed = await callHaiku(rawText);
   } catch (err) {
-    console.error('[extract-email] Haiku parse failed:', err.message);
+    console.error('[extract-email] Haiku parse failed:', safeError(err));
     return res.status(502).json({ error: 'AI parsing failed', detail: err.message });
   }
 

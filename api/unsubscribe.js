@@ -1,3 +1,4 @@
+const { dbError } = require('./_utils/safeLog');
 // REACT_APP_SUPABASE_URL is the live project. SUPABASE_URL was set by the old
 // Supabase integration and points at a deleted project; preferring it sent
 // these writes to a dead database.
@@ -30,7 +31,7 @@ module.exports = async function handler(req, res) {
 
     if (!result.ok) {
       const err = await result.text();
-      console.error(`unsubscribe: Supabase delete failed [${result.status}]:`, err);
+      console.error(`unsubscribe: Supabase delete failed [${result.status}]:`, dbError(err));
       return res.status(500).send(html('Something went wrong. Please try again or contact us at contact@phishscore.ai.', false));
     }
   } catch (err) {

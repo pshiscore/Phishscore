@@ -1,3 +1,4 @@
+const { dbError } = require('./_utils/safeLog');
 // REACT_APP_SUPABASE_URL is the live project. SUPABASE_URL was set by the old
 // Supabase integration and points at a deleted project; preferring it sent
 // these writes to a dead database.
@@ -35,7 +36,7 @@ module.exports = async function handler(req, res) {
     // 409 = unique constraint violation (already subscribed) — treat as success
     if (!res2.ok && res2.status !== 409) {
       const err = await res2.text();
-      console.error(`subscribe: Supabase insert failed [${res2.status}]:`, err);
+      console.error(`subscribe: Supabase insert failed [${res2.status}]:`, dbError(err));
       return res.status(500).json({ error: 'Could not save subscription. Please try again.' });
     }
   } catch (err) {

@@ -8,7 +8,7 @@ process.env.REACT_APP_SUPABASE_URL = 'https://db.example';
 process.env.SUPABASE_SERVICE_KEY = 'service-key';
 const feed = require('../api/get-submissions');
 const dup = require('../api/check-duplicate');
-const { stripPrivate, clampLimit, HIDDEN_FOR_PRIVATE } = feed;
+const { toFeedRows, clampLimit, FEED_FIELDS, SELECT } = feed;
 const { findDuplicate, MATCH_FIELDS } = dup;
 
 function res() { const r = { code: null, body: null, headers: {} }; r.status = c => { r.code = c; return r; }; r.json = b => { r.body = b; return r; }; r.setHeader = (k, v) => { r.headers[k] = v; }; return r; }
@@ -20,20 +20,30 @@ const anon = { id: 3, visibility: 'anonymous', preview: null, source: null, scor
 
 // ── feed ─────────────────────────────────────────────────────────────────────
 
-test('private rows lose preview and source; everything else on them is kept', () => {
-  const [p] = stripPrivate([priv]);
-  for (const f of HIDDEN_FOR_PRIVATE) assert.strictEqual(p[f], null, f);
-  assert.strictEqual(p.score, 60); assert.strictEqual(p.category, 'job'); assert.strictEqual(p.summary, 'kept'); assert.deepStrictEqual(p.tags, ['b']);
+const md = { ipqs: { input: 'scammer@x.com', type: 'email' }, extracted_iocs: ['http://evil.example'] };
+const full = (r) => ({ ...r, radar_metadata: md, delivery_channel: 'email', gsb_flagged: true, user_feedback: 'voter text', is_accurate: true, classification_note: 'auto', created_at: '2026-11-14T00:00:00Z' });
+const NEVER = ['source', 'preview', 'radar_metadata', 'delivery_channel', 'gsb_flagged', 'user_feedback', 'is_accurate'];
+
+test('no row carries the sender, the preview, metadata, flags or feedback text', () => {
+  for (const r of toFeedRows([full(pub), full(priv), full(anon)])) {
+    for (const f of NEVER) assert.ok(!(f in r), `${r.visibility} row has ${f}`);
+    assert.deepStrictEqual(Object.keys(r).sort(), [...FEED_FIELDS, 'summary'].sort());
+  }
 });
 
-test('public and anonymous rows pass through unchanged', () => {
-  const out = stripPrivate([pub, anon]);
-  assert.deepStrictEqual(out[0], pub); assert.deepStrictEqual(out[1], anon);
+test('only public rows keep the summary; every row keeps what the feed shows', () => {
+  const [p, q, a] = toFeedRows([full(pub), full(priv), full(anon)]);
+  assert.strictEqual(p.summary, 's'); assert.strictEqual(q.summary, null); assert.strictEqual(a.summary, null);
+  assert.strictEqual(q.score, 60); assert.strictEqual(q.category, 'job'); assert.deepStrictEqual(q.tags, ['b']); assert.strictEqual(q.classification_note, 'auto');
 });
 
 test('does not mutate the input and tolerates garbage', () => {
-  const copy = { ...priv }; stripPrivate([copy]); assert.strictEqual(copy.preview, 'private text');
-  assert.deepStrictEqual(stripPrivate(null), []); assert.deepStrictEqual(stripPrivate([null, undefined]), [null, undefined]);
+  const copy = full(priv); toFeedRows([copy]); assert.strictEqual(copy.preview, 'private text');
+  assert.deepStrictEqual(toFeedRows(null), []); assert.deepStrictEqual(toFeedRows([null, undefined, 'x']), []);
+});
+
+test('the database query selects only the allowlisted columns', () => {
+  assert.strictEqual(SELECT, 'id,created_at,category,score,tags,visibility,classification_note,summary');
 });
 
 test('limit is clamped to [1, 1000] and defaults to 1000', () => {
@@ -41,13 +51,13 @@ test('limit is clamped to [1, 1000] and defaults to 1000', () => {
   assert.strictEqual(clampLimit('5000'), 1000); assert.strictEqual(clampLimit('0'), 1000); assert.strictEqual(clampLimit('abc'), 1000);
 });
 
-test('GET feed → 200 with private rows stripped, served with the service key', async (t) => {
+test('GET feed → 200 with allowlisted fields only, served with the service key', async (t) => {
   const calls = stubFetch(t, [pub, priv, anon]);
   const r = res(); await feed({ method: 'GET', query: {} }, r);
   assert.strictEqual(r.code, 200); assert.strictEqual(r.body.length, 3);
-  assert.strictEqual(r.body[1].preview, null); assert.strictEqual(r.body[1].source, null); assert.strictEqual(r.body[0].preview, 'public text');
+  assert.ok(!('preview' in r.body[0]) && !('source' in r.body[0])); assert.strictEqual(r.body[1].summary, null); assert.strictEqual(r.body[0].summary, 's');
   assert.strictEqual(calls[0].opts.headers.apikey, 'service-key');
-  assert.ok(calls[0].url.includes('order=created_at.desc&limit=1000'));
+  assert.ok(calls[0].url.includes(`select=${SELECT}&order=created_at.desc&limit=1000`));
   assert.strictEqual(r.headers['Cache-Control'], 'no-store');
 });
 
