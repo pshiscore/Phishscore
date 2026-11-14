@@ -1,6 +1,7 @@
 const Parser = require('rss-parser');
 const { logUsage } = require('../_utils/logUsage');
 const { requireJobAuth } = require('../_utils/cronAuth');
+const { dbError } = require('../_utils/safeLog');
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -15,6 +16,21 @@ const FEEDS = [
 ];
 
 const ITEMS_PER_FEED = 2;
+
+// published_at drives the 7-day News window. Every current feed gives an
+// accurate date (checked 2026-11-14 against the live feeds). If an item has
+// no date, an unparseable one, or one more than an hour in the future, the
+// fetch time is used instead. Before this, a missing date failed the insert
+// (the column is NOT NULL) and an unparseable one threw and ended the run.
+const FUTURE_TOLERANCE_MS = 60 * 60 * 1000;
+function publishedAt(item, fetchedAt = new Date()) {
+  const raw = item && (item.isoDate || item.pubDate);
+  const t = raw ? Date.parse(raw) : NaN;
+  if (!Number.isFinite(t) || t > fetchedAt.getTime() + FUTURE_TOLERANCE_MS) {
+    return { iso: fetchedAt.toISOString(), fallback: true };
+  }
+  return { iso: new Date(t).toISOString(), fallback: false };
+}
 
 // ── Duplicate check ────────────────────────────────────────────────────────────
 
@@ -99,13 +115,11 @@ async function insertArticle(record) {
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error(`Supabase insert failed [${res.status}]:`, err);
+    console.error(`Supabase insert failed [${res.status}]:`, dbError(err));
   }
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────────
-
-module.exports.config = { maxDuration: 60 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -116,7 +130,7 @@ module.exports = async function handler(req, res) {
   console.log('fetch-news start, actor:', auth.actor);
 
   const parser = new Parser({ timeout: 10000 });
-  const results = { processed: 0, skipped: 0, errors: [] };
+  const results = { processed: 0, skipped: 0, errors: [], dateFallbacks: [] };
 
   for (const feed of FEEDS) {
     let feedData;
@@ -151,6 +165,11 @@ module.exports = async function handler(req, res) {
         continue;
       }
 
+      const published = publishedAt(item);
+      if (published.fallback) {
+        results.dateFallbacks.push(feed.name);
+        console.warn(`[fetch-news] ${feed.name}: item has no usable publish date; using fetch time`);
+      }
       await insertArticle({
         source_name: feed.name,
         article_url: articleUrl,
@@ -158,7 +177,7 @@ module.exports = async function handler(req, res) {
         hook: summary.hook || null,
         impact: summary.impact || null,
         takeaway: summary.takeaway || null,
-        published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
+        published_at: published.iso,
       });
 
       results.processed++;
@@ -168,3 +187,7 @@ module.exports = async function handler(req, res) {
   console.log('fetch-news complete:', results);
   return res.status(200).json({ ok: true, ...results });
 };
+
+// Assigned after module.exports = handler (it used to be assigned first and lost).
+module.exports.config = { maxDuration: 60 };
+module.exports.publishedAt = publishedAt;

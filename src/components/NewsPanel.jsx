@@ -12,7 +12,6 @@ const SOURCES = [
   'Writer Beware',
   'The Record',
   'Ars Technica',
-  'Fraud of the Day',
   'TorrentFreak',
 ];
 
@@ -225,7 +224,7 @@ export function NewsPanel({ T = {}, onClose }) {
             </span>
           </div>
           <p style={{ color: T.text3, fontFamily: "Georgia, serif", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-            AI-curated cybersecurity intelligence from leading threat research sources.
+            AI-curated cybersecurity intelligence from leading threat research sources, from the past 7 days.
           </p>
         </div>
         {onClose && (
@@ -284,10 +283,10 @@ export function NewsPanel({ T = {}, onClose }) {
       ) : visibleNews.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 0" }}>
           <div style={{ color: T.text4, fontFamily: "monospace", fontSize: 12, marginBottom: 8 }}>
-            {activeSource === 'all' ? 'NO BRIEFINGS AVAILABLE YET' : `NO ARTICLES FROM ${activeSource.toUpperCase()} YET`}
+            {activeSource === 'all' ? 'NO STORIES IN THE PAST 7 DAYS' : `NO ${activeSource.toUpperCase()} STORIES IN THE PAST 7 DAYS`}
           </div>
           <div style={{ color: T.text4, fontFamily: "Georgia, serif", fontSize: 13 }}>
-            {activeSource === 'all' ? 'The news pipeline is warming up. Check back shortly.' : 'Try selecting a different source or check back after the next refresh.'}
+            {activeSource === 'all' ? 'New stories are added once a day.' : 'Try another source, or check back after the next daily update.'}
           </div>
         </div>
       ) : (

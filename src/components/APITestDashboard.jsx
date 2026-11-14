@@ -347,23 +347,10 @@ function NewsRefreshPanel({ onOpenNews, T }) {
 
   const handleRefresh = () => job.run(async () => {
 
-    // Step 1: delete all rows from threat_news for a clean fetch
-    try {
-      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-      await fetch(`${supabaseUrl}/rest/v1/threat_news?id=neq.00000000-0000-0000-0000-000000000000`, {
-        method: 'DELETE',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          Prefer: 'return=minimal',
-        },
-      });
-    } catch {
-      // Non-blocking — proceed even if delete fails
-    }
-
-    // Step 2: trigger RSS scraper — a throw here becomes job.error
+    // threat_news is kept as an archive: this only runs the scraper, which
+    // skips articles it already has. (It used to try to delete every row with
+    // the anon key first; row-level security always blocked that.)
+    // Trigger the RSS scraper — a throw here becomes job.error
     {
       const r = await fetch(`${BASE}/api/cron/fetch-news`, {
         method: 'POST',
@@ -382,7 +369,7 @@ function NewsRefreshPanel({ onOpenNews, T }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', letterSpacing: 2, marginBottom: 2 }}>NEWS INTELLIGENCE</div>
-          <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Purges threat_news table + triggers RSS scraper with Sonnet/Haiku</div>
+          <div style={{ fontSize: 10, color: T.text4, fontFamily: 'monospace' }}>Triggers the RSS scraper with Sonnet/Haiku (existing stories are kept)</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {status === 'success' && (
