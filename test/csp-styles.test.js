@@ -96,3 +96,15 @@ test('the privacy policy names Sentry for error monitoring and does not mention 
   assert.match(html, /<strong>Sentry<\/strong> — error and performance monitoring/);
   assert.ok(!/replay/i.test(html));
 });
+
+test('privacy section 7 lists only services live code calls (2026-11-14 rewrite)', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public/privacy.html'), 'utf8');
+  const s7 = html.slice(html.indexOf('7. Third-Party Services'), html.indexOf('8. Data Retention'));
+  for (const name of ['Anthropic (Claude API)', 'IPQualityScore', 'Google Web Risk, Cloudflare Radar URL Scanner and URLhaus (abuse.ch)', 'Domain registries (RDAP) and WhoisXML API', 'Google Cloud Natural Language API', 'Google Gemini API', 'Google reCAPTCHA', 'Supabase', 'Vercel', 'Sentry']) {
+    assert.ok(s7.includes(`<strong>${name}</strong>`), name);
+  }
+  for (const gone of ['Resend', 'Twilio', 'Polar', 'URLScan', 'VirusTotal', 'AbuseIPDB', 'Vision', 'Cohere', 'publicly visible', 'public scan']) assert.ok(!s7.includes(gone), gone);
+  assert.ok(s7.includes('This site is protected by reCAPTCHA.'));
+  assert.ok(s7.includes('we do not sell your data or share it for advertising'));
+  assert.match(html, /EFFECTIVE DATE: NOVEMBER 14, 2026/);
+});

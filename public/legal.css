@@ -16,6 +16,7 @@ body { font-family: Georgia, serif; background: #f8f6f2; color: #111827; line-he
 .section { margin-bottom: 28px; }
 .section-title { font-family: monospace; font-size: 12px; font-weight: 700; color: #111827; letter-spacing: 1px; margin-bottom: 8px; }
 .section-body { font-size: 14px; color: #374151; line-height: 1.8; }
+.section-body + .section-body { margin-top: 12px; }
 .footer { background: #111827; color: #9ca3af; font-family: monospace; font-size: 10px; text-align: center; padding: 24px; letter-spacing: 1px; margin-top: 60px; }
 .footer a { color: #dc2626; text-decoration: none; }
 .divider { height: 1px; background: #e5e7eb; margin: 32px 0; }
