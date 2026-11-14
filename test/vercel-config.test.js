@@ -23,7 +23,9 @@ test('CSP ships report-only, with no unsafe-inline/unsafe-eval and frame-ancesto
   assert.ok(!csp.includes("'unsafe-inline'") && !csp.includes("'unsafe-eval'"));
   assert.ok(d['script-src'].includes('https://www.google.com/recaptcha/') && d['script-src'].includes('https://www.gstatic.com/recaptcha/'));
   assert.ok(d['frame-src'].includes('https://www.google.com/recaptcha/'));
-  assert.ok(d['worker-src'].includes('blob:'), 'Sentry replay worker');
+  // Session Replay (the only blob: user) is off, so nothing allows blob: URLs.
+  assert.ok(!csp.includes('blob:'), 'no blob: sources');
+  assert.deepStrictEqual(d['worker-src'], ["'self'"]);
   assert.ok(d['connect-src'].some(s => s.endsWith('.ingest.us.sentry.io')), 'Sentry ingest');
   assert.match(d['report-uri'][0], /\/security\/\?sentry_key=/);
 });

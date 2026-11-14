@@ -23,7 +23,7 @@ test('no inline <style> elements in client code', () => {
 });
 
 test('no style= attributes or inline <style> in the static HTML', () => {
-  for (const f of ['public/index.html']) {
+  for (const f of ['public/index.html', 'public/privacy.html', 'public/terms.html']) {
     const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.ok(!/\sstyle\s*=/.test(html), `${f} has a style= attribute`);
     assert.ok(!/<style[\s>]/.test(html), `${f} has a <style> element`);
@@ -79,4 +79,20 @@ test('theme colours in app.css match THEMES in src/constants.js', () => {
       assert.ok(rule.includes(`${v}: ${get(k)};`), `${name} ${k}`);
     }
   }
+});
+
+test('privacy and terms pages load their styles from /legal.css, which defines every class they use', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'public/legal.css'), 'utf8');
+  for (const f of ['public/privacy.html', 'public/terms.html']) {
+    const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.match(html, /<link rel="stylesheet" href="\/legal\.css">/, f);
+    const classes = new Set([...html.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)));
+    for (const c of classes) if (c !== 'active') assert.match(css, new RegExp(`\\.${c}\\b`), `${f}: .${c}`);
+  }
+});
+
+test('the privacy policy names Sentry for error monitoring and does not mention session replay', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public/privacy.html'), 'utf8');
+  assert.match(html, /<strong>Sentry<\/strong> — error and performance monitoring/);
+  assert.ok(!/replay/i.test(html));
 });

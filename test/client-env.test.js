@@ -43,8 +43,10 @@ test('the build script always defines REACT_APP_RELEASE as a short SHA (or "dev"
   assert.ok(!/COMMIT_MESSAGE/.test(build));
 });
 
-test('Sentry session replay masks all text and blocks all media', () => {
-  const index = fs.readFileSync(path.join(SRC, 'index.js'), 'utf8');
-  assert.match(index, /replayIntegration\(\{\s*maskAllText:\s*true,\s*blockAllMedia:\s*true\s*\}\)/);
-  assert.ok(!/maskAllText:\s*false|blockAllMedia:\s*false/.test(index));
+test('Sentry Session Replay is off; error monitoring and tracing stay on', () => {
+  const index = fs.readFileSync(path.join(SRC, 'index.js'), 'utf8').replace(/\/\/.*$/gm, '');
+  assert.ok(!/replayIntegration|replaysOnErrorSampleRate|replaysSessionSampleRate/.test(index), 'no replay config');
+  assert.match(index, /integrations:\s*\[\s*Sentry\.browserTracingIntegration\(\)\s*\]/);
+  assert.match(index, /tracesSampleRate:/);
+  assert.match(index, /Sentry\.ErrorBoundary/);
 });

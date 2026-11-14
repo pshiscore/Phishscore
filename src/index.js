@@ -14,11 +14,9 @@ Sentry.init({
   // whole process.env object, including Vercel's commit message and git metadata.
   release: process.env.REACT_APP_RELEASE,
   tracesSampleRate: 0.2,
-  replaysOnErrorSampleRate: 1.0,
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration({ maskAllText: true, blockAllMedia: true }),
-  ],
+  // Session Replay is deliberately off: its recorder copies style attributes
+  // in a way the CSP reports, and errors plus traces are all we need.
+  integrations: [Sentry.browserTracingIntegration()],
 });
 
 const fallback = (
